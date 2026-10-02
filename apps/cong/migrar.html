@@ -44,6 +44,7 @@
       <button class="btn" id="bContar">Contar registros</button>
       <button class="btn btn-primary" id="bCopiar">Copiar datos</button>
     </div>
+    <label class="check" style="margin-top:16px"><input type="checkbox" id="chkTodo">Volver a copiar también las colecciones que ya coinciden (usar el día del cambio definitivo)</label>
   </div>
 </div>
 
@@ -79,51 +80,65 @@ function pintar() {
   $('tb').innerHTML = MAPA.map(([o, d, l]) => {
     const e = estado[d] || {};
     const ok = e.orig != null && e.orig === e.dest;
-    return `<tr><td>${l}</td><td class="num">${e.orig ?? '—'}</td><td class="num">${e.dest ?? '—'}</td>
-      <td>${e.err ? `<span class="pill" style="background:rgba(255,143,143,.14);color:#FFB3B3">${e.err}</span>`
+    const det = e.leidos != null ? `<div style="font-size:12px;color:var(--tx-3);margin-top:4px">Leídos ${e.leidos} · escritos ${e.escritos ?? 0}</div>` : '';
+    return `<tr><td>${l}${det}</td><td class="num">${e.orig ?? '—'}</td><td class="num">${e.dest ?? '—'}</td>
+      <td>${e.err ? `<span class="pill" style="background:rgba(255,143,143,.14);color:#FFB3B3;white-space:normal">${esc(e.err)}</span>`
+        : e.trabajando ? '<span class="pill" style="background:rgba(169,180,255,.16);color:#C5CCFF">Copiando…</span>'
         : e.orig == null ? '' : ok ? '<span class="pill" style="background:rgba(111,227,207,.16);color:#8FF0DE">Coincide</span>'
         : '<span class="pill" style="background:rgba(245,185,74,.16);color:#FFCF73">Pendiente</span>'}</td></tr>`;
   }).join('');
 }
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 function msg(t, tipo) { $('msg').hidden = !t; $('msg').className = 'alert ' + (tipo || 'ok'); $('msg').textContent = t || ''; }
-const errTxt = (e) => e?.code === 'permission-denied' ? 'Sin permiso de lectura' : (e?.code || e?.message || 'Error');
+const errTxt = (e) => e?.code === 'permission-denied' ? 'Sin permiso' : ((e?.code ? e.code + ': ' : '') + (e?.message || e || 'Error')).slice(0, 220);
 
-async function contar() {
-  for (const [o, d] of MAPA) {
-    estado[d] = {};
-    try { estado[d].orig = (await getCountFromServer(collection(dbOrigen, o))).data().count; } catch (e) { estado[d].err = 'Actual: ' + errTxt(e); }
-    try { estado[d].dest = (await getCountFromServer(destino(d))).data().count; } catch (e) { estado[d].err = 'SIM: ' + errTxt(e); }
-    pintar();
-  }
+async function contarUna(o, d) {
+  const e = estado[d] = Object.assign(estado[d] || {}, { err: null });
+  try { e.orig = (await getCountFromServer(collection(dbOrigen, o))).data().count; } catch (x) { e.err = 'Actual: ' + errTxt(x); }
+  try { e.dest = (await getCountFromServer(destino(d))).data().count; } catch (x) { e.err = 'SIM: ' + errTxt(x); }
+  pintar();
+}
+async function contar() { for (const [o, d] of MAPA) await contarUna(o, d); }
+
+// Lotes limitados por cantidad (máx. 200) y por tamaño estimado (máx. ~4 MB)
+const MAX_DOCS = 200, MAX_BYTES = 4 * 1024 * 1024;
+const peso = (obj) => { try { return JSON.stringify(obj).length + 200; } catch { return 50000; } };
+
+async function copiarUna(o, d) {
+  const e = estado[d];
+  e.trabajando = true; e.err = null; e.leidos = null; e.escritos = 0; pintar();
+  try {
+    const snap = await getDocs(collection(dbOrigen, o));
+    e.leidos = snap.docs.length; pintar();
+    let b = writeBatch(db), n = 0, bytes = 0;
+    const enviar = async () => { if (!n) return; await b.commit(); e.escritos += n; pintar(); b = writeBatch(db); n = 0; bytes = 0; };
+    for (const s of snap.docs) {
+      const data = s.data(), w = peso(data);
+      if (w > 1000000) throw new Error(`El registro ${s.id} supera 1 MB y Firebase no lo admite`);
+      if (n >= MAX_DOCS || bytes + w > MAX_BYTES) await enviar();
+      b.set(doc(db, 'datos', 'cong', d, s.id), data); n++; bytes += w;
+    }
+    await enviar();
+  } catch (x) { e.err = errTxt(x); console.error('[copia]', o, x); }
+  e.trabajando = false;
+  await contarUna(o, d);
 }
 
 async function copiar() {
   $('bCopiar').disabled = $('bContar').disabled = true;
   msg('');
   $('prog').hidden = false; $('progBar').style.width = '0%';
-  try {
-    const lotes = [];
-    for (const [o, d] of MAPA) {
-      const snap = await getDocs(collection(dbOrigen, o));
-      lotes.push([d, snap.docs]);
-    }
-    const total = lotes.reduce((a, [, docs]) => a + docs.length, 0) || 1;
-    let hechos = 0;
-    for (const [d, docs] of lotes) {
-      for (let i = 0; i < docs.length; i += 400) {
-        const b = writeBatch(db);
-        docs.slice(i, i + 400).forEach(s => b.set(doc(db, 'datos', 'cong', d, s.id), s.data()));
-        await b.commit();
-        hechos += Math.min(400, docs.length - i);
-        $('progBar').style.width = Math.round(hechos / total * 100) + '%';
-      }
-    }
-    await contar();
-    const todo = MAPA.every(([, d]) => estado[d].orig === estado[d].dest);
-    msg(todo ? `Copia completa: ${hechos} registros. Los totales coinciden.` : 'Copia terminada, pero algunos totales no coinciden. Revise la tabla y vuelva a ejecutar.', todo ? 'ok' : 'warn');
-  } catch (e) {
-    msg('No se pudo completar la copia: ' + errTxt(e) + '. Ningún dato del sistema actual fue modificado.', 'err');
+  if (!MAPA.every(([, d]) => estado[d] && estado[d].orig != null)) await contar();
+  let i = 0;
+  for (const [o, d] of MAPA) {
+    const e = estado[d];
+    // Copia completa la primera vez; luego solo lo que no coincide
+    const todo = $('chkTodo').checked;
+    if (todo || !(e.orig != null && e.orig === e.dest)) await copiarUna(o, d);
+    $('progBar').style.width = Math.round(++i / MAPA.length * 100) + '%';
   }
+  const fallos = MAPA.filter(([, d]) => estado[d].err || estado[d].orig !== estado[d].dest);
+  msg(fallos.length ? 'Algunas colecciones no coinciden. Revise el estado en la tabla; puede volver a pulsar "Copiar datos".' : 'Copia completa. Todos los totales coinciden.', fallos.length ? 'warn' : 'ok');
   $('bCopiar').disabled = $('bContar').disabled = false;
 }
 
