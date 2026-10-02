@@ -31,6 +31,8 @@ core/sim.css            estilos comunes (tema gris azulado medio, Sora / IBM Ple
 admin/                  Aplicativo Administración: Usuarios, Permisos, Aplicativos
 apps/cong/              Congelamiento integrado (generado por tools/integrar_congelamiento.py)
 apps/cong/migrar.html   Copia de datos desde el Firebase actual (solo lectura del original)
+apps/cost/              Costos integrado (generado por tools/integrar_costos.py) — sin datos en el código
+apps/cost/cargar.html   Carga de órdenes Nisira al SIM desde el HTML generado
 tools/                  Scripts de integración
 apps/_plantilla/        Plantilla para crear un aplicativo nuevo
 firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
@@ -54,7 +56,7 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 |---|---|---|
 | F0 | Portal + Administración | Construido (pruebas) |
 | F1 | Congelamiento (conserva su diseño) | Integrado en pruebas · pendiente copia de datos y cambio de enlace |
-| F2 | Costos de mantenimiento | En construcción por separado |
+| F2 | Costos de mantenimiento (conserva su diseño) | Integrado en pruebas · pendiente cargar datos y respaldo |
 | F3 | Equipos (maestro) | Planificado |
 | F4 | Registro de parámetros (Ósmosis, Salas de máquinas, Calderos) | Planificado |
 | F5 | Materiales e inventario (maestro) | Planificado |
@@ -72,6 +74,14 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - Cambio definitivo (día acordado): ejecutar la copia de datos una última vez, pasar al personal al enlace del SIM
   y dejar el sistema anterior solo como respaldo unas semanas.
 
+## Costos de mantenimiento (F2)
+- Repositorio público: las órdenes (DATA) NO van en el código. Se guardan en `datos/cost/fuente/{meta, p0..pN}` (JSON por partes de ~700 KB).
+- Estado del aplicativo (asignaciones, dictámenes CAPEX, catálogo editado, producción, meta) en `datos/cost/estado/principal` (campo `json`).
+  Se guarda en el navegador y, 1,2 s después del último cambio, en Firebase. Último en guardar prevalece (no hay edición simultánea por campo).
+- Al actualizar datos de Nisira: generar el HTML de Costos como siempre y subirlo en `apps/cost/cargar.html`. Las asignaciones se conservan (van por índice `i` de la orden).
+- Cambios en la lógica/diseño: `python3 tools/integrar_costos.py <Costos_Mantenimiento_App.html>` regenera `apps/cost/index.html`.
+- Respaldo / Cargar respaldo / Restablecer: visibles solo para rol Admin. Rol Lectura = modo consulta (no guarda).
+
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
 2. Authentication → Configuración → Dominios autorizados: agregar `tecnosolucionesind.github.io`.
@@ -80,3 +90,4 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 ## Bitácora
 - 2026-10-02 — Repositorio creado. Portal, núcleo, Administración, plantilla y reglas (F0).
 - 2026-10-02 — F0 configurado en consola y probado por el administrador. Congelamiento integrado + herramienta de copia de datos (F1).
+- 2026-10-02 — Copia de datos de Congelamiento completada por el administrador. Costos integrado sin datos en el código + herramienta de carga (F2).

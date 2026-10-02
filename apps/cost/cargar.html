@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carga de datos · Costos · SIM</title>
+<link rel="stylesheet" href="../../core/sim.css">
+<style>
+  .wrap{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:48px 20px 80px}
+  .drop{margin-top:26px;padding:36px 24px;border-radius:22px;border:1.5px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.04);text-align:center;transition:border-color .25s,background .25s;cursor:pointer}
+  .drop:hover,.drop.over{border-color:var(--mint);background:rgba(111,227,207,.06)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-top:22px}
+  .k{padding:16px 18px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+  .k b{display:block;font-family:var(--f-display);font-size:24px;font-weight:600}
+  .k span{font-size:12.5px;color:var(--tx-3)}
+</style>
+</head>
+<body>
+<div class="amb"></div>
+<div class="wrap">
+  <a class="btn" href="../../" style="margin-bottom:28px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Volver al portal</a>
+  <div class="eyebrow rise">Costos de mantenimiento</div>
+  <h1 class="h-display rise d1" style="font-size:38px;margin-top:12px">Carga de datos</h1>
+  <p class="muted rise d2" style="line-height:1.6;max-width:680px">Seleccione el archivo del aplicativo de Costos generado con los datos de Nisira (Costos_Mantenimiento_App.html). Se extraen las órdenes y el catálogo de equipos y se guardan en el SIM, protegidos por los permisos del portal. Las asignaciones y ajustes ya realizados se conservan.</p>
+
+  <div id="gate" class="glass" style="padding:28px;margin-top:26px"><div class="spinner"></div></div>
+  <div id="panel" hidden>
+    <label class="drop rise d2" id="drop" for="file">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#8FF0DE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+      <div style="font-family:var(--f-display);font-weight:600;font-size:18px;margin-top:12px">Seleccionar archivo</div>
+      <div class="muted" style="font-size:14px;margin-top:6px">.html del aplicativo de Costos o .json de datos</div>
+      <input type="file" id="file" accept=".html,.htm,.json" class="sr">
+    </label>
+    <div id="resumen" hidden>
+      <div class="kpis" id="kpis"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:22px">
+        <button class="btn btn-primary" id="bCargar">Cargar al SIM</button>
+      </div>
+    </div>
+    <div class="alert" id="msg" style="margin-top:18px" hidden></div>
+    <div class="glass" id="actual" style="padding:18px 22px;margin-top:22px;font-size:14px" hidden></div>
+  </div>
+</div>
+
+<script type="module">
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { doc, getDoc, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { auth, db } from '../../core/firebase.js';
+import { esAdmin } from '../../core/sesion.js';
+
+const $ = (id) => document.getElementById(id);
+const MES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+const MAX_CHARS = 700000; // por documento (límite de Firestore: 1 MB)
+let DATA = null, archivo = '', usuario = null;
+
+const msg = (t, tipo) => { $('msg').hidden = !t; $('msg').className = 'alert ' + (tipo || 'ok'); $('msg').textContent = t || ''; };
+const fmt = (v) => 'S/ ' + Math.round(v).toLocaleString('es-PE');
+
+function extraer(texto, nombre) {
+  if (/\.json$/i.test(nombre)) return JSON.parse(texto);
+  const ini = texto.indexOf('const DATA = ');
+  if (ini < 0) throw new Error('El archivo no contiene los datos del aplicativo de Costos.');
+  const desde = ini + 'const DATA = '.length;
+  const fin = texto.indexOf('};\n', desde);
+  if (fin < 0) throw new Error('No se pudo leer el bloque de datos.');
+  return JSON.parse(texto.slice(desde, fin + 1));
+}
+
+async function mostrarActual() {
+  const m = await getDoc(doc(db, 'datos', 'cost', 'fuente', 'meta'));
+  if (!m.exists()) { $('actual').hidden = false; $('actual').innerHTML = '<span class="muted">Aún no hay datos cargados en el SIM.</span>'; return null; }
+  const d = m.data();
+  const f = d.actualizado?.toDate ? d.actualizado.toDate().toLocaleString('es-PE') : '—';
+  $('actual').hidden = false;
+  $('actual').innerHTML = `<b>Datos actuales en el SIM:</b> ${d.total.toLocaleString('es-PE')} órdenes · ${d.meses || ''} · cargados el ${f}${d.archivo ? ' · ' + d.archivo : ''}`;
+  return d;
+}
+
+async function leerArchivo(f) {
+  msg('');
+  try {
+    const t = await f.text();
+    DATA = extraer(t, f.name); archivo = f.name;
+    if (!Array.isArray(DATA.rows) || !DATA.rows.length) throw new Error('No se encontraron órdenes en el archivo.');
+    const meses = [...new Set(DATA.rows.map(r => r.m))].sort((a, b) => a - b);
+    const total = DATA.rows.reduce((a, r) => a + (+r.s || 0), 0);
+    const oco = DATA.rows.filter(r => r.t === 'OCO').length;
+    $('kpis').innerHTML = [
+      [DATA.rows.length.toLocaleString('es-PE'), 'Órdenes (líneas)'],
+      [oco.toLocaleString('es-PE') + ' / ' + (DATA.rows.length - oco).toLocaleString('es-PE'), 'Materiales / servicios'],
+      [MES[meses[0] - 1] + '–' + MES[meses[meses.length - 1] - 1], 'Periodo'],
+      [fmt(total), 'Monto total'],
+      [(DATA.cat || []).length, 'Equipos en catálogo']
+    ].map(([v, l]) => `<div class="k"><b>${v}</b><span>${l}</span></div>`).join('');
+    $('resumen').hidden = false;
+  } catch (e) { DATA = null; $('resumen').hidden = true; msg(e.message, 'err'); }
+}
+
+async function cargar() {
+  if (!DATA) return;
+  const btn = $('bCargar'); btn.disabled = true; btn.textContent = 'Cargando…';
+  try {
+    const previo = (await getDoc(doc(db, 'datos', 'cost', 'fuente', 'meta'))).data();
+    // dividir las órdenes en partes de tamaño seguro
+    const partes = []; let actual = [], tam = 2;
+    for (const r of DATA.rows) {
+      const t = JSON.stringify(r).length + 1;
+      if (tam + t > MAX_CHARS && actual.length) { partes.push(actual); actual = []; tam = 2; }
+      actual.push(r); tam += t;
+    }
+    if (actual.length) partes.push(actual);
+    const { rows, cat, ...extra } = DATA;
+    const meses = [...new Set(rows.map(r => r.m))].sort((a, b) => a - b);
+    // escribir en lotes pequeños (máx. ~2 partes por lote)
+    for (let i = 0; i < partes.length; i += 2) {
+      const b = writeBatch(db);
+      partes.slice(i, i + 2).forEach((p, j) => b.set(doc(db, 'datos', 'cost', 'fuente', 'p' + (i + j)), { json: JSON.stringify(p), n: p.length }));
+      await b.commit();
+    }
+    const b = writeBatch(db);
+    if (previo && previo.partes > partes.length) for (let i = partes.length; i < previo.partes; i++) b.delete(doc(db, 'datos', 'cost', 'fuente', 'p' + i));
+    b.set(doc(db, 'datos', 'cost', 'fuente', 'meta'), {
+      partes: partes.length, total: rows.length, cat: JSON.stringify(cat || []), extra: JSON.stringify(extra),
+      meses: MES[meses[0] - 1] + '–' + MES[meses[meses.length - 1] - 1], archivo, actualizado: serverTimestamp(), por: usuario.email
+    });
+    await b.commit();
+    msg(`Datos cargados: ${rows.length.toLocaleString('es-PE')} órdenes en ${partes.length} partes. Ya puede abrir Costos desde el portal.`, 'ok');
+    await mostrarActual();
+  } catch (e) {
+    console.error(e);
+    msg('No se pudo cargar: ' + (e.code || e.message), 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Cargar al SIM';
+}
+
+onAuthStateChanged(auth, async (u) => {
+  if (!u) { location.replace('../../'); return; }
+  if (!esAdmin(u)) { $('gate').innerHTML = '<div class="muted">Esta herramienta es solo para el administrador del sistema.</div>'; return; }
+  usuario = u;
+  $('gate').remove(); $('panel').hidden = false;
+  $('file').onchange = (e) => e.target.files[0] && leerArchivo(e.target.files[0]);
+  const dz = $('drop');
+  ['dragenter', 'dragover'].forEach(t => dz.addEventListener(t, (e) => { e.preventDefault(); dz.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, (e) => { e.preventDefault(); dz.classList.remove('over'); }));
+  dz.addEventListener('drop', (e) => e.dataTransfer.files[0] && leerArchivo(e.dataTransfer.files[0]));
+  $('bCargar').onclick = cargar;
+  try { await mostrarActual(); } catch (e) { msg('No se pudo leer el estado actual: ' + (e.code || e.message), 'err'); }
+});
+</script>
+</body>
+</html>

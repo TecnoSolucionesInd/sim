@@ -57,9 +57,22 @@ export const APPS = [
   },
   {
     id: 'cost', nombre: 'Costos de mantenimiento', sub: 'OPEX, CAPEX y costo por TM',
-    grupo: 'gest', estado: 'dev', fase: 'F2', color: '#F5B94A', url: null,
+    grupo: 'gest', estado: 'dev', fase: 'F2', color: '#F5B94A', url: 'apps/cost/',
+    herramientas: [{ nombre: 'Cargar datos de Nisira', url: 'apps/cost/cargar.html' }],
     icon: 'M3 3v18h18M7 15l4-4 3 3 5-6M16 8h3v3',
-    modulos: []
+    modulos: [
+      { id: 'general', nombre: 'Dashboard general' },
+      { id: 'ratio', nombre: 'S/ por TM producida' },
+      { id: 'congelado', nombre: 'Congelado' },
+      { id: 'hielo', nombre: 'Planta de hielo' },
+      { id: 'osmosis', nombre: 'Planta de ósmosis' },
+      { id: 'calderos', nombre: 'Calderos' },
+      { id: 'resto', nombre: 'Resto de planta' },
+      { id: 'equipos', nombre: 'Análisis por equipo' },
+      { id: 'asignar', nombre: 'Asignación de costos' },
+      { id: 'catalogo', nombre: 'Catálogo de equipos' },
+      { id: 'capex', nombre: 'CAPEX' }
+    ]
   },
   {
     id: 'eq', nombre: 'Equipos', sub: 'Base maestra de equipos de planta',

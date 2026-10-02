@@ -1,0 +1,1133 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Costos de mantenimiento · SIM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#CDD5DE; --card:#F3F5F7; --card2:#E8ECF0; --line:#BFC9D3; --ink:#1B2733; --ink2:#46535F; --muted:#6A7684;
+  --nav:#1D2E40; --nav2:#26405A; --navink:#C9D4DF; --accent:#2BA6A0;
+  --c-cong:#2a78d6; --c-cal:#eb6834; --c-hie:#1baf7a; --c-osm:#eda100; --c-res:#e87ba4; --c-sin:#8A96A3;
+  --oco:#256abf; --osr:#86b6ef; --capex:#7a5bbf;
+  --ok:#2f8f4e; --warn:#c98500; --bad:#cc3d3d;
+  --r:10px; --sh:0 1px 2px rgba(20,32,46,.08),0 2px 8px rgba(20,32,46,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;font-size:14px}
+body{display:flex;min-height:100vh}
+.num{font-variant-numeric:tabular-nums}
+/* sidebar */
+#side{width:236px;flex:0 0 236px;background:var(--nav);color:var(--navink);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{padding:18px 18px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand small{display:block;letter-spacing:.14em;text-transform:uppercase;font-size:10px;color:#8FA3B7}
+.brand b{display:block;color:#fff;font-size:16px;margin-top:4px;line-height:1.25}
+.brand span{display:block;font-size:11.5px;color:#9FB1C3;margin-top:3px}
+nav{padding:10px 8px;overflow:auto;flex:1}
+nav .grp{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7F93A8;padding:12px 10px 6px}
+nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;color:var(--navink);text-decoration:none;cursor:pointer;font-size:13.5px}
+nav a:hover{background:rgba(255,255,255,.06)}
+nav a.on{background:var(--nav2);color:#fff;box-shadow:inset 3px 0 0 var(--accent)}
+nav a i{width:9px;height:9px;border-radius:3px;flex:0 0 9px;background:#5D7086}
+.sidefoot{padding:12px;border-top:1px solid rgba(255,255,255,.08);display:grid;gap:6px}
+.sidefoot button{background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--navink);border-radius:7px;padding:7px;font-size:12px;cursor:pointer}
+.sidefoot button:hover{background:rgba(255,255,255,.06)}
+/* main */
+#main{flex:1;min-width:0;display:flex;flex-direction:column}
+#top{background:var(--card);border-bottom:1px solid var(--line);padding:12px 22px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;position:sticky;top:0;z-index:5}
+#top h1{font-size:19px;margin:0;font-weight:650}
+#top .sub{font-size:12px;color:var(--muted)}
+#top .tt{flex:1;min-width:220px}
+#top .navbtn{font-size:18px;line-height:1;padding:7px 11px;background:var(--nav);color:#fff;border-color:var(--nav)}
+#top .navbtn:hover{background:var(--nav2)}
+body.navoff #side{display:none}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filters label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+select,input[type=text],input[type=number],input[type=search]{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 8px;color:var(--ink)}
+.btn{font:inherit;font-size:12.5px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:7px;padding:7px 11px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--card2)}
+.btn.pri{background:var(--nav);color:#fff;border-color:var(--nav)}
+.btn.pri:hover{background:var(--nav2)}
+.btn.sm{padding:4px 8px;font-size:12px}
+#view{padding:18px 22px 40px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}.c2{grid-column:span 2}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;min-width:0}
+.card h3{margin:0 0 2px;font-size:13.5px;font-weight:650}
+.card .hint{font-size:11.5px;color:var(--muted);margin-bottom:10px}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:12px 14px;position:relative;overflow:hidden}
+.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--kc,var(--nav2))}
+.kpi small{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kpi b{display:block;font-size:22px;font-weight:650;margin-top:4px}
+.kpi span{font-size:11.5px;color:var(--ink2)}
+.ch{position:relative;height:260px}
+.ch.tall{height:330px}.ch.sm{height:210px}
+.insight{background:var(--card2);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--ink2);margin-bottom:14px;line-height:1.5}
+.insight b{color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-weight:600;color:var(--ink2);background:var(--card2);padding:7px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1}
+td{padding:6px 8px;border-bottom:1px solid #DCE2E8;vertical-align:top}
+td.r,th.r{text-align:right}
+td.r,td.num{white-space:nowrap}
+.kpi b.txt{font-size:15px;line-height:1.3;margin-top:6px}
+tr:hover td{background:#EDF1F5}
+.tw{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+.dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:1px 8px;font-size:11.5px;margin:1px 2px 1px 0;white-space:nowrap}
+.bar{height:6px;background:#DCE3EA;border-radius:3px;overflow:hidden;margin-top:3px}
+.bar>div{height:100%;background:var(--oco);border-radius:3px}
+.st{white-space:nowrap;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600}
+.st.ok{color:var(--ok)}.st.warn{color:var(--warn)}.st.bad{color:var(--bad)}.st.na{color:var(--muted);font-weight:400}
+.heat td{text-align:right;font-size:12px;border:2px solid var(--card);white-space:nowrap}
+.heat th{background:transparent;border:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:10px}
+.toolbar label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.pill.a{background:#dbe9f9;color:#1c5cab}.pill.m{background:#fbeccd;color:#8a5a00}.pill.o{background:#d9f2e6;color:#1d6b45}
+.cmp{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.cmpc{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer}
+.cmpc:hover{border-color:var(--c-cong)}
+.cmpc small{color:var(--muted);font-size:11px}
+.cmpc b{display:block;font-size:17px;margin:2px 0}
+.cmpc canvas{width:100%!important;height:46px!important}
+.pager{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-top:8px;font-size:12px;color:var(--muted)}
+#modal{position:fixed;inset:0;background:rgba(15,25,35,.45);display:none;align-items:center;justify-content:center;z-index:50}
+#modal .box{background:var(--card);border-radius:12px;width:min(560px,94vw);max-height:84vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+#modal .hd{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:650}
+#modal .bd{padding:12px 18px;overflow:auto}
+#modal .ft{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+.eqlist label{display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px}
+.eqlist .ah{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:10px}
+.muted{color:var(--muted)}
+.note{font-size:11.5px;color:var(--muted);margin-top:8px}
+.printhead{display:none}
+#busy{position:fixed;inset:0;background:rgba(15,25,35,.45);color:#fff;font-size:15px;font-weight:600;display:none;align-items:center;justify-content:center;z-index:60}
+body.pdfmode #view{width:1520px;padding:12px}
+body.pdfmode .ch{height:225px}
+body.pdfmode .ch.tall{height:280px}
+body.pdfmode .ch.sm{height:170px}
+body.pdfmode .grid{gap:12px}
+body.pdfmode .kpis{margin-bottom:12px;gap:12px}
+body.pdfmode .tw{max-height:none!important;overflow:visible!important}
+body.pdfmode .noprint{display:none!important}
+body.pdfmode th{position:static}
+body.pdfmode .hint{display:none}
+body.pdfmode .toolbar{display:none}
+@media (max-width:1200px){.kpis{grid-template-columns:repeat(3,1fr)}.c3{grid-column:span 6}.c4,.c5,.c7,.c8{grid-column:span 12}.c6{grid-column:span 12}}
+@media (max-width:820px){
+  body{flex-direction:column}
+  #side{width:100%;height:auto;position:relative;flex:none}
+  nav{display:flex;overflow-x:auto;padding:6px}
+  nav .grp{display:none}
+  nav a{white-space:nowrap}
+  .sidefoot{display:none}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .grid>*{grid-column:span 12!important}
+  #top{position:relative;padding:10px 14px}
+  #view{padding:12px 12px 30px}
+  .brand{padding:10px 14px}
+}
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  body{background:#fff;display:block}
+  #side,.filters,.noprint,.toolbar,.pager{display:none!important}
+  #top{position:static;border:0;padding:0 0 6px}
+  #view{padding:0}
+  .card,.kpi{box-shadow:none;break-inside:avoid}
+  .tw{max-height:none;overflow:visible}
+  .printhead{display:block;font-size:11px;color:var(--muted)}
+}
+</style>
+</head>
+<body>
+<aside id="side">
+  <div class="brand"><small>Departamento de Mantenimiento</small><b>Costos de Mantenimiento 2026</b><span>Planta Paita · Congelado</span></div>
+  <nav id="nav"></nav>
+  <div class="sidefoot">
+    <button onclick="backupDownload()">Descargar respaldo (.json)</button>
+    <button onclick="document.getElementById('fimp').click()">Cargar respaldo</button>
+    <input type="file" id="fimp" accept=".json" style="display:none" onchange="backupLoad(this)">
+    <button onclick="resetAll()">Restablecer cambios</button>
+  </div>
+</aside>
+<div id="main">
+  <header id="top">
+    <button class="btn navbtn" id="navBtn" title="Mostrar u ocultar módulos" onclick="toggleNav()">☰</button>
+    <div class="tt"><h1 id="ttl"></h1><div class="sub" id="sub"></div><div class="printhead" id="ph"></div></div>
+    <div class="filters">
+      <label>Desde<select id="fDesde"></select></label>
+      <label>Hasta<select id="fHasta"></select></label>
+      <label>Tipo<select id="fTipo"><option value="">Materiales y servicios</option><option value="OCO">Materiales (OCO)</option><option value="OSR">Servicios (OSR)</option></select></label>
+      <button class="btn" onclick="exportExcel()">Exportar Excel</button>
+      <button class="btn pri" onclick="exportPDF()">Exportar PDF</button>
+    </div>
+  </header>
+  <section id="view"></section>
+</div>
+<div id="modal"><div class="box"><div class="hd" id="mhd"></div><div class="bd" id="mbd"></div><div class="ft" id="mft"></div></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<div id="sim-boot" style="position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:#1D2E40;color:#C9D4DF;font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;text-align:center;padding:24px">Verificando acceso…</div>
+<script>
+// ======== ARRANQUE SIM: sesión del portal + datos desde Firebase ========
+(function () {
+  const CFG = {
+  apiKey: "AIzaSyDqatvNRWGyJJL6Z-HXpLS4LqdBpa9maAM",
+  authDomain: "sim-pruebas-bcf39.firebaseapp.com",
+  projectId: "sim-pruebas-bcf39",
+  storageBucket: "sim-pruebas-bcf39.firebasestorage.app",
+  messagingSenderId: "1008990436037",
+  appId: "1:1008990436037:web:1b5eb3d0f3d16853380eac"
+};
+  const ADMIN = 'emiranda@santamonicafishing.com';
+  const MODMAP = {"general": "general", "ratio": "ratio", "Congelado": "congelado", "Planta de hielo": "hielo", "Planta de ósmosis": "osmosis", "Calderos": "calderos", "Resto de planta": "resto", "equipos": "equipos", "asignar": "asignar", "catalogo": "catalogo", "capex": "capex"};
+  const LSKEY = 'smf_costos_mant_2026_v1';
+  firebase.initializeApp(CFG);
+  const db = firebase.firestore();
+  const base = db.collection('datos').doc('cost');
+  const boot = document.getElementById('sim-boot');
+  const pantalla = (titulo, texto, extra) => {
+    boot.innerHTML = '<div style="max-width:460px;padding:34px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)">'
+      + '<div style="font-size:21px;font-weight:600;color:#fff">' + titulo + '</div><p style="line-height:1.6;color:#C9D4DF">' + texto + '</p>'
+      + (extra || '') + '<a href="../../" style="display:inline-block;margin-top:6px;padding:11px 20px;border-radius:10px;background:#2BA6A0;color:#fff;font-weight:600;text-decoration:none">Ir al portal</a></div>';
+  };
+
+  firebase.auth().onAuthStateChanged(async function (u) {
+    if (!u) { location.replace('../../'); return; }
+    let perfil = null;
+    try { const s = await db.collection('usuarios').doc(u.uid).get(); perfil = s.exists ? s.data() : null; } catch (e) { console.warn('[SIM] perfil', e); }
+    const esAdm = (u.email || '').toLowerCase() === ADMIN && u.emailVerified === true;
+    const todos = Object.values(MODMAP);
+    let rol = null, mods = todos;
+    if (esAdm) rol = 'admin';
+    else if (perfil && perfil.activo === true && perfil.apps && perfil.apps.cost && perfil.apps.cost.rol) {
+      rol = perfil.apps.cost.rol;
+      const pm = perfil.apps.cost.modulos;
+      if (Array.isArray(pm) && pm.length) mods = pm.filter(m => todos.includes(m));
+    }
+    if (!rol) { pantalla('Sin acceso', 'Su usuario no tiene permisos para Costos de mantenimiento. Comuníquese con el administrador del sistema.'); return; }
+    const escribe = ['admin', 'supervisor', 'operador'].includes(rol);
+
+    // 1. Datos de órdenes
+    try {
+      boot.textContent = 'Cargando datos…';
+      const meta = await base.collection('fuente').doc('meta').get();
+      if (!meta.exists) {
+        pantalla('Sin datos cargados', 'Aún no se han cargado las órdenes de compra y servicio en el SIM.',
+          esAdm ? '<a href="cargar.html" style="display:inline-block;margin:0 8px 0 0;padding:11px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.3);color:#fff;text-decoration:none">Cargar datos</a>' : '');
+        return;
+      }
+      const m = meta.data();
+      const partes = await Promise.all(Array.from({ length: m.partes }, (_, i) => base.collection('fuente').doc('p' + i).get()));
+      const rows = [];
+      partes.forEach(p => { if (p.exists) rows.push.apply(rows, JSON.parse(p.data().json)); });
+      window.__COSTOS_DATA = Object.assign({}, JSON.parse(m.extra || '{}'), { rows: rows, cat: JSON.parse(m.cat || '[]') });
+      // 2. Estado compartido (asignaciones, dictámenes, catálogo, producción)
+      const est = await base.collection('estado').doc('principal').get();
+      if (est.exists && est.data().json) localStorage.setItem(LSKEY, est.data().json);
+    } catch (e) {
+      console.error('[SIM] carga', e);
+      pantalla('No se pudieron cargar los datos', (e && e.code) ? ('Código: ' + e.code) : String(e));
+      return;
+    }
+
+    // 3. Ejecutar el aplicativo
+    const app = document.createElement('script');
+    app.textContent = document.getElementById('costos-app').textContent;
+    document.body.appendChild(app);
+
+    // 4. Módulos según permisos
+    for (let i = MODS.length - 1; i >= 0; i--) if (!mods.includes(MODMAP[MODS[i].id])) MODS.splice(i, 1);
+    if (!MODS.find(x => x.id === CUR)) CUR = MODS.length ? MODS[0].id : CUR;
+    buildNav(); render();
+
+    // 5. Barra lateral: portal, estado de guardado, respaldo solo para Admin
+    const side = document.getElementById('side');
+    side.insertAdjacentHTML('afterbegin', '<a href="../../" style="display:flex;align-items:center;gap:8px;padding:12px 18px;color:#C9D4DF;text-decoration:none;font-size:13px;border-bottom:1px solid rgba(255,255,255,.08)">⟵ Portal SIM</a>');
+    const foot = side.querySelector('.sidefoot');
+    if (foot) {
+      if (rol !== 'admin') foot.querySelectorAll('button').forEach(b => b.style.display = 'none');
+      foot.insertAdjacentHTML('afterbegin', '<div id="sim-sync" style="font-size:11.5px;color:#8FA3B7;text-align:center;padding:2px 0">'
+        + (escribe ? 'Cambios guardados en el SIM' : 'Modo consulta: los cambios no se guardan') + '</div>');
+    }
+    boot.remove();
+
+    // 6. Guardar también en Firebase (con espera para agrupar cambios)
+    if (!escribe) return;
+    const marca = (t, c) => { const el = document.getElementById('sim-sync'); if (el) { el.textContent = t; el.style.color = c || '#8FA3B7'; } };
+    let timer = null;
+    const original = window.save;
+    window.save = function () {
+      original();
+      marca('Guardando…');
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        try {
+          await base.collection('estado').doc('principal').set({ json: JSON.stringify(ST), actualizado: firebase.firestore.FieldValue.serverTimestamp(), por: u.email });
+          marca('Cambios guardados en el SIM');
+        } catch (e) { console.error('[SIM] guardar', e); marca('No se pudo guardar en el SIM', '#ff9b9b'); }
+      }, 1200);
+    };
+  });
+})();
+</script>
+<script type="text/plain" id="costos-app">
+const DATA = window.__COSTOS_DATA;
+const MES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+const AREAS=['Congelado','Planta de hielo','Planta de ósmosis','Calderos','Resto de planta','Sin asignar'];
+const ACOL={'Congelado':'#2a78d6','Calderos':'#eb6834','Planta de hielo':'#1baf7a','Planta de ósmosis':'#eda100','Resto de planta':'#e87ba4','Sin asignar':'#8A96A3'};
+const OCO='#256abf', OSR='#86b6ef';
+const LS='smf_costos_mant_2026_v1';
+const MODS=[
+ {id:'general',t:'Dashboard general',g:'Análisis OPEX',c:'#5D7086'},
+ {id:'ratio',t:'S/ por TM producida',g:'Análisis OPEX',c:'#2BA6A0',sub:'Costo de mantenimiento por tonelada de producto terminado congelado'},
+ {id:'Congelado',t:'Congelado',g:'Análisis OPEX',c:ACOL['Congelado'],sub:'Congeladores de placas, compresores, evaporadores y sistema de refrigeración'},
+ {id:'Planta de hielo',t:'Planta de hielo',g:'Análisis OPEX',c:ACOL['Planta de hielo']},
+ {id:'Planta de ósmosis',t:'Planta de ósmosis',g:'Análisis OPEX',c:ACOL['Planta de ósmosis']},
+ {id:'Calderos',t:'Calderos',g:'Análisis OPEX',c:ACOL['Calderos']},
+ {id:'Resto de planta',t:'Resto de planta',g:'Análisis OPEX',c:ACOL['Resto de planta'],sub:'Montacargas, bombas, grupos electrógenos, líneas de proceso, muelle, infraestructura, SS.HH. y exteriores'},
+ {id:'equipos',t:'Análisis por equipo',g:'Gestión',c:'#5D7086'},
+ {id:'asignar',t:'Asignación de costos',g:'Gestión',c:'#5D7086'},
+ {id:'catalogo',t:'Catálogo de equipos',g:'Gestión',c:'#5D7086'},
+ {id:'capex',t:'CAPEX',g:'Proyectos',c:'#7a5bbf'},
+];
+// ---------- state
+let ST={asg:{},dict:{},notes:{},catEdit:{},catNew:[],prod:{},meta:null};
+try{const s=localStorage.getItem(LS); if(s) ST=Object.assign(ST,JSON.parse(s));}catch(e){}
+function save(){try{localStorage.setItem(LS,JSON.stringify(ST));}catch(e){}}
+let CUR='general', SEL_EQ=null, charts={};
+const ROWS=DATA.rows;
+function catalog(){
+  const base=DATA.cat.map(c=>Object.assign({},c,ST.catEdit[c.id]||{}));
+  return base.concat(ST.catNew.map(c=>Object.assign({},c,ST.catEdit[c.id]||{})));
+}
+let CAT=catalog(), CATM={};
+function refreshCat(){CAT=catalog();CATM={};CAT.forEach(c=>CATM[c.id]=c);}
+refreshCat();
+const clsOf=r=> r.c==='CAPEX' && ST.dict[r.i]==='OPEX' ? 'OPEX' : r.c;
+const eqOf=r=> ST.asg[r.i]!==undefined ? ST.asg[r.i] : (r.c==='CAPEX'?[]:r.eq);
+const isManual=r=> ST.asg[r.i]!==undefined;
+// ---------- filters
+const fD=document.getElementById('fDesde'), fH=document.getElementById('fHasta'), fT=document.getElementById('fTipo');
+const months=[...new Set(ROWS.map(r=>r.m))].sort((a,b)=>a-b);
+months.forEach(m=>{fD.add(new Option(MES[m-1],m));fH.add(new Option(MES[m-1],m));});
+fD.value=months[0]; fH.value=months[months.length-1];
+[fD,fH,fT].forEach(el=>el.onchange=()=>{if(+fD.value>+fH.value)fH.value=fD.value;render();});
+const inRange=r=> r.m>=+fD.value && r.m<=+fH.value && (!fT.value||r.t===fT.value);
+const mRange=()=>months.filter(m=>m>=+fD.value&&m<=+fH.value);
+// fact: one record per (row, equipo) with share
+function facts(){
+  const out=[];
+  ROWS.forEach(r=>{
+    if(clsOf(r)!=='OPEX'||!inRange(r))return;
+    const eq=eqOf(r).filter(e=>CATM[e]);
+    if(!eq.length){out.push({r,e:'SIN',a:'Sin asignar',v:r.s});return;}
+    eq.forEach(e=>out.push({r,e,a:CATM[e].a,v:r.s/eq.length}));
+  });
+  return out;
+}
+// ---------- utils
+const fmt=v=>'S/ '+Math.round(v).toLocaleString('es-PE');
+const fmtk=v=>Math.abs(v)>=1e6?'S/ '+(v/1e6).toFixed(2)+' M':Math.abs(v)>=1e3?'S/ '+(v/1e3).toFixed(1)+' k':'S/ '+Math.round(v);
+const pct=v=>(isFinite(v)?(v*100).toFixed(1):'0.0')+'%';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function sumBy(arr,key,val='v'){const m={};arr.forEach(x=>{const k=typeof key==='function'?key(x):x[key];m[k]=(m[k]||0)+(typeof val==='function'?val(x):x[val]);});return m;}
+const sortE=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]);
+const eqName=e=>e==='SIN'?'Sin asignar':(CATM[e]?CATM[e].n:e);
+const eqArea=e=>e==='SIN'?'Sin asignar':(CATM[e]?CATM[e].a:'Sin asignar');
+function kill(){Object.values(charts).forEach(c=>c.destroy());charts={};}
+Chart.defaults.font.family='"Segoe UI",system-ui,Roboto,Arial,sans-serif';
+Chart.defaults.font.size=11.5;
+Chart.defaults.color='#46535F';
+Chart.defaults.plugins.tooltip.backgroundColor='#1D2E40';
+Chart.defaults.plugins.tooltip.padding=9;
+Chart.defaults.plugins.legend.labels.boxWidth=10;
+Chart.defaults.plugins.legend.labels.boxHeight=10;
+Chart.defaults.maintainAspectRatio=false;
+const GRID={color:'rgba(27,39,51,.08)'};
+const tipS={callbacks:{label:c=>' '+(c.dataset.label?c.dataset.label+': ':'')+fmt(c.parsed.y??c.parsed)}};
+function mk(id,cfg){const el=document.getElementById(id);if(!el)return;charts[id]=new Chart(el,cfg);}
+function kpi(label,val,sub,col,txt){return `<div class="kpi" style="--kc:${col||'#26405A'}"><small>${label}</small><b class="${txt?'txt':'num'}">${val}</b><span>${sub||''}</span></div>`;}
+// ---------- nav
+function buildNav(){
+  let h='',g='';
+  MODS.forEach(m=>{if(m.g!==g){g=m.g;h+=`<div class="grp">${g}</div>`;}h+=`<a data-id="${m.id}" class="${CUR===m.id?'on':''}"><i style="background:${m.c}"></i>${m.t}</a>`;});
+  const n=document.getElementById('nav');n.innerHTML=h;
+  n.querySelectorAll('a').forEach(a=>a.onclick=()=>{CUR=a.dataset.id;buildNav();render();window.scrollTo(0,0);});
+}
+function setTitle(t,s){document.getElementById('ttl').textContent=t;document.getElementById('sub').textContent=s||'';
+  document.getElementById('ph').textContent=`Periodo: ${MES[fD.value-1]}–${MES[fH.value-1]} 2026 · ${fT.options[fT.selectedIndex].text} · Soles sin IGV · Elvis Miranda — Departamento de Mantenimiento`;}
+function render(){
+  kill(); refreshCat();
+  const m=MODS.find(x=>x.id===CUR);
+  const per=`${MES[fD.value-1]}–${MES[fH.value-1]} 2026 · soles sin IGV · órdenes OCO/OSR Nisira`;
+  setTitle(m.t,(m.sub?m.sub+' · ':'')+per);
+  const v=document.getElementById('view');
+  if(CUR==='general')vGeneral(v);
+  else if(CUR==='ratio')vRatio(v);
+  else if(AREAS.includes(CUR))vArea(v,CUR);
+  else if(CUR==='equipos')vEquipos(v);
+  else if(CUR==='asignar')vAsignar(v);
+  else if(CUR==='catalogo')vCatalogo(v);
+  else if(CUR==='capex')vCapex(v);
+}
+// ---------- shared blocks
+function trendData(F){
+  const ms=mRange();
+  const oc=ms.map(m=>F.filter(x=>x.r.m===m&&x.r.t==='OCO').reduce((a,x)=>a+x.v,0));
+  const os=ms.map(m=>F.filter(x=>x.r.m===m&&x.r.t==='OSR').reduce((a,x)=>a+x.v,0));
+  const tot=oc.map((v,i)=>v+os[i]); const avg=tot.reduce((a,b)=>a+b,0)/(ms.length||1);
+  return {ms,oc,os,tot,avg};
+}
+function trendChart(id,F){
+  const d=trendData(F);
+  mk(id,{type:'bar',data:{labels:d.ms.map(m=>MES[m-1]),datasets:[
+    {label:'Materiales (OCO)',data:d.oc,backgroundColor:OCO,borderRadius:4,borderSkipped:'start',stack:'s',maxBarThickness:38,borderColor:'#F3F5F7',borderWidth:{top:2}},
+    {label:'Servicios (OSR)',data:d.os,backgroundColor:OSR,borderRadius:4,borderSkipped:'start',stack:'s',maxBarThickness:38,borderColor:'#F3F5F7',borderWidth:{top:2}},
+    {label:'Promedio del periodo',type:'line',data:d.ms.map(()=>d.avg),borderColor:'#1B2733',borderWidth:1.5,borderDash:[5,4],pointRadius:0}
+  ]},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt(c.parsed.y),footer:it=>'Total: '+fmt(d.tot[it[0].dataIndex])}}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:GRID,ticks:{callback:v=>fmtk(v)}}}}});
+  return d;
+}
+function donut(id,entries,colors,center,pos){
+  const tot=entries.reduce((a,e)=>a+e[1],0);
+  mk(id,{type:'doughnut',data:{labels:entries.map(e=>e[0]),datasets:[{data:entries.map(e=>e[1]),backgroundColor:colors,borderColor:'#F3F5F7',borderWidth:2}]},
+    options:{cutout:'64%',plugins:{legend:{position:pos||'right',labels:{generateLabels:ch=>ch.data.labels.map((l,i)=>({text:`${l}  ${pct(entries[i][1]/tot)}`,fillStyle:colors[i],strokeStyle:colors[i],index:i}))}},
+      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.parsed)} (${pct(c.parsed/tot)})`}}}},plugins:[{id:'ctr',afterDraw(ch){const{ctx,chartArea:a}=ch;const x=(a.left+a.right)/2,y=(a.top+a.bottom)/2;ctx.save();ctx.textAlign='center';ctx.fillStyle='#1B2733';ctx.font='600 15px Segoe UI, sans-serif';ctx.fillText(fmtk(tot),x,y+2);ctx.font='11px Segoe UI, sans-serif';ctx.fillStyle='#6A7684';ctx.fillText(center||'Total',x,y+18);ctx.restore();}}]});
+}
+function hbar(id,entries,colors,onClick){
+  mk(id,{type:'bar',data:{labels:entries.map(e=>e[0]),datasets:[{data:entries.map(e=>e[1]),backgroundColor:colors,borderRadius:4,borderSkipped:'start',maxBarThickness:18}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.parsed.x)}}},scales:{x:{grid:GRID,ticks:{callback:v=>fmtk(v)}},y:{grid:{display:false},ticks:{autoSkip:false,callback:function(v){const l=this.getLabelForValue(v);return l.length>34?l.slice(0,33)+'…':l;}}}},
+      onClick:onClick?(e,el)=>{if(el.length)onClick(entries[el[0].index]);}:undefined,onHover:(e,el)=>{e.native.target.style.cursor=el.length&&onClick?'pointer':'default';}}});
+}
+function pareto(id,entries,colorFn,onClick){
+  const tot=entries.reduce((a,e)=>a+e[1],0); let acc=0;
+  const cum=entries.map(e=>(acc+=e[1])/tot);
+  const top=entries.slice(0,15), cumT=cum.slice(0,15);
+  const cols=top.map((e,i)=>{const c=colorFn(e[0]);return (i===0||cumT[i-1]<0.8)?c:c+'66';});
+  mk(id,{type:'bar',data:{labels:top.map(e=>e[0]),datasets:[{data:top.map(e=>e[1]),backgroundColor:cols,borderRadius:4,borderSkipped:'start',maxBarThickness:34}]},
+    options:{layout:{padding:{top:18}},plugins:{legend:{display:false},tooltip:{callbacks:{title:it=>it[0].label,label:c=>' '+fmt(c.parsed.y),afterLabel:c=>' Acumulado: '+pct(cumT[c.dataIndex])}}},
+      scales:{x:{grid:{display:false},ticks:{maxRotation:55,minRotation:35,autoSkip:false,callback:function(v){const l=this.getLabelForValue(v);return l.length>18?l.slice(0,17)+'…':l;}}},y:{grid:GRID,ticks:{callback:v=>fmtk(v)}}},
+      onClick:onClick?(e,el)=>{if(el.length)onClick(top[el[0].index]);}:undefined},
+    plugins:[{id:'cum',afterDatasetsDraw(ch){const{ctx}=ch;const meta=ch.getDatasetMeta(0);ctx.save();ctx.font='10.5px Segoe UI, sans-serif';ctx.fillStyle='#46535F';ctx.textAlign='center';
+      meta.data.forEach((b,i)=>{ctx.fillText(Math.round(cumT[i]*100)+'%',b.x,b.y-5);});ctx.restore();}}]});
+  return {n80:cum.findIndex(c=>c>=0.8)+1,count:entries.length};
+}
+function heatTable(F,rowsKey,rowsList,colorOf){
+  const ms=mRange(); const m={}; let mx=0;
+  F.forEach(x=>{const k=rowsKey(x);m[k]=m[k]||{};m[k][x.r.m]=(m[k][x.r.m]||0)+x.v;});
+  rowsList.forEach(k=>ms.forEach(mm=>{mx=Math.max(mx,(m[k]||{})[mm]||0);}));
+  const lerp=(t)=>{const a=[232,240,251],b=[28,92,171];return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')})`;};
+  let h=`<div style="overflow:auto"><table class="heat num"><tr><th></th>${ms.map(mm=>`<th class="r">${MES[mm-1]}</th>`).join('')}<th class="r">Total</th></tr>`;
+  rowsList.forEach(k=>{let t=0;h+=`<tr><td style="text-align:left;white-space:nowrap"><span class="dot" style="background:${colorOf(k)}"></span>${esc(k)}</td>`;
+    ms.forEach(mm=>{const v=(m[k]||{})[mm]||0;t+=v;const r=mx?v/mx:0;h+=`<td title="${esc(k)} · ${MES[mm-1]}: ${fmt(v)}" style="background:${v?lerp(Math.sqrt(r)):'#F3F5F7'};color:${Math.sqrt(r)>.55?'#fff':'#1B2733'}">${v?fmtk(v).replace('S/ ',''):'–'}</td>`;});
+    h+=`<td><b>${fmtk(t)}</b></td></tr>`;});
+  return h+'</table></div><div class="note">Intensidad del color proporcional al gasto mensual. Valores en soles (k = miles).</div>';
+}
+function provTable(F,n=10){
+  const p=sortE(sumBy(F,x=>x.r.p)).slice(0,n); const mx=p.length?p[0][1]:1; const tot=F.reduce((a,x)=>a+x.v,0);
+  return `<div class="tw" style="max-height:none"><table><tr><th>Proveedor</th><th class="r">S/</th><th class="r">%</th></tr>${p.map(([k,v])=>`<tr><td>${esc(k)}<div class="bar"><div style="width:${v/mx*100}%"></div></div></td><td class="r num">${fmt(v)}</td><td class="r num">${pct(v/tot)}</td></tr>`).join('')}</table></div>`;
+}
+function linesTable(F,limit=300,editable=true){
+  if(PDFMODE)limit=30;
+  const byRow={}; F.forEach(x=>{byRow[x.r.i]=byRow[x.r.i]||{r:x.r,v:0};byRow[x.r.i].v+=x.v;});
+  const list=Object.values(byRow).sort((a,b)=>b.v-a.v);
+  const opts=eqOptions();
+  let h=`<div class="tw"><table><tr><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Rubro</th><th class="r">S/ en esta vista</th><th>Equipo(s)</th></tr>`;
+  list.slice(0,limit).forEach(({r,v})=>{const eq=eqOf(r);
+    h+=`<tr><td class="num">${r.f.slice(8,10)}/${r.f.slice(5,7)}</td><td class="num" style="white-space:nowrap">${esc(r.d.replace(' 0001-',' '))}</td><td>${esc(r.ds)}${r.ob?`<div class="muted" style="font-size:11px">${esc(r.ob.slice(0,90))}</div>`:''}</td><td>${esc(r.p.slice(0,28))}</td><td>${esc(r.r.slice(3))}</td><td class="r num">${fmt(v)}</td>
+    <td>${editable?`<select class="eqsel" data-i="${r.i}" style="max-width:190px">${eq.length>1?`<option value="__multi" selected>Reparto: ${eq.length} equipos</option>`:''}${opts.replace(`value="${eq[0]||''}"`,`value="${eq[0]||''}" ${eq.length===1?'selected':''}`)}</select>`:eq.map(e=>`<span class="chip">${esc(eqName(e))}</span>`).join('')}</td></tr>`;});
+  h+='</table></div>';
+  if(list.length>limit)h+=`<div class="note">Se muestran las ${limit} líneas de mayor importe de ${list.length}. El detalle completo está en el Excel exportado.</div>`;
+  return h;
+}
+function bindEqSel(root){root.querySelectorAll('.eqsel').forEach(s=>s.onchange=()=>{if(s.value==='__multi')return;const i=+s.dataset.i;ST.asg[i]=s.value?[s.value]:[];save();render();});}
+function eqOptions(){let h='<option value="">— Sin asignar —</option>';AREAS.slice(0,5).forEach(a=>{h+=`<optgroup label="${a}">`+CAT.filter(c=>c.a===a).map(c=>`<option value="${c.id}">${esc(c.n)}</option>`).join('')+'</optgroup>';});return h;}
+// ---------- GENERAL
+function vGeneral(v){
+  const F=facts(); const tot=F.reduce((a,x)=>a+x.v,0); const ms=mRange();
+  const oco=F.filter(x=>x.r.t==='OCO').reduce((a,x)=>a+x.v,0), osr=tot-oco;
+  const docs=new Set(F.map(x=>x.r.d)).size; const asig=F.filter(x=>x.e!=='SIN').reduce((a,x)=>a+x.v,0);
+  const byA=sumBy(F,'a'); const aE=AREAS.filter(a=>byA[a]).map(a=>[a,byA[a]]);
+  const byE=sortE(sumBy(F.filter(x=>x.e!=='SIN'),x=>eqName(x.e)));
+  const d=trendData(F); const pk=d.tot.indexOf(Math.max(...d.tot));
+  const capT=ROWS.filter(r=>clsOf(r)==='CAPEX'&&inRange(r)).reduce((a,r)=>a+r.s,0);
+  const topA=sortE(byA).filter(e=>e[0]!=='Sin asignar')[0]||['–',0];
+  v.innerHTML=`
+  <div class="kpis">
+   ${kpi('OPEX mantenimiento',fmtk(tot),`${ms.length} meses · ${F.length?new Set(F.map(x=>x.r.i)).size:0} líneas`,'#1D2E40')}
+   ${kpi('Promedio mensual',fmtk(tot/(ms.length||1)),'Base para presupuesto','#26405A')}
+   ${kpi('Materiales (OCO)',fmtk(oco),pct(oco/tot)+' del OPEX',OCO)}
+   ${kpi('Servicios (OSR)',fmtk(osr),pct(osr/tot)+' del OPEX',OSR)}
+   <div id="kRatio" style="cursor:pointer">${(()=>{const R=ratioCalc(F);return kpi('S/ por TM producida',R.acc===null?'–':fmt2(R.acc),R.acc===null?'ingresar producción →':`acumulado · ${R.mT.length} meses →`,'#2BA6A0');})()}</div>
+   ${kpi('Asignado a equipo',pct(asig/tot),fmtk(tot-asig)+' por asignar','#2BA6A0')}
+  </div>
+  <div class="insight">El OPEX del periodo suma <b>${fmt(tot)}</b> (${fmt(tot/(ms.length||1))} al mes en promedio). El mes de mayor gasto fue <b>${MES[d.ms[pk]-1]||'–'}</b> con ${fmt(d.tot[pk]||0)}. El área con más gasto es <b>${topA[0]}</b> (${pct(topA[1]/tot)}), y el equipo que más consume es <b>${byE[0]?byE[0][0]:'–'}</b> (${byE[0]?fmt(byE[0][1]):''}). El <b>${pct((tot-asig)/tot)}</b> del gasto está pendiente de asignar a un equipo. El CAPEX del periodo suma ${fmtk(capT)} (ver módulo CAPEX).</div>
+  <div class="grid">
+   <div class="card c8"><h3>Evolución mensual del OPEX</h3><div class="hint">Materiales y servicios por mes; la línea punteada es el promedio del periodo.</div><div class="ch"><canvas id="gTrend"></canvas></div></div>
+   <div class="card c4"><h3>OPEX por área</h3><div class="hint">Haz clic en un área del menú para ver su detalle.</div><div class="ch"><canvas id="gArea"></canvas></div></div>
+   <div class="card c7"><h3>Pareto de equipos y sistemas (top 15)</h3><div class="hint" id="parHint"></div><div class="ch tall"><canvas id="gPar"></canvas></div></div>
+   <div class="card c5"><h3>OPEX por rubro</h3><div class="hint">Materiales (M.) y servicios (S.).</div><div class="ch tall"><canvas id="gRub"></canvas></div></div>
+   <div class="card c7"><h3>Mapa de calor · área por mes</h3><div class="hint">Dónde y cuándo se concentra el gasto.</div>${heatTable(F,x=>x.a,AREAS.filter(a=>byA[a]),a=>ACOL[a])}</div>
+   <div class="card c5"><h3>Top 10 proveedores</h3><div class="hint">Concentración del gasto por proveedor.</div>${provTable(F)}</div>
+  </div>`;
+  document.getElementById('kRatio').onclick=()=>{CUR='ratio';buildNav();render();window.scrollTo(0,0);};
+  trendChart('gTrend',F);
+  donut('gArea',aE,aE.map(e=>ACOL[e[0]]),'OPEX');
+  const p=pareto('gPar',byE,n=>{const id=CAT.find(c=>c.n===n);return ACOL[id?id.a:'Sin asignar'];},e=>{const c=CAT.find(c=>c.n===e[0]);if(c){SEL_EQ=c.id;CUR='equipos';buildNav();render();}});
+  document.getElementById('parHint').textContent=`${p.n80} de ${p.count} equipos concentran el 80% del gasto asignado (barras sólidas). Clic en una barra para ver el equipo.`;
+  const rub=sortE(sumBy(F,x=>x.r.r)); hbar('gRub',rub,rub.map(e=>e[0].startsWith('M.')?OCO:OSR));
+}
+// ---------- AREA
+function vArea(v,area){
+  const all=facts(); const totAll=all.reduce((a,x)=>a+x.v,0);
+  const F=all.filter(x=>x.a===area); const tot=F.reduce((a,x)=>a+x.v,0); const ms=mRange();
+  const byE=sortE(sumBy(F,x=>eqName(x.e))); const nEq=new Set(F.map(x=>x.e)).size;
+  const oco=F.filter(x=>x.r.t==='OCO').reduce((a,x)=>a+x.v,0);
+  const rub=sortE(sumBy(F,x=>x.r.r)); const rubTop=rub.slice(0,6); if(rub.length>6)rubTop.push(['Otros',rub.slice(6).reduce((a,e)=>a+e[1],0)]);
+  const rubCols=['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#9AA5B1'];
+  const mat=sortE(sumBy(F,x=>x.r.ds)).slice(0,10);
+  const col=ACOL[area];
+  let extra='';
+  if(area==='Congelado'){
+    const cong=CAT.filter(c=>c.a==='Congelado'&&c.tp==='Congelador de placas');
+    extra=`<div class="card c12"><h3>Comparativo de congeladores de placas</h3><div class="hint">Gasto por congelador (incluye su parte del overhaul GRAM prorrateado 1/6). Clic para ver el detalle del equipo.</div><div class="cmp">${cong.map(c=>{const t=F.filter(x=>x.e===c.id).reduce((a,x)=>a+x.v,0);const ov=F.filter(x=>x.e===c.id&&x.r.d==='OCO 0001-0004605').reduce((a,x)=>a+x.v,0);return `<div class="cmpc" data-eq="${c.id}"><small>${esc(c.n)}</small><b class="num">${fmt(t)}</b><small>${ov?'Overhaul: '+fmtk(ov):'Sin overhaul'} · ${t&&tot?pct(t/tot):'0%'} del área</small><canvas id="sp_${c.id}"></canvas></div>`;}).join('')}</div></div>`;
+  }
+  v.innerHTML=`
+  <div class="kpis">
+   ${kpi('OPEX del área',fmtk(tot),pct(tot/totAll)+' del OPEX total',col)}
+   ${kpi('Promedio mensual',fmtk(tot/(ms.length||1)),ms.length+' meses',col)}
+   ${kpi('Materiales (OCO)',fmtk(oco),pct(oco/tot),OCO)}
+   ${kpi('Servicios (OSR)',fmtk(tot-oco),pct((tot-oco)/tot),OSR)}
+   ${kpi('Equipos con gasto',nEq,'en el periodo','#5D7086')}
+   ${kpi('Mayor consumo',byE[0]?esc(byE[0][0]):'–',byE[0]?fmt(byE[0][1])+' · '+pct(byE[0][1]/tot):'','#5D7086',true)}
+  </div>
+  <div class="grid">
+   ${extra}
+   <div class="card c7"><h3>Evolución mensual</h3><div class="hint">Materiales y servicios del área.</div><div class="ch tall"><canvas id="aTrend"></canvas></div></div>
+   <div class="card c5"><h3>Rubros del área</h3><div class="hint">En qué se gasta.</div><div class="ch tall"><canvas id="aRub"></canvas></div></div>
+   <div class="card c6"><h3>Ranking de equipos</h3><div class="hint">Clic en una barra para abrir el análisis del equipo.</div><div class="ch tall"><canvas id="aEq"></canvas></div></div>
+   <div class="card c6"><h3>Top 10 materiales y servicios</h3><div class="hint">Por descripción del ítem.</div><div class="tw" style="max-height:330px"><table><tr><th>Descripción</th><th class="r">S/</th><th class="r">%</th></tr>${mat.map(([k,vv])=>`<tr><td>${esc(k)}</td><td class="r num">${fmt(vv)}</td><td class="r num">${pct(vv/tot)}</td></tr>`).join('')}</table></div></div>
+   <div class="card c12"><h3>Detalle de líneas</h3><div class="hint">Puedes cambiar el equipo de cada línea desde aquí; el cambio se guarda y se recalcula todo.</div><div id="aLines">${linesTable(F)}</div></div>
+  </div>`;
+  trendChart('aTrend',F);
+  donut('aRub',rubTop,rubCols.slice(0,rubTop.length),'Área','bottom');
+  const top=byE.slice(0,14);
+  hbar('aEq',top,top.map(e=>e[0]==='Sin asignar'?ACOL['Sin asignar']:col),e=>{const c=CAT.find(c=>c.n===e[0]);if(c){SEL_EQ=c.id;CUR='equipos';buildNav();render();}});
+  bindEqSel(v);
+  if(area==='Congelado'){
+    v.querySelectorAll('.cmpc').forEach(el=>{const id=el.dataset.eq;el.onclick=()=>{SEL_EQ=id;CUR='equipos';buildNav();render();};
+      const data=ms.map(m=>F.filter(x=>x.e===id&&x.r.m===m).reduce((a,x)=>a+x.v,0));
+      mk('sp_'+id,{type:'bar',data:{labels:ms.map(m=>MES[m-1]),datasets:[{data,backgroundColor:col,borderRadius:2,maxBarThickness:10}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.parsed.y)}}},scales:{x:{display:false},y:{display:false}}}});});
+  }
+}
+// ---------- EQUIPOS
+function eqStats(F){
+  const ms=mRange(); const nm=ms.length||1; const mid=ms[Math.floor(ms.length/2)];
+  const g={}; F.forEach(x=>{if(x.e==='SIN')return;const s=g[x.e]=g[x.e]||{t:0,osr:0,corr:0,prev:0,docs:new Set(),mm:new Set(),h1:0,h2:0};
+    s.t+=x.v; if(x.r.t==='OSR')s.osr+=x.v; if(x.r.r==='S. Reparación / correctivo')s.corr+=x.v; if(x.r.r==='S. Mant. preventivo')s.prev+=x.v;
+    s.docs.add(x.r.d); s.mm.add(x.r.m); if(x.r.m<mid)s.h1+=x.v; else s.h2+=x.v;});
+  const n1=ms.filter(m=>m<mid).length||1, n2=ms.filter(m=>m>=mid).length||1;
+  return Object.entries(g).map(([e,s])=>{const c=CATM[e]||{};const anual=s.t/nm*12;const ratio=c.vr?anual/c.vr:null;
+    const tr=(s.h1/n1)>=500? ((s.h2/n2)/(s.h1/n1)-1) : null;
+    let st=['na','Sin dato'];
+    if(ratio!==null){st=ratio>0.30?['bad','Evaluar reemplazo']:ratio>0.15?['warn','Vigilar']:['ok','Normal'];}
+    return {e,n:c.n||e,a:c.a,tp:c.tp,t:s.t,pm:s.t/nm,meses:s.mm.size,docs:s.docs.size,posr:s.osr/s.t,corr:s.corr,prev:s.prev,tr,anual,ratio,st,uso:c.uso,cu:c.uso?s.t/c.uso:null};}).sort((a,b)=>b.t-a.t);
+}
+let ONLY_EQ=true;
+const BUCKET=['Sistema','Infraestructura','Taller','Servicios','Sistema eléctrico'];
+const isBucket=e=>CATM[e]&&BUCKET.includes(CATM[e].tp);
+function vEquipos(v){
+  const F=facts(); const SA=eqStats(F); const S=ONLY_EQ?SA.filter(x=>!isBucket(x.e)):SA;
+  if(!SEL_EQ||!CATM[SEL_EQ])SEL_EQ=S[0]?S[0].e:CAT[0].id;
+  const s=SA.find(x=>x.e===SEL_EQ)||{t:0,pm:0,meses:0,docs:0,posr:0,corr:0,prev:0,tr:null,st:['na','Sin gasto'],ratio:null};
+  const c=CATM[SEL_EQ]; const FE=F.filter(x=>x.e===SEL_EQ); const col=ACOL[c.a];
+  const rub=sortE(sumBy(FE,x=>x.r.r)); const rubCols=['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#9AA5B1'];
+  const rubTop=rub.slice(0,6); if(rub.length>6)rubTop.push(['Otros',rub.slice(6).reduce((a,e)=>a+e[1],0)]);
+  const rank=S.findIndex(x=>x.e===SEL_EQ)+1;
+  const trTxt=s.tr===null?'–':(s.tr>=0?'▲ ':'▼ ')+pct(Math.abs(s.tr));
+  const stIcon={ok:'●',warn:'▲',bad:'■',na:'○'};
+  v.innerHTML=`
+  <div class="toolbar noprint"><label>Equipo<select id="eqPick" style="min-width:280px">${eqOptions().replace('<option value="">— Sin asignar —</option>','').replace(`value="${SEL_EQ}"`,`value="${SEL_EQ}" selected`)}</select></label>
+   <label>Valor de reposición (S/)<input type="number" id="eqVr" value="${c.vr||''}" placeholder="ingresar" style="width:140px"></label>
+   <label>Uso del periodo (horas u otra unidad)<input type="number" id="eqUso" value="${c.uso||''}" placeholder="opcional" style="width:150px"></label></div>
+  <div class="kpis">
+   ${kpi('Costo del equipo',fmtk(s.t),`Puesto ${rank||'–'} de ${S.length} · ${esc(c.a)}`,col)}
+   ${kpi('Promedio mensual',fmtk(s.pm),`${s.meses} meses con gasto`,col)}
+   ${kpi('Intervenciones',s.docs,'órdenes OC/OS','#5D7086')}
+   ${kpi('Servicios / total',pct(s.posr||0),`Correctivo ${fmtk(s.corr)} · Preventivo ${fmtk(s.prev)}`,OSR)}
+   ${kpi('Tendencia',trTxt,s.tr===null?'Sin base suficiente en la 1.ª mitad':'Prom. mensual 2.ª mitad vs 1.ª mitad','#5D7086')}
+   ${kpi('Costo anual / reposición',s.ratio===null?'–':pct(s.ratio),`<span class="st ${s.st[0]}">${stIcon[s.st[0]]} ${s.st[1]}</span>`,s.st[0]==='bad'?'#cc3d3d':s.st[0]==='warn'?'#c98500':s.st[0]==='ok'?'#2f8f4e':'#8A96A3')}
+  </div>
+  <div class="grid">
+   <div class="card c7"><h3>${esc(c.n)} · gasto mensual</h3><div class="hint">Materiales y servicios asignados al equipo.</div><div class="ch tall"><canvas id="eTrend"></canvas></div></div>
+   <div class="card c5"><h3>Rubros del equipo</h3><div class="hint">Composición del gasto.</div><div class="ch tall"><canvas id="eRub"></canvas></div></div>
+   <div class="card c12"><h3>Ranking de equipos · indicadores de decisión</h3><label class="noprint" style="float:right;font-size:12px;display:flex;gap:6px;align-items:center;margin-top:-18px"><input type="checkbox" id="onlyEq" ${ONLY_EQ?'checked':''}> Solo equipos (ocultar grupos generales: servicios, taller, infraestructura, sistemas)</label><div class="hint">Semáforo = costo anualizado ÷ valor de reposición: hasta 15% <b style="color:var(--ok)">● Normal</b>, de 15% a 30% <b style="color:var(--warn)">▲ Vigilar</b>, más de 30% <b style="color:var(--bad)">■ Evaluar reemplazo</b>. Ingresa el valor de reposición en este módulo o en el Catálogo. Con el uso del periodo se calcula el costo por unidad de uso (eficiencia).</div>
+    <div class="tw" style="max-height:460px"><table class="num"><tr><th>Equipo</th><th>Área</th><th class="r">Costo S/</th><th class="r">Prom. mes</th><th class="r">Meses</th><th class="r">Órdenes</th><th class="r">% servicios</th><th class="r">Tendencia</th><th class="r">Anual / reposición</th><th>Estado</th><th class="r">S/ por unidad de uso</th></tr>
+    ${S.map(x=>`<tr style="cursor:pointer" data-eq="${x.e}" ${x.e===SEL_EQ?'class="selrow"':''}><td><span class="dot" style="background:${ACOL[x.a]}"></span>${esc(x.n)}</td><td>${esc(x.a)}</td><td class="r">${fmt(x.t)}</td><td class="r">${fmt(x.pm)}</td><td class="r">${x.meses}</td><td class="r">${x.docs}</td><td class="r">${pct(x.posr)}</td><td class="r">${x.tr===null?'–':(x.tr>=0?'▲ ':'▼ ')+pct(Math.abs(x.tr))}</td><td class="r">${x.ratio===null?'–':pct(x.ratio)}</td><td><span class="st ${x.st[0]}">${stIcon[x.st[0]]} ${x.st[1]}</span></td><td class="r">${x.cu===null?'–':'S/ '+x.cu.toFixed(2)}</td></tr>`).join('')}</table></div></div>
+   <div class="card c12"><h3>Líneas asignadas a ${esc(c.n)}</h3><div class="hint">Si una línea está repartida entre varios equipos, se muestra solo la parte que le corresponde a este.</div>${linesTable(FE)}</div>
+  </div>`;
+  trendChart('eTrend',FE);
+  if(rubTop.length)donut('eRub',rubTop,rubCols.slice(0,rubTop.length),'Equipo','bottom');
+  document.getElementById('eqPick').onchange=e=>{SEL_EQ=e.target.value;render();};
+  document.getElementById('onlyEq').onchange=e=>{ONLY_EQ=e.target.checked;render();};
+  const upd=(k,val)=>{ST.catEdit[SEL_EQ]=Object.assign(ST.catEdit[SEL_EQ]||{},{[k]:val===''?null:+val});save();render();};
+  document.getElementById('eqVr').onchange=e=>upd('vr',e.target.value);
+  document.getElementById('eqUso').onchange=e=>upd('uso',e.target.value);
+  v.querySelectorAll('tr[data-eq]').forEach(tr=>tr.onclick=()=>{SEL_EQ=tr.dataset.eq;render();window.scrollTo(0,0);});
+  bindEqSel(v);
+}
+// ---------- ASIGNAR
+let AF={q:'',area:'',eq:'',rub:'',org:'',sin:false,page:0}, SELR=new Set();
+function vAsignar(v){
+  const L=ROWS.filter(r=>clsOf(r)==='OPEX'&&inRange(r));
+  const sinRows=L.filter(r=>!eqOf(r).filter(e=>CATM[e]).length); const sinS=sinRows.reduce((a,r)=>a+r.s,0); const totS=L.reduce((a,r)=>a+r.s,0);
+  const rubs=[...new Set(L.map(r=>r.r))].sort();
+  const orgs=['Centro de costo','Regla por descripción','Regla por rubro','Prorrateo overhaul (1/6)','Sin asignar','Manual'];
+  let list=L.filter(r=>{const eq=eqOf(r);
+    if(AF.sin&&eq.filter(e=>CATM[e]).length)return false;
+    if(AF.q){const q=AF.q.toUpperCase();if(!(r.ds+' '+r.p+' '+r.ob+' '+r.d+' '+r.cc).toUpperCase().includes(q))return false;}
+    if(AF.area){const a=eq.length?eqArea(eq[0]):'Sin asignar';if(a!==AF.area)return false;}
+    if(AF.eq&&!eq.includes(AF.eq))return false;
+    if(AF.rub&&r.r!==AF.rub)return false;
+    if(AF.org){const o=isManual(r)?'Manual':r.o;if(o!==AF.org)return false;}
+    return true;}).sort((a,b)=>b.s-a.s);
+  const PS=100, pages=Math.max(1,Math.ceil(list.length/PS)); if(AF.page>=pages)AF.page=0;
+  const pg=list.slice(AF.page*PS,(AF.page+1)*PS); const fs=list.reduce((a,r)=>a+r.s,0);
+  v.innerHTML=`
+  <div class="kpis">
+   ${kpi('Líneas OPEX',L.length.toLocaleString('es-PE'),fmtk(totS),'#1D2E40')}
+   ${kpi('Sin asignar',sinRows.length.toLocaleString('es-PE'),fmtk(sinS)+' · '+pct(sinS/totS),'#8A96A3')}
+   ${kpi('Asignado',pct(1-sinS/totS),'del importe OPEX','#2BA6A0')}
+   ${kpi('Asignaciones manuales',Object.keys(ST.asg).length,'guardadas en este navegador','#5D7086')}
+   ${kpi('Filtro actual',list.length.toLocaleString('es-PE')+' líneas',fmtk(fs),'#5D7086')}
+   ${kpi('Seleccionadas',SELR.size,'para asignar en bloque','#26405A')}
+  </div>
+  <div class="card">
+   <div class="toolbar">
+    <label>Buscar<input type="search" id="aq" value="${esc(AF.q)}" placeholder="descripción, proveedor, OC…" style="width:220px"></label>
+    <label>Área actual<select id="aa"><option value="">Todas</option>${AREAS.map(a=>`<option ${AF.area===a?'selected':''}>${a}</option>`).join('')}</select></label>
+    <label>Equipo actual<select id="ae" style="max-width:200px">${eqOptions().replace('— Sin asignar —','Todos').replace(`value="${AF.eq}"`,`value="${AF.eq}" selected`)}</select></label>
+    <label>Rubro<select id="ar"><option value="">Todos</option>${rubs.map(x=>`<option ${AF.rub===x?'selected':''}>${x}</option>`).join('')}</select></label>
+    <label>Origen<select id="ao"><option value="">Todos</option>${orgs.map(x=>`<option ${AF.org===x?'selected':''}>${x}</option>`).join('')}</select></label>
+    <label style="flex-direction:row;align-items:center;gap:6px;font-size:12.5px;color:var(--ink)"><input type="checkbox" id="as" ${AF.sin?'checked':''}> Solo sin asignar</label>
+   </div>
+   <div class="toolbar" style="background:var(--card2);padding:8px 10px;border-radius:8px">
+    <button class="btn sm" id="selAll">Seleccionar las ${list.length} filtradas</button>
+    <button class="btn sm" id="selSame">+ Líneas con la misma descripción</button>
+    <button class="btn sm" id="selNone">Limpiar selección</button>
+    <label>Asignar ${SELR.size} seleccionadas a<select id="bulkEq" style="max-width:230px">${eqOptions()}</select></label>
+    <button class="btn sm pri" id="bulkGo">Asignar</button>
+    <button class="btn sm" id="bulkSplit">Repartir entre varios equipos…</button>
+    <button class="btn sm" id="bulkReset">Volver a la sugerencia</button>
+   </div>
+   <div class="tw" style="max-height:560px"><table><tr><th><input type="checkbox" id="pgAll"></th><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Centro de costo Nisira</th><th>Rubro</th><th class="r">S/</th><th>Equipo(s)</th><th>Origen</th></tr>
+   ${pg.map(r=>{const eq=eqOf(r);return `<tr><td><input type="checkbox" class="rs" data-i="${r.i}" ${SELR.has(r.i)?'checked':''}></td><td class="num">${r.f.slice(8,10)}/${r.f.slice(5,7)}</td><td class="num" style="white-space:nowrap">${esc(r.d.replace(' 0001-',' '))}</td><td>${esc(r.ds)}${r.ob?`<div class="muted" style="font-size:11px">${esc(r.ob.slice(0,90))}</div>`:''}</td><td>${esc(r.p.slice(0,26))}</td><td style="font-size:11.5px">${esc(r.cc)}</td><td style="font-size:11.5px">${esc(r.r.slice(3))}</td><td class="r num">${fmt(r.s)}</td>
+    <td><select class="eqsel" data-i="${r.i}" style="max-width:200px">${eq.length>1?`<option value="__multi" selected>Reparto: ${eq.map(eqName).join(' / ').slice(0,40)}</option>`:''}${eqOptions().replace(`value="${eq[0]||''}"`,`value="${eq[0]||''}" ${eq.length===1?'selected':''}`)}</select></td><td style="font-size:11px" class="muted">${isManual(r)?'Manual':esc(r.o)}</td></tr>`;}).join('')}
+   </table></div>
+   <div class="pager"><span>Página ${AF.page+1} de ${pages}</span><button class="btn sm" id="pPrev">‹ Anterior</button><button class="btn sm" id="pNext">Siguiente ›</button></div>
+   <div class="note">Sugerencia inicial: por centro de costo del equipo, reglas por descripción (por ejemplo GRAM → compresores, Hoppecke → montacargas, R-22 o amoníaco → sistema de refrigeración) o por rubro (herramientas → taller). El overhaul OC 0001-0004605 está repartido entre los 6 compresores. Los cambios se guardan en este navegador; usa “Descargar respaldo” para llevarlos a otro equipo.</div>
+  </div>`;
+  const re=()=>{AF.page=0;render();};
+  const q=document.getElementById('aq'); let tmr; q.oninput=()=>{clearTimeout(tmr);tmr=setTimeout(()=>{AF.q=q.value;re();setTimeout(()=>{const n=document.getElementById('aq');n.focus();n.setSelectionRange(n.value.length,n.value.length);},0);},350);};
+  document.getElementById('aa').onchange=e=>{AF.area=e.target.value;re();};
+  document.getElementById('ae').onchange=e=>{AF.eq=e.target.value;re();};
+  document.getElementById('ar').onchange=e=>{AF.rub=e.target.value;re();};
+  document.getElementById('ao').onchange=e=>{AF.org=e.target.value;re();};
+  document.getElementById('as').onchange=e=>{AF.sin=e.target.checked;re();};
+  document.getElementById('pPrev').onclick=()=>{if(AF.page>0){AF.page--;render();}};
+  document.getElementById('pNext').onclick=()=>{if(AF.page<pages-1){AF.page++;render();}};
+  document.getElementById('selAll').onclick=()=>{list.forEach(r=>SELR.add(r.i));render();};
+  document.getElementById('selNone').onclick=()=>{SELR.clear();render();};
+  document.getElementById('selSame').onclick=()=>{if(!SELR.size)return alert('Marca primero una línea (por ejemplo un lubricante) y luego usa este botón.');const ds=new Set([...SELR].map(i=>ROWS[i].ds));L.forEach(r=>{if(ds.has(r.ds))SELR.add(r.i);});render();};
+  document.getElementById('pgAll').onchange=e=>{pg.forEach(r=>e.target.checked?SELR.add(r.i):SELR.delete(r.i));render();};
+  v.querySelectorAll('.rs').forEach(cb=>cb.onchange=()=>{const i=+cb.dataset.i;cb.checked?SELR.add(i):SELR.delete(i);
+    document.querySelectorAll('.kpi')[5].querySelector('b').textContent=SELR.size;document.querySelector('#bulkEq').parentElement.firstChild.textContent=`Asignar ${SELR.size} seleccionadas a`;});
+  document.getElementById('bulkGo').onclick=()=>{if(!SELR.size)return alert('Selecciona al menos una línea.');const e=document.getElementById('bulkEq').value;SELR.forEach(i=>ST.asg[i]=e?[e]:[]);save();SELR.clear();render();};
+  document.getElementById('bulkReset').onclick=()=>{if(!SELR.size)return alert('Selecciona al menos una línea.');SELR.forEach(i=>delete ST.asg[i]);save();SELR.clear();render();};
+  document.getElementById('bulkSplit').onclick=()=>{if(!SELR.size)return alert('Selecciona al menos una línea.');splitModal([...SELR]);};
+  bindEqSel(v);
+}
+function splitModal(ids){
+  const cur=ids.length===1?eqOf(ROWS[ids[0]]):[];
+  document.getElementById('mhd').textContent=`Repartir ${ids.length} línea(s) en partes iguales`;
+  document.getElementById('mbd').innerHTML='<div class="eqlist">'+AREAS.slice(0,5).map(a=>`<div class="ah">${a}</div>`+CAT.filter(c=>c.a===a).map(c=>`<label><input type="checkbox" value="${c.id}" ${cur.includes(c.id)?'checked':''}> ${esc(c.n)}</label>`).join('')).join('')+'</div>';
+  document.getElementById('mft').innerHTML='<button class="btn" id="mC">Cancelar</button><button class="btn pri" id="mOk">Aplicar reparto</button>';
+  const M=document.getElementById('modal');M.style.display='flex';
+  document.getElementById('mC').onclick=()=>M.style.display='none';
+  document.getElementById('mOk').onclick=()=>{const sel=[...document.querySelectorAll('#mbd input:checked')].map(x=>x.value);if(!sel.length)return alert('Marca al menos un equipo.');ids.forEach(i=>ST.asg[i]=sel);save();SELR.clear();M.style.display='none';render();};
+}
+// ---------- CATALOGO
+function vCatalogo(v){
+  const F=facts(); const tot=sumBy(F,'e');
+  v.innerHTML=`<div class="card"><h3>Catálogo de equipos</h3><div class="hint">Edita el nombre, el área, el valor de reposición y el uso del periodo. Agrega equipos que falten (por ejemplo, volteadoras o cajas hidráulicas) para luego asignarles materiales.</div>
+  <div class="toolbar"><label>Nombre<input type="text" id="nN" placeholder="Ej. Caja hidráulica volteadora N°1" style="width:260px"></label><label>Área<select id="nA">${AREAS.slice(0,5).map(a=>`<option>${a}</option>`).join('')}</select></label><label>Tipo<input type="text" id="nT" placeholder="Ej. Hidráulico" style="width:150px"></label><button class="btn pri" id="nGo">Agregar equipo</button></div>
+  <div class="tw" style="max-height:620px"><table><tr><th>Área</th><th>Equipo</th><th>Tipo</th><th class="r">OPEX periodo</th><th>Valor de reposición S/</th><th>Uso del periodo</th><th></th></tr>
+  ${AREAS.slice(0,5).map(a=>CAT.filter(c=>c.a===a).map(c=>`<tr><td><span class="dot" style="background:${ACOL[a]}"></span><select class="cA" data-id="${c.id}">${AREAS.slice(0,5).map(x=>`<option ${x===c.a?'selected':''}>${x}</option>`).join('')}</select></td><td><input type="text" class="cN" data-id="${c.id}" value="${esc(c.n)}" style="width:100%;min-width:220px"></td><td>${esc(c.tp||'')}</td><td class="r num">${tot[c.id]?fmt(tot[c.id]):'–'}</td><td><input type="number" class="cV" data-id="${c.id}" value="${c.vr||''}" style="width:130px"></td><td><input type="number" class="cU" data-id="${c.id}" value="${c.uso||''}" style="width:110px"></td><td>${ST.catNew.find(x=>x.id===c.id)?`<button class="btn sm cD" data-id="${c.id}">Quitar</button>`:''}</td></tr>`).join('')).join('')}
+  </table></div></div>`;
+  const ed=(id,k,val)=>{ST.catEdit[id]=Object.assign(ST.catEdit[id]||{},{[k]:val});save();refreshCat();};
+  v.querySelectorAll('.cN').forEach(x=>x.onchange=()=>ed(x.dataset.id,'n',x.value));
+  v.querySelectorAll('.cA').forEach(x=>x.onchange=()=>{ed(x.dataset.id,'a',x.value);render();});
+  v.querySelectorAll('.cV').forEach(x=>x.onchange=()=>ed(x.dataset.id,'vr',x.value===''?null:+x.value));
+  v.querySelectorAll('.cU').forEach(x=>x.onchange=()=>ed(x.dataset.id,'uso',x.value===''?null:+x.value));
+  v.querySelectorAll('.cD').forEach(x=>x.onclick=()=>{const id=x.dataset.id;if(Object.values(ST.asg).some(l=>l.includes(id))&&!confirm('Este equipo tiene líneas asignadas; quedarán sin asignar. ¿Continuar?'))return;
+    ST.catNew=ST.catNew.filter(c=>c.id!==id);Object.keys(ST.asg).forEach(k=>ST.asg[k]=ST.asg[k].filter(e=>e!==id));save();render();});
+  document.getElementById('nGo').onclick=()=>{const n=document.getElementById('nN').value.trim();if(!n)return alert('Escribe el nombre del equipo.');
+    ST.catNew.push({id:'U'+Date.now().toString(36),n,a:document.getElementById('nA').value,tp:document.getElementById('nT').value.trim()||'Equipo'});save();render();};
+}
+// ---------- CAPEX
+function vCapex(v){
+  const L=ROWS.filter(r=>r.c==='CAPEX'&&inRange(r));
+  const tot=L.reduce((a,r)=>a+r.s,0); const toO=L.filter(r=>ST.dict[r.i]==='OPEX'); const toOs=toO.reduce((a,r)=>a+r.s,0);
+  const media=L.filter(r=>r.ce==='Media').reduce((a,r)=>a+r.s,0);
+  const byP=sortE(sumBy(L,r=>r.pj||'Sin proyecto','s')); const pal=['#7a5bbf','#2a78d6','#1baf7a','#eda100','#eb6834','#e87ba4','#008300','#4a3aa7'];
+  const ms=mRange(); const mon=ms.map(m=>L.filter(r=>r.m===m).reduce((a,r)=>a+r.s,0));
+  const cert=[['Alta',L.filter(r=>r.ce==='Alta').reduce((a,r)=>a+r.s,0)],['Media',media]];
+  const pend=L.filter(r=>!ST.dict[r.i]).length;
+  v.innerHTML=`
+  <div class="insight">Se clasificaron como CAPEX las órdenes de proyectos de mejora, ampliación de capacidad o renovación de activos.</div>
+  <div class="kpis">
+   ${kpi('CAPEX del periodo',fmtk(tot),L.length+' líneas','#7a5bbf')}
+   ${kpi('Proyectos',byP.length,'identificados','#7a5bbf')}
+   ${kpi('Certeza media',fmtk(media),'clasificación por regla','#c98500')}
+   ${kpi('Sin dictamen',pend,'líneas','#8A96A3')}
+   ${kpi('Reclasificado a OPEX',fmtk(toOs),toO.length+' líneas','#2BA6A0')}
+   ${kpi('CAPEX / (OPEX+CAPEX)',pct(tot/(tot+facts().reduce((a,x)=>a+x.v,0))),'peso en el gasto total','#5D7086')}
+  </div>
+  <div class="grid">
+   <div class="card c7"><h3>CAPEX por proyecto</h3><div class="hint">Montos de orden sin IGV.</div><div class="ch tall"><canvas id="cP"></canvas></div></div>
+   <div class="card c5"><h3>Certeza de la clasificación</h3><div class="hint">Alta y media.</div><div class="ch sm"><canvas id="cC"></canvas></div>
+     <h3 style="margin-top:12px">CAPEX por mes</h3><div class="ch sm"><canvas id="cM"></canvas></div></div>
+   <div class="card c12"><h3>Líneas CAPEX</h3><div class="hint">Por proyecto e importe.</div>
+   <div class="tw" style="max-height:620px"><table><tr><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Criterio</th><th>Certeza</th><th class="r">S/</th><th>Dictamen</th><th>Comentario</th></tr>
+   ${byP.map(([pj,pt])=>`<tr><td colspan="6" style="background:#E6E1F2;font-weight:650">${esc(pj)}</td><td class="r num" style="background:#E6E1F2;font-weight:650">${fmt(pt)}</td><td colspan="2" style="background:#E6E1F2"></td></tr>`+L.filter(r=>(r.pj||'Sin proyecto')===pj).sort((a,b)=>b.s-a.s).map(r=>`<tr><td class="num">${r.f.slice(8,10)}/${r.f.slice(5,7)}</td><td class="num" style="white-space:nowrap">${esc(r.d.replace(' 0001-',' '))}</td><td>${esc(r.ds)}</td><td>${esc(r.p.slice(0,26))}</td><td style="font-size:11px">${esc(r.cr)}</td><td><span class="pill ${r.ce==='Alta'?'a':'m'}">${r.ce}</span></td><td class="r num">${fmt(r.s)}</td>
+    <td><select class="dic" data-i="${r.i}"><option value="">Por validar</option><option value="CAPEX" ${ST.dict[r.i]==='CAPEX'?'selected':''}>Conforme CAPEX</option><option value="OPEX" ${ST.dict[r.i]==='OPEX'?'selected':''}>Pasar a OPEX</option></select></td>
+    <td><input type="text" class="dnote" data-i="${r.i}" value="${esc(ST.notes[r.i]||'')}" placeholder="observación" style="width:170px"></td></tr>`).join('')).join('')}
+   </table></div></div>
+  </div>`;
+  hbar('cP',byP,byP.map(()=>'#7a5bbf'));
+  donut('cC',cert,['#2a78d6','#eda100'],'CAPEX');
+  mk('cM',{type:'bar',data:{labels:ms.map(m=>MES[m-1]),datasets:[{data:mon,backgroundColor:'#7a5bbf',borderRadius:4,borderSkipped:'start',maxBarThickness:30}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.parsed.y)}}},scales:{x:{grid:{display:false}},y:{grid:GRID,ticks:{callback:v=>fmtk(v)}}}}});
+  v.querySelectorAll('.dic').forEach(s=>s.onchange=()=>{const i=+s.dataset.i;if(s.value)ST.dict[i]=s.value;else delete ST.dict[i];save();render();});
+  v.querySelectorAll('.dnote').forEach(s=>s.onchange=()=>{ST.notes[+s.dataset.i]=s.value;save();});
+}
+// ---------- S/ POR TM
+const PF=[{k:'tm',l:'Producto terminado congelado',u:'TM',g:'Producción'},
+ {k:'hie',l:'Hielo producido',u:'TM',g:'Planta de hielo'},{k:'hcon',l:'Hielo enviado a congelado',u:'TM',g:'Planta de hielo'},{k:'hven',l:'Hielo vendido',u:'TM',g:'Planta de hielo'},{k:'hdias',l:'Días de operación',u:'días',g:'Planta de hielo'},
+ {k:'aOs',l:'Caudalímetro producción ósmosis',u:'m³',g:'Agua'},{k:'aC',l:'Medidor Planta de congelado',u:'m³',g:'Agua'},{k:'aHM',l:'Medidor Harina y muelle',u:'m³',g:'Agua'},{k:'aH',l:'Medidor Planta de hielo',u:'m³',g:'Agua'},
+ {k:'kC',l:'Medidor Planta de congelado',u:'kWh',g:'Energía'},{k:'kY',l:'Medidor Sala Yantai',u:'kWh',g:'Energía'},{k:'kH',l:'Medidor Planta de hielo',u:'kWh',g:'Energía'}];
+const P=(m,k)=>{const v=((ST.prod||{})[m]||{})[k];return v?+v:0;};
+const CAPH=()=>ST.caph?+ST.caph:150;
+const dim=m=>new Date(2026,m,0).getDate();
+const shPT=m=>{const c=P(m,'hcon'),v=P(m,'hven');return (c+v)>0?c/(c+v):1;};
+const CAPO=()=>ST.capo?+ST.capo:500;
+const aguaPT=m=>Math.max(P(m,'aC')-P(m,'aHM'),0)+P(m,'aH')*shPT(m);
+const shOs=m=>{const d=P(m,'aC')+P(m,'aH');return d>0?Math.min(1,aguaPT(m)/d):1;};
+const fmt2=v=>'S/ '+(isFinite(v)?v.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}):'–');
+const fnum=(v,d=0)=>isFinite(v)?v.toLocaleString('es-PE',{maximumFractionDigits:d,minimumFractionDigits:d}):'–';
+const GCONG=['Congelado','Calderos','Resto de planta'], GHIE=['Planta de hielo','Planta de ósmosis'];
+function ratioCalc(F){
+  const ms=mRange(); const om={},am={},raw={},exV={};
+  F.forEach(x=>{const m=x.r.m;raw[m]=raw[m]||{};raw[m][x.a]=(raw[m][x.a]||0)+x.v;});
+  ms.forEach(m=>{am[m]={};let t=0;Object.entries(raw[m]||{}).forEach(([a,v])=>{const vv=a==='Planta de hielo'?v*shPT(m):a==='Planta de ósmosis'?v*shOs(m):v;am[m][a]=vv;t+=vv;});om[m]=t;exV[m]=((raw[m]||{})['Planta de hielo']||0)*(1-shPT(m))+((raw[m]||{})['Planta de ósmosis']||0)*(1-shOs(m));});
+  const mT=ms.filter(m=>P(m,'tm')>0);
+  const totO=mT.reduce((a,m)=>a+(om[m]||0),0), totT=mT.reduce((a,m)=>a+P(m,'tm'),0), totEx=mT.reduce((a,m)=>a+exV[m],0);
+  const rm={},mm3={};
+  ms.forEach(m=>{if(P(m,'tm')>0)rm[m]=(om[m]||0)/P(m,'tm');
+    const w=mT.filter(x=>x<=m).slice(-3); if(P(m,'tm')>0&&w.length){mm3[m]=w.reduce((a,x)=>a+(om[x]||0),0)/w.reduce((a,x)=>a+P(x,'tm'),0);}});
+  return {ms,om,am,raw,exV,mT,totO,totT,totEx,acc:totT?totO/totT:null,rm,mm3};
+}
+function vRatio(v){
+  const F=facts(); const R=ratioCalc(F); const {ms,om,am,raw,exV,mT,totO,totT,totEx,acc,rm,mm3}=R;
+  const meta=ST.meta?+ST.meta:null; const has=mT.length>0;
+  const last=mT[mT.length-1];
+  const best=has?mT.reduce((a,m)=>rm[m]<rm[a]?m:a,mT[0]):null, worst=has?mT.reduce((a,m)=>rm[m]>rm[a]?m:a,mT[0]):null;
+  let st=['na','Sin meta definida'];
+  if(meta&&acc!==null)st=acc<=meta?['ok','Dentro de meta']:acc<=meta*1.1?['warn','≤10% sobre meta']:['bad','>10% sobre meta'];
+  const stIcon={ok:'●',warn:'▲',bad:'■',na:'○'};
+  const areasU=AREAS.filter(a=>mT.some(m=>(am[m]||{})[a]));
+  const aAcc=areasU.map(a=>[a,mT.reduce((s,m)=>s+((am[m]||{})[a]||0),0)/(totT||1)]);
+  let reg=null; if(mT.length>=3){const xs=mT.map(m=>P(m,'tm')),ys=mT.map(m=>om[m]||0);const n=xs.length,mx=xs.reduce((a,b)=>a+b)/n,my=ys.reduce((a,b)=>a+b)/n;
+    let sxy=0,sxx=0,syy=0;xs.forEach((x,i)=>{sxy+=(x-mx)*(ys[i]-my);sxx+=(x-mx)**2;syy+=(ys[i]-my)**2;});
+    if(sxx>0){const b=sxy/sxx,a=my-b*mx;reg={a,b,r2:syy?(sxy*sxy)/(sxx*syy):0,xs,ys};}}
+  // sums over months with production
+  const S=k=>mT.reduce((s,m)=>s+P(m,k),0);
+  const rawA=a=>mT.reduce((s,m)=>s+((raw[m]||{})[a]||0),0);
+  const hP=S('hie'),hC=S('hcon'),hV=S('hven');
+  const cap=mT.reduce((s,m)=>s+CAPH()*(P(m,'hdias')||dim(m)),0);
+  const kCong=S('kC')+S('kY'), kHie=S('kH')-S('kY');
+  const kPT=mT.reduce((s,m)=>s+P(m,'kC')+P(m,'kY')+(P(m,'kH')-P(m,'kY'))*shPT(m),0);
+  const oCong=GCONG.reduce((s,a)=>s+rawA(a),0), oHie=GHIE.reduce((s,a)=>s+rawA(a),0);
+  const hO=rawA('Planta de hielo'), oO=rawA('Planta de ósmosis'), oP=S('aOs'), wC=S('aC'), wHM=S('aHM'), wH=S('aH'), wCn=Math.max(wC-wHM,0), wPT=mT.reduce((s,m)=>s+aguaPT(m),0), wNR=oP?oP-(wC+wH):null, capO=mT.reduce((s,m)=>s+CAPO()*dim(m),0);
+  const grpH=(t)=>`<tr><td colspan="5" style="background:var(--card2);font-weight:600">${t}</td></tr>`;
+  const row=(l,a,b,c,d)=>`<tr><td>${l}</td><td class="r">${a}</td><td class="r">${b??''}</td><td class="r">${c??''}</td><td class="r">${d??''}</td></tr>`;
+  const na='<span class="muted">sin dato</span>';
+  const ind=`<div class="tw" style="max-height:none"><table class="num"><tr><th>Indicador</th><th class="r">Valor</th><th class="r"></th><th class="r"></th><th class="r"></th></tr>
+   ${grpH('Energía por grupo de medición')}
+   <tr><th style="position:static">Grupo</th><th class="r" style="position:static">kWh</th><th class="r" style="position:static">OPEX mant.</th><th class="r" style="position:static">S/ mant. por MWh</th><th class="r" style="position:static">kWh por TM</th></tr>
+   ${row('<span class="dot" style="background:'+ACOL['Congelado']+'"></span>Congelado (Planta de congelado + Sala Yantai)',kCong?fnum(kCong):na,fmt(oCong),kCong?fmt2(oCong/(kCong/1000)):'–',kCong&&totT?fnum(kCong/totT,1)+' /TM PT':'–')}
+   ${row('<span class="dot" style="background:'+ACOL['Planta de hielo']+'"></span>Hielo + ósmosis (Planta de hielo − Sala Yantai)',kHie>0?fnum(kHie):na,fmt(oHie),kHie>0?fmt2(oHie/(kHie/1000)):'–',kHie>0&&hP?fnum(kHie/hP,1)+' /TM hielo':'–')}
+   ${row('<b>Energía atribuible al producto congelado</b>',kPT?'<b>'+fnum(kPT)+'</b>':na,'','',kPT&&totT?'<b>'+fnum(kPT/totT,1)+' /TM PT</b>':'–')}
+   ${grpH('Planta de hielo · capacidad '+fnum(CAPH())+' t/día')}
+   ${row('Hielo producido · utilización de capacidad',hP?fnum(hP)+' TM':na,cap&&hP?pct(hP/cap):'','','')}
+   ${row('Enviado a congelado · vendido',hC||hV?fnum(hC)+' · '+fnum(hV)+' TM':na,hC+hV?pct(hC/(hC+hV))+' · '+pct(hV/(hC+hV)):'','','')}
+   ${row('S/ de mantenimiento por TM de hielo',hP?fmt2(hO/hP):na,'','','')}
+   ${row('Mantenimiento de hielo excluido por venta',fmt(mT.reduce((s,m)=>s+((raw[m]||{})['Planta de hielo']||0)*(1-shPT(m)),0)),'','','')}
+   ${row('TM de hielo por TM de producto terminado',hC&&totT?fnum(hC/totT,2):na,'','','')}
+   ${grpH('Planta de ósmosis y agua · capacidad '+fnum(CAPO())+' m³/día')}
+   ${row('Producción ósmosis (caudalímetro) · utilización',oP?fnum(oP)+' m³':na,oP&&capO?pct(oP/capO):'','','')}
+   ${row('Congelado neto (congelado − harina y muelle)',wC?fnum(wCn)+' m³':na,wC+wH?pct(wCn/(wC+wH)):'','','')}
+   ${row('Harina y muelle',wHM?fnum(wHM)+' m³':na,wC+wH?pct(wHM/(wC+wH)):'','','')}
+   ${row('Planta de hielo',wH?fnum(wH)+' m³':na,wC+wH?pct(wH/(wC+wH)):'','','')}
+   ${row('Agua no registrada (producción − medidores)',wNR!==null&&(wC||wH)?fnum(wNR)+' m³':na,wNR!==null&&oP&&(wC||wH)?pct(wNR/oP):'','','')}
+   ${row('<b>Agua atribuible al producto congelado</b>',wPT?'<b>'+fnum(wPT)+' m³</b>':na,wC+wH?pct(wPT/(wC+wH)):'','',wPT&&totT?'<b>'+fnum(wPT/totT,2)+' m³/TM</b>':'')}
+   ${row('S/ de mantenimiento por m³ producido',oP?fmt2(oO/oP):na,'','','')}
+   ${row('Mantenimiento de ósmosis excluido (harina, muelle e hielo vendido)',fmt(mT.reduce((s,m)=>s+((raw[m]||{})['Planta de ósmosis']||0)*(1-shOs(m)),0)),'','','')}
+   </table></div>`;
+  const groups=[...new Set(PF.map(f=>f.g))];
+  const entry=`<div class="card c12" id="prodCard"><h3>Producción y datos de operación por mes</h3><div class="hint">Totales del mes. Puedes pegar una columna copiada de Excel en la celda de enero y se llena hacia abajo. Los datos se guardan en este navegador, van en el respaldo y en el Excel exportado.</div>
+   <div class="toolbar"><label>Meta S/ por TM<input type="number" id="pMeta" value="${meta||''}" placeholder="opcional" style="width:120px"></label><label>Capacidad planta de hielo (t/día)<input type="number" id="pCap" value="${CAPH()}" style="width:120px"></label><label>Capacidad ósmosis (m³/día)<input type="number" id="pCapO" value="${CAPO()}" style="width:120px"></label></div>
+   <div class="tw" style="max-height:none"><table class="num"><tr><th rowspan="2">Mes</th>${groups.map(g=>`<th colspan="${PF.filter(f=>f.g===g).length}" style="text-align:center;border-left:2px solid var(--line)">${g}</th>`).join('')}</tr>
+   <tr>${PF.map((f,i)=>`<th class="r" style="${i&&PF[i-1].g!==f.g?'border-left:2px solid var(--line)':''}">${f.l}<br><span class="muted" style="font-weight:400">${f.u}</span></th>`).join('')}</tr>
+   ${MES.slice(0,12).map((mn,i)=>{const m=i+1;return `<tr><td>${mn}</td>${PF.map((f,j)=>`<td class="r" style="${j&&PF[j-1].g!==f.g?'border-left:2px solid var(--line)':''}"><input type="number" class="pin" data-m="${m}" data-k="${f.k}" value="${P(m,f.k)||''}" placeholder="${f.k==='hdias'?dim(m):''}" style="width:100%;min-width:84px;text-align:right"></td>`).join('')}</tr>`;}).join('')}
+   <tr><td><b>Total</b></td>${PF.map(f=>`<td class="r"><b>${f.k==='hdias'?'':fnum(MES.slice(0,12).reduce((a,_,i)=>a+P(i+1,f.k),0))}</b></td>`).join('')}</tr></table></div>
+   <div class="note">Energía: Congelado = Planta de congelado + Sala Yantai; Hielo + ósmosis = Planta de hielo − Sala Yantai. Agua: congelado neto = medidor de congelado − harina y muelle; al producto se carga el congelado neto más el agua del hielo enviado a congelado. Hielo: el costo y la energía de la parte vendida no se cargan al producto. Ósmosis: su costo se carga en la proporción del agua que llega a congelado. Días de operación vacío = días del mes.</div></div>`;
+  const top=has?sortE(Object.fromEntries(aAcc))[0]:null;
+  const body=`
+  <div class="kpis">
+   ${kpi('S/ por TM acumulado',acc===null?'–':fmt2(acc),has?`${mT.length} meses con producción`:'ingresar producción','#1D2E40')}
+   ${kpi('TM producidas',has?fnum(totT):'–','producto terminado congelado','#26405A')}
+   ${kpi('OPEX atribuible',fmtk(totO),totEx?`excluye ${fmtk(totEx)} de hielo vendido y agua a otros usos`:'meses con producción',OCO)}
+   ${kpi('Media móvil 3 meses',has?fmt2(mm3[last]):'–',has?'a '+MES[last-1]:'','#2BA6A0')}
+   ${kpi('kWh por TM',kPT&&totT?fnum(kPT/totT,1):'–','energía atribuible al congelado','#c98500')}
+   ${kpi('Meta',meta?fmt2(meta):'–',`<span class="st ${st[0]}">${stIcon[st[0]]} ${st[1]}</span>`,st[0]==='bad'?'#cc3d3d':st[0]==='warn'?'#c98500':st[0]==='ok'?'#2f8f4e':'#8A96A3')}
+  </div>
+  ${has?`<div class="insight">En ${mT.length} meses con producción, el mantenimiento costó <b>${fmt2(acc)} por TM</b> de producto terminado (${fmt(totO)} para ${fnum(totT)} TM). El mejor mes fue <b>${MES[best-1]}</b> (${fmt2(rm[best])}) y el de mayor costo <b>${MES[worst-1]}</b> (${fmt2(rm[worst])}). El área que más aporta es <b>${top[0]}</b> con ${fmt2(top[1])} por TM.${reg?` ${reg.a>0?`El mantenimiento tiene un componente fijo estimado de <b>${fmt(reg.a)} al mes</b> y uno variable de <b>${fmt2(reg.b)} por TM adicional</b>`:`El gasto de mantenimiento crece casi en proporción a la producción, unos <b>${fmt2(reg.b)} por TM adicional</b>`} (R² ${reg.r2.toFixed(2)}${reg.r2<0.3?': el gasto depende poco del volumen producido, por eso en los meses de baja producción el ratio sube':''}).`:''}</div>`:''}
+  <div class="grid">
+   <div class="card c6"><h3>Producción mensual</h3><div class="hint">TM de producto terminado congelado.</div><div class="ch"><canvas id="rTM"></canvas></div></div>
+   <div class="card c6"><h3>S/ de mantenimiento por TM</h3><div class="hint">Barras: mes. Líneas: media móvil de 3 meses y acumulado${meta?' · meta':''}.</div><div class="ch"><canvas id="rR"></canvas></div></div>
+   <div class="card c7"><h3>Aporte de cada área al S/ por TM</h3><div class="hint">Cada área dividida entre la misma producción; la suma es el ratio del mes. Hielo y ósmosis solo con la parte que va a congelado.</div><div class="ch tall"><canvas id="rA"></canvas></div></div>
+   <div class="card c5"><h3>S/ por TM acumulado por área</h3><div class="hint">Periodo con producción.</div><div class="ch tall"><canvas id="rAA"></canvas></div></div>
+   <div class="card c6"><h3>Planta de hielo · destino y utilización</h3><div class="hint">TM enviadas a congelado y vendidas; línea: utilización de la capacidad.</div><div class="ch tall"><canvas id="rH"></canvas></div></div>
+   <div class="card c6"><h3>Energía por TM producida</h3><div class="hint">kWh atribuibles al producto congelado por TM, por grupo de medición.</div><div class="ch tall"><canvas id="rE"></canvas></div></div>
+   <div class="card c6"><h3>Agua de ósmosis · destino</h3><div class="hint">m³ por mes según medidores; el porcentaje es la utilización de la capacidad de ósmosis.</div><div class="ch tall"><canvas id="rW"></canvas></div></div>
+   <div class="card c6"><h3>Gasto fijo y variable</h3><div class="hint">Cada punto es un mes: OPEX atribuible frente a TM producidas.</div><div class="ch tall"><canvas id="rS"></canvas></div></div>
+   <div class="card c12"><h3>Indicadores de operación</h3><div class="hint">Acumulado de los meses con producción.</div>${ind}</div>
+   <div class="card c12"><h3>Detalle mensual</h3><div class="tw" style="max-height:none"><table class="num"><tr><th>Mes</th><th class="r">TM</th><th class="r">OPEX atribuible</th><th class="r">S/ por TM</th><th class="r">Media móvil 3M</th>${areasU.map(a=>`<th class="r"><span class="dot" style="background:${ACOL[a]}"></span>${a}</th>`).join('')}<th class="r">kWh por TM</th></tr>
+    ${ms.map(m=>{const t=P(m,'tm');const k=P(m,'kC')+P(m,'kY')+(P(m,'kH')-P(m,'kY'))*shPT(m);return `<tr><td>${MES[m-1]}</td><td class="r">${t?fnum(t):'–'}</td><td class="r">${fmt(om[m]||0)}</td><td class="r"><b>${rm[m]!==undefined?fmt2(rm[m]):'–'}</b></td><td class="r">${mm3[m]!==undefined?fmt2(mm3[m]):'–'}</td>${areasU.map(a=>`<td class="r">${t?fmt2(((am[m]||{})[a]||0)/t):'–'}</td>`).join('')}<td class="r">${t&&k?fnum(k/t,1):'–'}</td></tr>`;}).join('')}
+    <tr><td><b>Acumulado</b></td><td class="r"><b>${fnum(totT)}</b></td><td class="r"><b>${fmt(totO)}</b></td><td class="r"><b>${acc===null?'–':fmt2(acc)}</b></td><td></td>${aAcc.map(e=>`<td class="r"><b>${fmt2(e[1])}</b></td>`).join('')}<td class="r"><b>${kPT&&totT?fnum(kPT/totT,1):'–'}</b></td></tr></table></div>
+    <div class="note">Los meses sin producción ingresada no entran en el ratio.</div></div>
+  </div>`;
+  v.innerHTML=(has?body+`<div class="grid" style="margin-top:14px">${entry}</div>`:`<div class="insight">Ingresa la producción mensual en TM de producto terminado para calcular el ratio. Los datos de hielo, agua y energía activan los indicadores de operación.</div><div class="grid">${entry}</div>`+body);
+  const lab=ms.map(m=>MES[m-1]);
+  mk('rTM',{type:'bar',data:{labels:lab,datasets:[{label:'TM',data:ms.map(m=>P(m,'tm')||null),backgroundColor:'#26405A',borderRadius:4,borderSkipped:'start',maxBarThickness:38}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fnum(c.parsed.y)+' TM'}}},scales:{x:{grid:{display:false}},y:{grid:GRID,ticks:{callback:v=>fnum(v)}}}}});
+  const ds=[{label:'S/ por TM del mes',data:ms.map(m=>rm[m]??null),backgroundColor:OSR,borderRadius:4,borderSkipped:'start',maxBarThickness:38,order:3},
+    {label:'Media móvil 3 meses',type:'line',data:ms.map(m=>mm3[m]??null),borderColor:OCO,borderWidth:2,pointRadius:3,pointBackgroundColor:OCO,spanGaps:true,order:1},
+    {label:'Acumulado',type:'line',data:ms.map(()=>acc),borderColor:'#1B2733',borderWidth:1.5,borderDash:[5,4],pointRadius:0,order:2}];
+  if(meta)ds.push({label:'Meta',type:'line',data:ms.map(()=>meta),borderColor:'#cc3d3d',borderWidth:1.5,borderDash:[2,3],pointRadius:0,order:0});
+  mk('rR',{type:'bar',data:{labels:lab,datasets:ds},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt2(c.parsed.y)}}},scales:{x:{grid:{display:false}},y:{grid:GRID,beginAtZero:true,ticks:{callback:v=>'S/ '+fnum(v)}}}}});
+  mk('rA',{type:'bar',data:{labels:lab,datasets:areasU.map(a=>({label:a,data:ms.map(m=>P(m,'tm')?((am[m]||{})[a]||0)/P(m,'tm'):null),backgroundColor:ACOL[a],stack:'s',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38}))},
+    options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt2(c.parsed.y),footer:it=>'Total: '+fmt2(rm[ms[it[0].dataIndex]])}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:GRID,ticks:{callback:v=>'S/ '+fnum(v)}}}}});
+  mk('rAA',{type:'bar',data:{labels:aAcc.map(e=>e[0]),datasets:[{data:aAcc.map(e=>e[1]),backgroundColor:aAcc.map(e=>ACOL[e[0]]),borderRadius:4,borderSkipped:'start',maxBarThickness:22}]},
+    options:{indexAxis:'y',layout:{padding:{right:60}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt2(c.parsed.x)+' por TM'}}},scales:{x:{grid:GRID,ticks:{callback:v=>'S/ '+fnum(v)}},y:{grid:{display:false}}}},
+    plugins:[{id:'lbl',afterDatasetsDraw(ch){const{ctx}=ch;ctx.save();ctx.font='11px Segoe UI, sans-serif';ctx.fillStyle='#1B2733';ctx.textBaseline='middle';ch.getDatasetMeta(0).data.forEach((b,i)=>ctx.fillText(fmt2(aAcc[i][1]),b.x+6,b.y));ctx.restore();}}]});
+  // hielo destino + utilización (porcentaje en etiqueta, sin segundo eje)
+  const util=ms.map(m=>P(m,'hie')?P(m,'hie')/(CAPH()*(P(m,'hdias')||dim(m))):null);
+  mk('rH',{type:'bar',data:{labels:lab,datasets:[{label:'Enviado a congelado',data:ms.map(m=>P(m,'hcon')||null),backgroundColor:ACOL['Planta de hielo'],stack:'h',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38},
+    {label:'Vendido',data:ms.map(m=>P(m,'hven')||null),backgroundColor:'#8FD9BD',stack:'h',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38}]},
+    options:{layout:{padding:{top:16}},interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fnum(c.parsed.y)+' TM',footer:it=>util[it[0].dataIndex]!==null?'Utilización: '+pct(util[it[0].dataIndex]):''}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:GRID,ticks:{callback:v=>fnum(v)}}}},
+    plugins:[{id:'ut',afterDatasetsDraw(ch){const{ctx}=ch;const m1=ch.getDatasetMeta(1),m0=ch.getDatasetMeta(0);ctx.save();ctx.font='10.5px Segoe UI, sans-serif';ctx.fillStyle='#46535F';ctx.textAlign='center';
+      util.forEach((u,i)=>{if(u===null)return;const b=(m1.data[i]&&!isNaN(m1.data[i].y)&&ch.data.datasets[1].data[i])?m1.data[i]:m0.data[i];if(b)ctx.fillText(Math.round(u*100)+'%',b.x,b.y-5);});ctx.restore();}}]});
+  mk('rE',{type:'bar',data:{labels:lab,datasets:[{label:'Congelado (incl. Sala Yantai)',data:ms.map(m=>P(m,'tm')&&(P(m,'kC')||P(m,'kY'))?(P(m,'kC')+P(m,'kY'))/P(m,'tm'):null),backgroundColor:ACOL['Congelado'],stack:'e',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38},
+    {label:'Hielo + ósmosis (parte a congelado)',data:ms.map(m=>P(m,'tm')&&P(m,'kH')?(P(m,'kH')-P(m,'kY'))*shPT(m)/P(m,'tm'):null),backgroundColor:ACOL['Planta de hielo'],stack:'e',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38}]},
+    options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fnum(c.parsed.y,1)+' kWh/TM'}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:GRID,ticks:{callback:v=>fnum(v)}}}}});
+  const wU=ms.map(m=>P(m,'aOs')?P(m,'aOs')/(CAPO()*dim(m)):null);
+  const wNRm=ms.map(m=>P(m,'aOs')&&(P(m,'aC')||P(m,'aH'))?Math.max(P(m,'aOs')-P(m,'aC')-P(m,'aH'),0):null);
+  mk('rW',{type:'bar',data:{labels:lab,datasets:[
+    {label:'Congelado neto',data:ms.map(m=>P(m,'aC')?Math.max(P(m,'aC')-P(m,'aHM'),0):null),backgroundColor:ACOL['Congelado'],stack:'w',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38},
+    {label:'Hielo',data:ms.map(m=>P(m,'aH')||null),backgroundColor:ACOL['Planta de hielo'],stack:'w',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38},
+    {label:'Harina y muelle',data:ms.map(m=>P(m,'aHM')||null),backgroundColor:'#eb6834',stack:'w',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38},
+    {label:'No registrada',data:wNRm,backgroundColor:'#B8C1CB',stack:'w',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38}]},
+    options:{layout:{padding:{top:16}},interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fnum(c.parsed.y)+' m³',footer:it=>wU[it[0].dataIndex]!==null?'Utilización ósmosis: '+pct(wU[it[0].dataIndex]):''}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:GRID,ticks:{callback:v=>fnum(v)}}}},
+    plugins:[{id:'wu',afterDatasetsDraw(ch){const{ctx}=ch;ctx.save();ctx.font='10.5px Segoe UI, sans-serif';ctx.fillStyle='#46535F';ctx.textAlign='center';
+      wU.forEach((u,i)=>{if(u===null)return;let top=null;ch.data.datasets.forEach((d,j)=>{const el=ch.getDatasetMeta(j).data[i];if(d.data[i]&&el&&(top===null||el.y<top.y))top=el;});if(top)ctx.fillText(Math.round(u*100)+'%',top.x,top.y-5);});ctx.restore();}}]});
+  if(reg){const x0=Math.min(...reg.xs)*0.9,x1=Math.max(...reg.xs)*1.05;
+    mk('rS',{type:'scatter',data:{datasets:[{label:'Meses',data:mT.map(m=>({x:P(m,'tm'),y:om[m]||0,m})),backgroundColor:OCO,pointRadius:6,pointHoverRadius:8,borderColor:'#F3F5F7',borderWidth:2},
+      {label:'Tendencia',data:[{x:x0,y:reg.a+reg.b*x0},{x:x1,y:reg.a+reg.b*x1}],showLine:true,borderColor:'#1B2733',borderDash:[5,4],borderWidth:1.5,pointRadius:0}]},
+      options:{plugins:{tooltip:{callbacks:{label:c=>c.datasetIndex?'':` ${MES[c.raw.m-1]}: ${fnum(c.parsed.x)} TM · ${fmt(c.parsed.y)}`}}},scales:{x:{title:{display:true,text:'TM producidas'},grid:GRID},y:{title:{display:true,text:'OPEX atribuible del mes'},grid:GRID,ticks:{callback:v=>fmtk(v)}}}}});}
+  else{const c=document.getElementById('rS');if(c)c.parentElement.innerHTML='<div class="muted" style="padding:40px 10px;text-align:center">Se necesitan al menos 3 meses con producción.</div>';}
+  const setv=(m,k,val)=>{ST.prod=ST.prod||{};ST.prod[m]=ST.prod[m]||{};if(val===''||isNaN(val))delete ST.prod[m][k];else ST.prod[m][k]=val;};
+  const parse=s=>{s=String(s).trim().replace(/\s/g,'');if(!s)return '';if(/,\d{1,2}$/.test(s)&&!/\./.test(s))s=s.replace(',','.');return +s.replace(/,/g,'');};
+  v.querySelectorAll('.pin').forEach(inp=>{
+    inp.onchange=()=>{setv(+inp.dataset.m,inp.dataset.k,parse(inp.value));save();render();};
+    inp.onpaste=e=>{const t=(e.clipboardData||window.clipboardData).getData('text');const lines=t.split(/\r?\n/).filter(x=>x.trim()!=='');if(lines.length<2&&!t.includes('\t'))return;
+      e.preventDefault();const m0=+inp.dataset.m,k0=PF.findIndex(f=>f.k===inp.dataset.k);
+      lines.forEach((ln,i)=>ln.split('\t').forEach((c,j)=>{const m=m0+i,f=PF[k0+j];if(m<=12&&f)setv(m,f.k,parse(c));}));save();render();};
+  });
+  document.getElementById('pMeta').onchange=e=>{ST.meta=e.target.value===''?null:+e.target.value;save();render();};
+  document.getElementById('pCap').onchange=e=>{ST.caph=e.target.value===''?null:+e.target.value;save();render();};
+  document.getElementById('pCapO').onchange=e=>{ST.capo=e.target.value===''?null:+e.target.value;save();render();};
+}
+
+// ---------- EXPORT EXCEL (formato del Excel base)
+const XF='Arial', XH={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3A5F'}}, XT={type:'pattern',pattern:'solid',fgColor:{argb:'FFDCE6F1'}}, XC={type:'pattern',pattern:'solid',fgColor:{argb:'FFFDEBD3'}};
+const XNUM='#,##0;(#,##0);-';
+function xHdr(ws,r,vals,c0=1){vals.forEach((v,j)=>{const c=ws.getCell(r,c0+j);c.value=v;c.font={name:XF,bold:true,size:10,color:{argb:'FFFFFFFF'}};c.fill=XH;c.alignment={horizontal:'center',vertical:'middle',wrapText:true};});ws.getRow(r).height=30;}
+function xTitle(ws,ref,t,size=12){const c=ws.getCell(ref);c.value=t;c.font={name:XF,bold:true,size,color:{argb:'FF1F3A5F'}};}
+function xNote(ws,ref,t){const c=ws.getCell(ref);c.value=t;c.font={name:XF,italic:true,size:9,color:{argb:'FF595959'}};}
+function xCell(ws,r,c,v,o={}){const x=ws.getCell(r,c);x.value=v;x.font={name:XF,size:10,bold:!!o.b,color:o.blue?{argb:'FF0000FF'}:undefined};if(o.nf)x.numFmt=o.nf;if(o.fill)x.fill=o.fill;if(o.wrap)x.alignment={wrapText:true,vertical:'top'};return x;}
+const F_=(f,res)=>({formula:f,result:res});
+async function exportExcel(){
+  if(typeof ExcelJS==='undefined')return alert('No se pudo cargar la librería de Excel (requiere conexión a internet).');
+  busy(true,'Generando Excel…');
+  try{
+  const wb=new ExcelJS.Workbook(); wb.creator='Elvis Miranda — Departamento de Mantenimiento'; wb.calcProperties.fullCalcOnLoad=true;
+  const sR=wb.addWorksheet('Resumen'), sQ=wb.addWorksheet('Producción y ratio'), sC=wb.addWorksheet('CAPEX'), sE=wb.addWorksheet('Equipos'), sP=wb.addWorksheet('Proveedores'),
+        sB=wb.addWorksheet('Base'), sA=wb.addWorksheet('Asignación equipos'), sK=wb.addWorksheet('Catálogo equipos'), sT=wb.addWorksheet('TC y criterios');
+  const TCV=[3.363,3.361,3.450,3.447,3.448,3.409,3.406,3.372,3.380];
+  // TC
+  xTitle(sT,'A1','Tipo de cambio venta promedio mensual 2026');
+  xHdr(sT,2,['Mes','US$ → S/','€ → S/']);
+  TCV.forEach((v,i)=>{xCell(sT,3+i,1,i+1);xCell(sT,3+i,2,v,{blue:true,nf:'0.000'});xCell(sT,3+i,3,F_(`B${3+i}*$B$13`,v*1.16),{nf:'0.000'});});
+  xCell(sT,13,1,'EUR/USD aprox.');xCell(sT,13,2,1.16,{blue:true});
+  xNote(sT,'A14','Fuente US$: promedios mensuales referenciales (tusfinanzas.pe/tipo-cambio/2026). EUR: aproximación (19 líneas Marel).');
+  xCell(sT,16,1,'Alcance',{b:true});xCell(sT,16,2,'Órdenes OCO/OSR de Mantenimiento de planta congelado descargadas de Nisira (ene–set 2026), sin IGV. Excluido: flota, vehículos, áreas ajenas, Harina, Corporación Montesión (cerco Colán) y Transportes Julia. Esta exportación incluye las asignaciones a equipos, la clasificación OPEX/CAPEX y los cambios del catálogo hechos en el aplicativo.',{wrap:true});
+  sT.getColumn(1).width=22;sT.getColumn(2).width=100;sT.getColumn(3).width=10;
+  // Base
+  const cols=['Documento','Tipo','Fecha','Mes','Estado','Proveedor','Moneda','Descripción','U.M.','Cantidad','P.U. sin IGV (moneda orig.)','Importe moneda orig.','TC','Importe S/','Centro de costo','Grupo','Subgrupo','Observación','Nivel','Rubro','Sistema / equipo','Equipo asignado','Clasificación','Certeza','Criterio','Proyecto CAPEX','Área','N° equipos (reparto)','Origen asignación','Dictamen CAPEX','Comentario'];
+  xHdr(sB,1,cols);
+  const rows=ROWS.slice().sort((a,b)=>clsOf(b).localeCompare(clsOf(a))||a.nv.localeCompare(b.nv)||a.f.localeCompare(b.f)||a.d.localeCompare(b.d));
+  const rowOf={};
+  rows.forEach((r,k)=>{const R=k+2;rowOf[r.i]=R;const eq=eqOf(r).filter(e=>CATM[e]);const cl=clsOf(r);const tc=r.mo==='S/'?1:(r.io?r.s/r.io:1);
+    const tcF=r.mo==='S/'?1:F_(`INDEX('TC y criterios'!$${r.mo==='US$'?'B':'C'}$3:$${r.mo==='US$'?'B':'C'}$11,D${R})`,tc);
+    const vals=[r.d,r.t,new Date(r.f+'T00:00:00'),r.m,r.e,r.p,r.mo,r.ds,r.u,r.q,r.pu,F_(`J${R}*K${R}`,r.io),tcF,F_(`L${R}*M${R}`,r.s),r.cc,r.g,r.sg,r.ob,r.nv,r.r,r.sy,
+      eq.map(eqName).join(' / ')||'Sin asignar',cl,r.ce,r.cr,r.pj,eq.length?eqArea(eq[0]):(cl==='CAPEX'?'':'Sin asignar'),cl==='OPEX'?eq.length:'',cl==='CAPEX'?'':(isManual(r)?'Manual':r.o),
+      ST.dict[r.i]==='CAPEX'?'Conforme CAPEX':ST.dict[r.i]==='OPEX'?'Pasar a OPEX':(r.c==='CAPEX'?'Por validar':''),ST.notes[r.i]||''];
+    vals.forEach((v,j)=>{const c=xCell(sB,R,j+1,v);if(j===2)c.numFmt='dd/mm/yyyy';if(j===10||j===11||j===13)c.numFmt='#,##0.00';if(j===12)c.numFmt='0.000';if(j===22)c.font={name:XF,size:10,bold:true,color:{argb:'FF0000FF'}};if(cl==='CAPEX'&&j>=22&&j<=25)c.fill=XC;});});
+  const last=rows.length+1;
+  [17,6,11,5,14,32,6,45,6,9,12,13,7,13,32,22,26,26,24,26,28,32,12,9,40,40,18,9,22,16,30].forEach((w,j)=>sB.getColumn(j+1).width=w);
+  sB.autoFilter={from:'A1',to:{row:last,column:cols.length}}; sB.views=[{state:'frozen',ySplit:1}];
+  const B=c=>`Base!$${c}$2:$${c}$${last}`;
+  // Asignación
+  xHdr(sA,1,['Documento','Fila en Base','Descripción','Tipo','Mes','Rubro','Equipo','Área','Importe asignado S/']);
+  let ar=2; const asgRows=[];
+  rows.filter(r=>clsOf(r)==='OPEX').forEach(r=>{const eq=eqOf(r).filter(e=>CATM[e]);const R=rowOf[r.i];const list=eq.length?eq:['SIN'];
+    list.forEach(e=>{const v=r.s/list.length;asgRows.push({e,a:eqArea(e),t:r.t,m:r.m,ru:r.r,v});
+      [r.d,R,r.ds,r.t,r.m,r.r,eqName(e),eqArea(e)].forEach((x,j)=>xCell(sA,ar,j+1,x));
+      xCell(sA,ar,9,F_(eq.length?`Base!N${R}/Base!AB${R}`:`Base!N${R}`,v),{nf:'#,##0.00'});ar++;});});
+  const alast=ar-1; [17,10,45,6,5,26,34,18,15].forEach((w,j)=>sA.getColumn(j+1).width=w);
+  sA.autoFilter={from:'A1',to:{row:alast,column:9}}; sA.views=[{state:'frozen',ySplit:1}];
+  xNote(sA,`A${alast+2}`,'Una fila por línea OPEX y equipo. Si la línea está repartida entre varios equipos, el importe se divide en partes iguales.');
+  const A=c=>`'Asignación equipos'!$${c}$2:$${c}$${alast}`;
+  const sum=(arr,f)=>arr.filter(f).reduce((a,x)=>a+x.v,0);
+  // Resumen
+  xTitle(sR,'A1','Costos de Mantenimiento 2026 — OPEX y CAPEX',14);
+  xNote(sR,'A2','Soles sin IGV, montos de orden (OC/OS) Nisira. Generado desde el aplicativo con las asignaciones y clasificaciones vigentes.');
+  const baseVals=rows.map(r=>({c:clsOf(r),t:r.t,m:r.m,e:r.e,v:r.s,ru:r.r,p:r.p,pj:r.pj}));
+  function tbl(ws,r0,title,label,keys,mkF,mkV,cols2){
+    xTitle(ws,`A${r0}`,title,11); xHdr(ws,r0+1,[label].concat(cols2||['Materiales (OCO)','Servicios (OSR)','Total S/','% del total']));
+    keys.forEach((k,i)=>{const R=r0+2+i;xCell(ws,R,1,k);
+      xCell(ws,R,2,F_(mkF(`$A${R}`,'"OCO"'),mkV(k,'OCO')),{nf:XNUM});xCell(ws,R,3,F_(mkF(`$A${R}`,'"OSR"'),mkV(k,'OSR')),{nf:XNUM});
+      xCell(ws,R,4,F_(`B${R}+C${R}`,mkV(k,'OCO')+mkV(k,'OSR')),{nf:XNUM});});
+    const T=r0+2+keys.length; xCell(ws,T,1,'Total',{b:true,fill:XT});
+    const tot=keys.reduce((a,k)=>a+mkV(k,'OCO')+mkV(k,'OSR'),0);
+    [2,3,4].forEach(c=>{const L='ABCD'[c-1];xCell(ws,T,c,F_(`SUM(${L}${r0+2}:${L}${T-1})`,keys.reduce((a,k)=>a+(c===2?mkV(k,'OCO'):c===3?mkV(k,'OSR'):mkV(k,'OCO')+mkV(k,'OSR')),0)),{nf:XNUM,b:true,fill:XT});});
+    for(let R=r0+2;R<=T;R++){const v=R<T?mkV(keys[R-r0-2],'OCO')+mkV(keys[R-r0-2],'OSR'):tot;xCell(ws,R,5,F_(`IF($D$${T}=0,0,D${R}/$D$${T})`,tot?v/tot:0),{nf:'0.0%',b:R===T,fill:R===T?XT:undefined});}
+    return T+2;
+  }
+  let r=4;
+  r=tbl(sR,r,'A. OPEX (mantenimiento) vs CAPEX (proyectos)','Clasificación',['OPEX','CAPEX'],(k,t)=>`SUMIFS(${B('N')},${B('W')},${k},${B('B')},${t})`,(k,t)=>sum(baseVals,x=>x.c===k&&x.t===t));
+  const areas=AREAS.filter(a=>asgRows.some(x=>x.a===a));
+  r=tbl(sR,r,'B. OPEX por área','Área',areas,(k,t)=>`SUMIFS(${A('I')},${A('H')},${k},${A('D')},${t})`,(k,t)=>sum(asgRows,x=>x.a===k&&x.t===t));
+  const rubs=sortE(sumBy(asgRows,'ru')).map(e=>e[0]);
+  r=tbl(sR,r,'C. OPEX por rubro','Rubro',rubs,(k,t)=>`SUMIFS(${A('I')},${A('F')},${k},${A('D')},${t})`,(k,t)=>sum(asgRows,x=>x.ru===k&&x.t===t));
+  // mensual
+  xTitle(sR,`A${r}`,'D. Evolución mensual (S/)',11); xHdr(sR,r+1,['Clasificación'].concat(months.map(m=>MES[m-1])).concat(['Total','Promedio mes']));
+  ['OPEX','CAPEX'].forEach((k,i)=>{const R=r+2+i;xCell(sR,R,1,k,{b:true});months.forEach((m,j)=>xCell(sR,R,2+j,F_(`SUMIFS(${B('N')},${B('W')},$A${R},${B('D')},${m})`,sum(baseVals,x=>x.c===k&&x.m===m)),{nf:XNUM}));
+    const cL=String.fromCharCode(65+months.length); const tv=sum(baseVals,x=>x.c===k);
+    xCell(sR,R,2+months.length,F_(`SUM(B${R}:${cL}${R})`,tv),{nf:XNUM,b:true});xCell(sR,R,3+months.length,F_(`AVERAGE(B${R}:${cL}${R})`,tv/months.length),{nf:XNUM,b:true});});
+  r+=6;
+  xTitle(sR,`A${r}`,'E. Por estado de la orden',11); xHdr(sR,r+1,['Estado','OPEX','CAPEX','Total S/']);
+  ['Atendido Total','Atendido Parcial','Aprobado','Vº Bº 1','Pendiente'].forEach((k,i)=>{const R=r+2+i;xCell(sR,R,1,k);
+    const o=sum(baseVals,x=>x.e===k&&x.c==='OPEX'),c=sum(baseVals,x=>x.e===k&&x.c==='CAPEX');
+    xCell(sR,R,2,F_(`SUMIFS(${B('N')},${B('E')},$A${R},${B('W')},"OPEX")`,o),{nf:XNUM});xCell(sR,R,3,F_(`SUMIFS(${B('N')},${B('E')},$A${R},${B('W')},"CAPEX")`,c),{nf:XNUM});xCell(sR,R,4,F_(`B${R}+C${R}`,o+c),{nf:XNUM});});
+  sR.getColumn(1).width=46; for(let c=2;c<=13;c++)sR.getColumn(c).width=14;
+  // Producción y ratio
+  const CL=n=>{let s='';while(n>0){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26);}return s;};
+  xTitle(sQ,'A1','S/ de mantenimiento por TM de producto terminado congelado');
+  xNote(sQ,'A2','Datos de operación en azul (editables). Hielo y ósmosis se cargan al producto solo en la parte que va a congelado. Agua: congelado neto = medidor de congelado − harina y muelle. Energía: Congelado = Planta de congelado + Sala Yantai; Hielo + ósmosis = Planta de hielo − Sala Yantai.');
+  xCell(sQ,3,1,'Capacidad planta de hielo (t/día)',{b:true});xCell(sQ,3,3,CAPH(),{blue:true,nf:'#,##0'});
+  xCell(sQ,4,1,'Capacidad planta de ósmosis (m³/día)',{b:true});xCell(sQ,4,3,CAPO(),{blue:true,nf:'#,##0'});
+  const areaCols=['Congelado','Planta de hielo','Planta de ósmosis','Calderos','Resto de planta','Sin asignar'];
+  const qh=['Mes','N° mes','TM producto terminado','OPEX total S/','OPEX planta de hielo S/','OPEX planta de ósmosis S/','Hielo producido TM','Hielo enviado a congelado TM','Hielo vendido TM','% hielo a congelado',
+    'Producción ósmosis m³','Medidor congelado m³','Medidor harina y muelle m³','Medidor hielo m³','Congelado neto m³','Agua atribuible a congelado m³','% ósmosis a congelado','Agua no registrada m³','m³ por TM',
+    'OPEX atribuible S/','S/ por TM'].concat(areaCols.map(a=>'S/ por TM · '+a)).concat(['Días de operación hielo','Utilización hielo','Utilización ósmosis',
+    'Medidor Planta de congelado kWh','Medidor Sala Yantai kWh','Medidor Planta de hielo kWh','Congelado kWh','Hielo + ósmosis kWh','kWh atribuible a congelado','kWh por TM']);
+  const H0=6; xHdr(sQ,H0,qh); sQ.getRow(H0).height=46;
+  const C={}; qh.forEach((h,i)=>C[i+1]=CL(i+1));
+  for(let m=1;m<=12;m++){const R=H0+m;const tm=P(m,'tm');const sh=shPT(m),so=shOs(m);
+    const ot=sum(baseVals,x=>x.c==='OPEX'&&x.m===m),oh=sum(asgRows,x=>x.a==='Planta de hielo'&&x.m===m),oo=sum(asgRows,x=>x.a==='Planta de ósmosis'&&x.m===m);const oa=ot-oh*(1-sh)-oo*(1-so);
+    const inp=(c,k,nf)=>xCell(sQ,R,c,P(m,k)||null,{nf:nf||'#,##0',blue:true});
+    xCell(sQ,R,1,MES[m-1]);xCell(sQ,R,2,m);inp(3,'tm','#,##0.0');
+    xCell(sQ,R,4,F_(`SUMIFS(${B('N')},${B('W')},"OPEX",${B('D')},B${R})`,ot),{nf:XNUM});
+    xCell(sQ,R,5,F_(`SUMIFS(${A('I')},${A('H')},"Planta de hielo",${A('E')},B${R})`,oh),{nf:XNUM});
+    xCell(sQ,R,6,F_(`SUMIFS(${A('I')},${A('H')},"Planta de ósmosis",${A('E')},B${R})`,oo),{nf:XNUM});
+    inp(7,'hie');inp(8,'hcon');inp(9,'hven');
+    xCell(sQ,R,10,F_(`IF(N(H${R})+N(I${R})>0,N(H${R})/(N(H${R})+N(I${R})),1)`,sh),{nf:'0.0%'});
+    inp(11,'aOs');inp(12,'aC');inp(13,'aHM');inp(14,'aH');
+    xCell(sQ,R,15,F_(`MAX(N(L${R})-N(M${R}),0)`,Math.max(P(m,'aC')-P(m,'aHM'),0)),{nf:'#,##0'});
+    xCell(sQ,R,16,F_(`O${R}+N(N${R})*J${R}`,aguaPT(m)),{nf:'#,##0'});
+    xCell(sQ,R,17,F_(`IF(N(L${R})+N(N${R})>0,MIN(1,P${R}/(N(L${R})+N(N${R}))),1)`,so),{nf:'0.0%'});
+    xCell(sQ,R,18,F_(`IF(AND(N(K${R})>0,N(L${R})+N(N${R})>0),K${R}-N(L${R})-N(N${R}),"")`,P(m,'aOs')&&(P(m,'aC')||P(m,'aH'))?P(m,'aOs')-P(m,'aC')-P(m,'aH'):''),{nf:'#,##0'});
+    xCell(sQ,R,19,F_(`IF(AND(N(C${R})>0,P${R}>0),P${R}/C${R},"")`,tm&&aguaPT(m)?aguaPT(m)/tm:''),{nf:'#,##0.00'});
+    xCell(sQ,R,20,F_(`D${R}-E${R}*(1-J${R})-F${R}*(1-Q${R})`,oa),{nf:XNUM});
+    xCell(sQ,R,21,F_(`IF(N(C${R})>0,T${R}/C${R},"")`,tm?oa/tm:''),{nf:'#,##0.00',b:true});
+    areaCols.forEach((a,j)=>{const f=a==='Planta de hielo'?sh:a==='Planta de ósmosis'?so:1;const av=sum(asgRows,x=>x.a===a&&x.m===m)*f;
+      xCell(sQ,R,22+j,F_(`IF(N($C${R})>0,SUMIFS(${A('I')},${A('H')},"${a}",${A('E')},$B${R})${a==='Planta de hielo'?`*$J${R}`:a==='Planta de ósmosis'?`*$Q${R}`:''}/$C${R},"")`,tm?av/tm:''),{nf:'#,##0.00'});});
+    const cD=22+areaCols.length; const dd=P(m,'hdias'); xCell(sQ,R,cD,dd||null,{nf:'#,##0',blue:true});
+    xCell(sQ,R,cD+1,F_(`IF(N(G${R})>0,G${R}/($C$3*IF(N(${C[cD]}${R})>0,${C[cD]}${R},DAY(DATE(2026,B${R}+1,0)))),"")`,P(m,'hie')?P(m,'hie')/(CAPH()*(dd||dim(m))):''),{nf:'0.0%'});
+    xCell(sQ,R,cD+2,F_(`IF(N(K${R})>0,K${R}/($C$4*DAY(DATE(2026,B${R}+1,0))),"")`,P(m,'aOs')?P(m,'aOs')/(CAPO()*dim(m)):''),{nf:'0.0%'});
+    const e0=cD+3; inp(e0,'kC');inp(e0+1,'kY');inp(e0+2,'kH');
+    xCell(sQ,R,e0+3,F_(`N(${C[e0]}${R})+N(${C[e0+1]}${R})`,P(m,'kC')+P(m,'kY')),{nf:'#,##0'});
+    xCell(sQ,R,e0+4,F_(`IF(N(${C[e0+2]}${R})>0,N(${C[e0+2]}${R})-N(${C[e0+1]}${R}),0)`,P(m,'kH')?P(m,'kH')-P(m,'kY'):0),{nf:'#,##0'});
+    const kpt=P(m,'kC')+P(m,'kY')+(P(m,'kH')?(P(m,'kH')-P(m,'kY'))*sh:0);
+    xCell(sQ,R,e0+5,F_(`${C[e0+3]}${R}+${C[e0+4]}${R}*J${R}`,kpt),{nf:'#,##0'});
+    xCell(sQ,R,e0+6,F_(`IF(AND(N(C${R})>0,${C[e0+5]}${R}>0),${C[e0+5]}${R}/C${R},"")`,tm&&kpt?kpt/tm:''),{nf:'#,##0.0'});}
+  const QT=H0+13, q1=H0+1, q2=H0+12; xCell(sQ,QT,1,'Acumulado (meses con producción)',{b:true,fill:XT});xCell(sQ,QT,2,'',{fill:XT});
+  const mP=MES.slice(0,12).map((_,i)=>i+1).filter(m=>P(m,'tm')>0);
+  const totTM=mP.reduce((a,m)=>a+P(m,'tm'),0);
+  const totOA=mP.reduce((a,m)=>a+sum(baseVals,x=>x.c==='OPEX'&&x.m===m)-sum(asgRows,x=>x.a==='Planta de hielo'&&x.m===m)*(1-shPT(m))-sum(asgRows,x=>x.a==='Planta de ósmosis'&&x.m===m)*(1-shOs(m)),0);
+  const sumC=(c,nf)=>xCell(sQ,QT,c,F_(`SUMIFS(${C[c]}${q1}:${C[c]}${q2},$C$${q1}:$C$${q2},">0")`,''),{nf:nf||XNUM,b:true,fill:XT});
+  xCell(sQ,QT,3,F_(`SUM(C${q1}:C${q2})`,totTM),{nf:'#,##0.0',b:true,fill:XT});
+  [4,5,6,7,8,9].forEach(c=>sumC(c,c>6?'#,##0':XNUM));[11,12,13,14,15,16].forEach(c=>sumC(c,'#,##0'));
+  xCell(sQ,QT,19,F_(`IF(C${QT}>0,P${QT}/C${QT},"")`,''),{nf:'#,##0.00',b:true,fill:XT});
+  xCell(sQ,QT,20,F_(`SUMIFS(T${q1}:T${q2},C${q1}:C${q2},">0")`,totOA),{nf:XNUM,b:true,fill:XT});
+  xCell(sQ,QT,21,F_(`IF(C${QT}>0,T${QT}/C${QT},"")`,totTM?totOA/totTM:''),{nf:'#,##0.00',b:true,fill:XT});
+  areaCols.forEach((a,j)=>{const L=C[22+j];xCell(sQ,QT,22+j,F_(`IF($C$${QT}>0,SUMPRODUCT(${L}${q1}:${L}${q2},$C$${q1}:$C$${q2})/$C$${QT},"")`,''),{nf:'#,##0.00',b:true,fill:XT});});
+  const e0=22+areaCols.length+3; [e0,e0+1,e0+2,e0+3,e0+4,e0+5].forEach(c=>sumC(c,'#,##0'));
+  xCell(sQ,QT,e0+6,F_(`IF(C${QT}>0,${C[e0+5]}${QT}/C${QT},"")`,''),{nf:'#,##0.0',b:true,fill:XT});
+  xCell(sQ,QT+2,1,'Meta S/ por TM',{b:true});xCell(sQ,QT+2,3,ST.meta||null,{nf:'#,##0.00',blue:true});
+  sQ.getColumn(1).width=34;sQ.getColumn(2).width=7;for(let c=3;c<=qh.length;c++)sQ.getColumn(c).width=14;sQ.views=[{state:'frozen',ySplit:H0,xSplit:1}];
+  // CAPEX
+  xTitle(sC,'A1','CAPEX por proyecto (S/ sin IGV)');
+  xNote(sC,'A2','Se clasificaron como CAPEX las órdenes de proyectos de mejora, ampliación de capacidad o renovación de activos.');
+  const capR=rows.filter(r=>clsOf(r)==='CAPEX'); const projs=sortE(sumBy(capR,r=>r.pj||'Sin proyecto','s')).map(e=>e[0]);
+  xHdr(sC,4,['Proyecto','Materiales (OCO)','Servicios (OSR)','Total S/','% CAPEX']);
+  const cv=(p,t)=>capR.filter(r=>(r.pj||'Sin proyecto')===p&&r.t===t).reduce((a,r)=>a+r.s,0); const ctot=capR.reduce((a,r)=>a+r.s,0);
+  projs.forEach((p,i)=>{const R=5+i;xCell(sC,R,1,p);xCell(sC,R,2,F_(`SUMIFS(${B('N')},${B('Z')},$A${R},${B('B')},"OCO",${B('W')},"CAPEX")`,cv(p,'OCO')),{nf:XNUM});
+    xCell(sC,R,3,F_(`SUMIFS(${B('N')},${B('Z')},$A${R},${B('B')},"OSR",${B('W')},"CAPEX")`,cv(p,'OSR')),{nf:XNUM});xCell(sC,R,4,F_(`B${R}+C${R}`,cv(p,'OCO')+cv(p,'OSR')),{nf:XNUM});});
+  let T=5+projs.length; xCell(sC,T,1,'Total CAPEX',{b:true,fill:XT});
+  [2,3,4].forEach(c=>{const L='ABCD'[c-1];xCell(sC,T,c,F_(`SUM(${L}5:${L}${T-1})`,c===4?ctot:capR.filter(r=>r.t===(c===2?'OCO':'OSR')).reduce((a,r)=>a+r.s,0)),{nf:XNUM,b:true,fill:XT});});
+  for(let R=5;R<=T;R++)xCell(sC,R,5,F_(`IF($D$${T}=0,0,D${R}/$D$${T})`,R<T?(cv(projs[R-5],'OCO')+cv(projs[R-5],'OSR'))/ctot:1),{nf:'0.0%',b:R===T,fill:R===T?XT:undefined});
+  let r2=T+3; xTitle(sC,`A${r2}`,'Líneas CAPEX',11);
+  xHdr(sC,r2+1,['Proyecto','Documento','Fecha','Proveedor','Descripción','Criterio','Certeza','Importe S/','Dictamen','Comentario']);
+  capR.slice().sort((a,b)=>(a.pj||'').localeCompare(b.pj||'')||b.s-a.s).forEach((x,i)=>{const R=r2+2+i;
+    [x.pj,x.d,new Date(x.f+'T00:00:00'),x.p,x.ds,x.cr,x.ce,F_(`Base!N${rowOf[x.i]}`,x.s),ST.dict[x.i]==='CAPEX'?'Conforme CAPEX':ST.dict[x.i]==='OPEX'?'Pasar a OPEX':'Por validar',ST.notes[x.i]||''].forEach((v,j)=>{const c=xCell(sC,R,j+1,v);if(j===2)c.numFmt='dd/mm/yyyy';if(j===7)c.numFmt=XNUM;});});
+  [58,17,11,30,42,44,9,14,16,30].forEach((w,j)=>sC.getColumn(j+1).width=w);
+  // OPEX→CAPEX moved lines are in Base with Clasificación OPEX and Dictamen "Pasar a OPEX"
+  // Equipos
+  xTitle(sE,'A1','OPEX por equipo (S/ sin IGV)');
+  xNote(sE,'A2','Suma la hoja "Asignación equipos". Valor de reposición y uso del periodo vienen del catálogo; el estado compara el costo anualizado con el valor de reposición (hasta 15% Normal, 15–30% Vigilar, más de 30% Evaluar reemplazo).');
+  xHdr(sE,4,['Equipo','Área','Tipo','OPEX materiales','OPEX servicios','OPEX total','Promedio mensual','Valor de reposición S/','Costo anual / reposición','Estado','Uso del periodo','S/ por unidad de uso']);
+  const eqs=sortE(sumBy(asgRows,'e')).map(e=>e[0]); const nm=months.length;
+  eqs.forEach((e,i)=>{const R=5+i;const c=CATM[e]||{};const o=sum(asgRows,x=>x.e===e&&x.t==='OCO'),s=sum(asgRows,x=>x.e===e&&x.t==='OSR');
+    xCell(sE,R,1,eqName(e));xCell(sE,R,2,eqArea(e));xCell(sE,R,3,c.tp||'');
+    xCell(sE,R,4,F_(`SUMIFS(${A('I')},${A('G')},$A${R},${A('D')},"OCO")`,o),{nf:XNUM});xCell(sE,R,5,F_(`SUMIFS(${A('I')},${A('G')},$A${R},${A('D')},"OSR")`,s),{nf:XNUM});
+    xCell(sE,R,6,F_(`D${R}+E${R}`,o+s),{nf:XNUM});xCell(sE,R,7,F_(`F${R}/${nm}`,(o+s)/nm),{nf:XNUM});
+    xCell(sE,R,8,c.vr||null,{nf:XNUM,blue:true});const rat=c.vr?(o+s)/nm*12/c.vr:null;
+    xCell(sE,R,9,F_(`IF(N(H${R})>0,G${R}*12/H${R},"")`,rat===null?'':rat),{nf:'0.0%'});
+    xCell(sE,R,10,F_(`IF(I${R}="","Sin dato",IF(I${R}>0.3,"Evaluar reemplazo",IF(I${R}>0.15,"Vigilar","Normal")))`,rat===null?'Sin dato':rat>0.3?'Evaluar reemplazo':rat>0.15?'Vigilar':'Normal'));
+    xCell(sE,R,11,c.uso||null,{nf:XNUM,blue:true});xCell(sE,R,12,F_(`IF(N(K${R})>0,F${R}/K${R},"")`,c.uso?(o+s)/c.uso:''),{nf:'#,##0.00'});});
+  T=5+eqs.length; xCell(sE,T,1,'Total',{b:true,fill:XT});
+  [4,5,6,7].forEach(c=>{const L='ABCDEFG'[c-1];xCell(sE,T,c,F_(`SUM(${L}5:${L}${T-1})`,c===4?sum(asgRows,x=>x.t==='OCO'):c===5?sum(asgRows,x=>x.t==='OSR'):c===6?sum(asgRows,()=>true):sum(asgRows,()=>true)/nm),{nf:XNUM,b:true,fill:XT});});
+  [40,18,20,15,15,15,15,16,14,18,12,14].forEach((w,j)=>sE.getColumn(j+1).width=w);
+  sE.autoFilter={from:'A4',to:{row:T-1,column:12}};
+  // Proveedores
+  xTitle(sP,'A1','Top 30 proveedores (S/ sin IGV)');
+  xHdr(sP,3,['Proveedor','OPEX materiales','OPEX servicios','OPEX total','CAPEX','Total']);
+  sortE(sumBy(baseVals,'p')).slice(0,30).forEach(([p],i)=>{const R=4+i;xCell(sP,R,1,p);
+    const o=sum(baseVals,x=>x.p===p&&x.c==='OPEX'&&x.t==='OCO'),s=sum(baseVals,x=>x.p===p&&x.c==='OPEX'&&x.t==='OSR'),c=sum(baseVals,x=>x.p===p&&x.c==='CAPEX');
+    xCell(sP,R,2,F_(`SUMIFS(${B('N')},${B('F')},$A${R},${B('B')},"OCO",${B('W')},"OPEX")`,o),{nf:XNUM});xCell(sP,R,3,F_(`SUMIFS(${B('N')},${B('F')},$A${R},${B('B')},"OSR",${B('W')},"OPEX")`,s),{nf:XNUM});
+    xCell(sP,R,4,F_(`B${R}+C${R}`,o+s),{nf:XNUM});xCell(sP,R,5,F_(`SUMIFS(${B('N')},${B('F')},$A${R},${B('W')},"CAPEX")`,c),{nf:XNUM});xCell(sP,R,6,F_(`D${R}+E${R}`,o+s+c),{nf:XNUM});});
+  [50,15,15,15,15,15].forEach((w,j)=>sP.getColumn(j+1).width=w);
+  // Catálogo
+  xHdr(sK,1,['Código','Equipo','Área','Tipo','Valor de reposición S/','Uso del periodo','Origen']);
+  CAT.forEach((c,i)=>{const R=2+i;[c.id,c.n,c.a,c.tp||'',c.vr||null,c.uso||null,ST.catNew.find(x=>x.id===c.id)?'Agregado en el aplicativo':'Base'].forEach((v,j)=>xCell(sK,R,j+1,v,j===4||j===5?{nf:XNUM}:{}));});
+  [10,40,18,20,18,14,24].forEach((w,j)=>sK.getColumn(j+1).width=w);
+  sK.autoFilter={from:'A1',to:{row:CAT.length+1,column:7}}; sK.views=[{state:'frozen',ySplit:1}];
+  [sR,sC,sE,sP].forEach(ws=>ws.views=[{showGridLines:true}]);
+  const buf=await wb.xlsx.writeBuffer();
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  a.download=`Costos_Mantenimiento_2026_${new Date().toISOString().slice(0,10)}.xlsx`;a.click();
+  }catch(e){alert('No se pudo generar el Excel: '+e.message);}
+  busy(false);
+}
+// ---------- EXPORT PDF (A4 horizontal, diseño del dashboard)
+let PDFMODE=false;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function busy(on,txt){let o=document.getElementById('busy');if(!o){o=document.createElement('div');o.id='busy';document.body.appendChild(o);}o.textContent=txt||'';o.style.display=on?'flex':'none';}
+async function exportPDF(){
+  if(typeof html2canvas==='undefined'||!window.jspdf)return alert('No se pudo cargar la librería de PDF (requiere conexión a internet).');
+  busy(true,'Generando PDF…');
+  const anim=Chart.defaults.animation; Chart.defaults.animation=false;
+  PDFMODE=true; document.body.classList.add('pdfmode'); render(); await sleep(350);
+  const view=document.getElementById('view');
+  view.querySelectorAll('select').forEach(s=>{const sp=document.createElement('span');sp.className='chip';sp.textContent=s.options[s.selectedIndex]?s.options[s.selectedIndex].text:'';s.replaceWith(sp);});
+  view.querySelectorAll('input[type=text],input[type=number],input[type=search]').forEach(i=>{const sp=document.createElement('span');sp.textContent=i.value||'';i.replaceWith(sp);});
+  view.querySelectorAll('input[type=checkbox]').forEach(i=>i.remove());
+  await sleep(100);
+  try{
+    const vr=view.getBoundingClientRect(); const W=view.offsetWidth;
+    const blocks=[...view.querySelectorAll('.kpis,.insight,.grid > .card,#view > .card')].map(el=>{const r=el.getBoundingClientRect();return{t:r.top-vr.top,b:r.bottom-vr.top};}).sort((a,b)=>a.t-b.t);
+    const H=Math.min(view.scrollHeight,Math.max(...blocks.map(b=>b.b))+6);
+    const trs=[...view.querySelectorAll('tr')].map(el=>el.getBoundingClientRect().bottom-vr.top);
+    const SC=2; const canvas=await html2canvas(view,{scale:SC,backgroundColor:'#CDD5DE',windowWidth:W+40,logging:false});
+    const PW=297,PH=210,M=8,HD=15,FT=8; const cw=PW-2*M; const k=cw/W; const pageH=(PH-M-HD-FT-4)/k;
+    const slices=[]; let start=0;
+    while(start<H-4){
+      const end=start+pageH; let cut;
+      const bb=blocks.filter(b=>b.b>start+2&&b.b<=end).map(b=>b.b);
+      const best=bb.length?Math.max(...bb):null;
+      if(best!==null&&best-start>pageH*0.4)cut=best+4;
+      else{const tt=trs.filter(t=>t>start+2&&t<=end);cut=tt.length?Math.max(...tt)+1:Math.min(end,H);if(best!==null&&best>cut)cut=best+4;}
+      if(cut>=H-4)cut=H;
+      if(cut-start>30)slices.push([start,cut]);
+      const nxt=blocks.filter(b=>b.t>=cut-1).map(b=>b.t); start=Math.min(nxt.length?Math.min(...nxt)-2:cut,H);
+      if(nxt.length&&Math.min(...nxt)-2<cut)start=cut;
+    }
+    const {jsPDF}=window.jspdf; const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const m=MODS.find(x=>x.id===CUR); const per=`${MES[fD.value-1]}–${MES[fH.value-1]} 2026 · ${fT.options[fT.selectedIndex].text} · soles sin IGV`;
+    slices.forEach(([a,b],i)=>{
+      if(i)pdf.addPage();
+      pdf.setFillColor(205,213,222);pdf.rect(0,0,PW,PH,'F');
+      pdf.setFillColor(29,46,64);pdf.rect(0,0,PW,HD,'F');pdf.setFillColor(43,166,160);pdf.rect(0,HD,PW,0.8,'F');
+      pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(13);pdf.text('Costos de Mantenimiento 2026 · '+m.t,M,9.5);
+      pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);pdf.setTextColor(201,212,223);pdf.text(per,PW-M,9.5,{align:'right'});
+      const h=Math.round((b-a)*SC); const pc=document.createElement('canvas');pc.width=canvas.width;pc.height=h;
+      pc.getContext('2d').drawImage(canvas,0,Math.round(a*SC),canvas.width,h,0,0,canvas.width,h);
+      pdf.addImage(pc.toDataURL('image/jpeg',0.92),'JPEG',M,HD+4,cw,(b-a)*k);
+      pdf.setFontSize(8);pdf.setTextColor(70,83,95);pdf.text('Elvis Miranda — Departamento de Mantenimiento',M,PH-4);
+      pdf.text(`Página ${i+1} de ${slices.length}`,PW-M,PH-4,{align:'right'});
+    });
+    pdf.save(`Costos_Mantenimiento_${m.t.replace(/[^\wáéíóúñ ]/gi,'').replace(/ +/g,'_')}_${MES[fD.value-1]}-${MES[fH.value-1]}_2026.pdf`);
+  }catch(e){alert('No se pudo generar el PDF: '+e.message);}
+  PDFMODE=false; document.body.classList.remove('pdfmode'); Chart.defaults.animation=anim; render(); busy(false);
+}
+// ---------- backup
+function backupDownload(){const b=new Blob([JSON.stringify(ST,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='respaldo_costos_mantenimiento.json';a.click();}
+function backupLoad(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{ST=Object.assign({asg:{},dict:{},notes:{},catEdit:{},catNew:[],prod:{},meta:null},JSON.parse(rd.result));save();render();alert('Respaldo cargado.');}catch(e){alert('El archivo no es un respaldo válido.');}};rd.readAsText(f);inp.value='';}
+function resetAll(){if(confirm('Se borrarán las asignaciones manuales, dictámenes CAPEX y cambios del catálogo guardados en este navegador (la producción ingresada se conserva). ¿Continuar?')){ST=Object.assign({asg:{},dict:{},notes:{},catEdit:{},catNew:[]},{prod:ST.prod||{},meta:ST.meta||null,caph:ST.caph||null,capo:ST.capo||null});save();render();}}
+document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')e.target.style.display='none';};
+function toggleNav(){document.body.classList.toggle('navoff');try{localStorage.setItem(LS+'_nav',document.body.classList.contains('navoff')?'off':'on');}catch(e){}setTimeout(()=>Object.values(charts).forEach(c=>c.resize()),60);}
+try{if(localStorage.getItem(LS+'_nav')==='off')document.body.classList.add('navoff');}catch(e){}
+buildNav(); render();
+</script>
+</body>
+</html>
