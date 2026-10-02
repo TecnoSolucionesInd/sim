@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copia de datos · Congelamiento · SIM</title>
+<link rel="stylesheet" href="../../core/sim.css">
+<style>
+  .wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:48px 20px 80px}
+  .steps{display:flex;flex-direction:column;gap:10px;margin:22px 0 0;padding:0;list-style:none;counter-reset:s}
+  .steps li{counter-increment:s;display:flex;gap:12px;font-size:14.5px;color:var(--tx-2);line-height:1.5}
+  .steps li::before{content:counter(s);flex-shrink:0;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:12px;color:var(--tx)}
+  .num{font-family:var(--f-mono);text-align:right}
+  .prog{height:6px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:18px}
+  .prog div{height:100%;width:0;background:var(--mint);transition:width .3s}
+</style>
+</head>
+<body>
+<div class="amb"></div>
+<div class="wrap">
+  <a class="btn" href="../../" style="margin-bottom:28px">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Volver al portal</a>
+  <div class="eyebrow rise">Congelamiento</div>
+  <h1 class="h-display rise d1" style="font-size:38px;margin-top:12px">Copia de datos</h1>
+  <p class="muted rise d2" style="line-height:1.6;max-width:680px">Copia los registros del aplicativo de Congelamiento actual al SIM. El sistema actual solo se lee: no se modifica ni se borra nada en él. Puede ejecutarse las veces que sea necesario; cada ejecución actualiza la copia con los datos más recientes.</p>
+
+  <div id="gate" class="glass rise d2" style="padding:28px;margin-top:26px"><div class="spinner"></div></div>
+
+  <div id="panel" hidden>
+    <ol class="steps rise d2">
+      <li>Pulse "Contar registros" para ver cuántos datos hay en cada lado.</li>
+      <li>Pulse "Copiar datos". Se copian bachadas, eventos, técnicos, productos y configuración con sus mismos identificadores.</li>
+      <li>Al terminar, verifique que los totales coincidan y abra Congelamiento desde el portal.</li>
+    </ol>
+    <div class="glass rise d3" style="margin-top:24px;overflow-x:auto">
+      <table class="table">
+        <thead><tr><th>Colección</th><th style="text-align:right">Sistema actual</th><th style="text-align:right">SIM</th><th>Estado</th></tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+    <div class="prog" id="prog" hidden><div id="progBar"></div></div>
+    <div class="alert" id="msg" style="margin-top:18px" hidden></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:22px">
+      <button class="btn" id="bContar">Contar registros</button>
+      <button class="btn btn-primary" id="bCopiar">Copiar datos</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, getDocs, getCountFromServer, writeBatch, doc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { auth, db } from '../../core/firebase.js';
+import { esAdmin } from '../../core/sesion.js';
+
+// Proyecto Firebase del aplicativo de Congelamiento actual (solo lectura)
+const ORIGEN = {
+  apiKey: "AIzaSyACD2i8OZTqUakWVSMr0vkJNNQ1E-EaCws",
+  authDomain: "sist-integrado-mantenimiento.firebaseapp.com",
+  projectId: "sist-integrado-mantenimiento",
+  storageBucket: "sist-integrado-mantenimiento.firebasestorage.app",
+  messagingSenderId: "526992776688",
+  appId: "1:526992776688:web:7089e079262b65e9c89135"
+};
+const MAPA = [
+  ['sim_bachadas',  'bachadas',  'Bachadas'],
+  ['sim_eventos',   'eventos',   'Eventos / paradas'],
+  ['sim_tecnicos',  'tecnicos',  'Técnicos'],
+  ['sim_productos', 'productos', 'Productos'],
+  ['sim_config',    'config',    'Configuración']
+];
+const dbOrigen = getFirestore(initializeApp(ORIGEN, 'origen-congelamiento'));
+const destino = (n) => collection(db, 'datos', 'cong', n);
+const $ = (id) => document.getElementById(id);
+const estado = {};
+
+function pintar() {
+  $('tb').innerHTML = MAPA.map(([o, d, l]) => {
+    const e = estado[d] || {};
+    const ok = e.orig != null && e.orig === e.dest;
+    return `<tr><td>${l}</td><td class="num">${e.orig ?? '—'}</td><td class="num">${e.dest ?? '—'}</td>
+      <td>${e.err ? `<span class="pill" style="background:rgba(255,143,143,.14);color:#FFB3B3">${e.err}</span>`
+        : e.orig == null ? '' : ok ? '<span class="pill" style="background:rgba(111,227,207,.16);color:#8FF0DE">Coincide</span>'
+        : '<span class="pill" style="background:rgba(245,185,74,.16);color:#FFCF73">Pendiente</span>'}</td></tr>`;
+  }).join('');
+}
+function msg(t, tipo) { $('msg').hidden = !t; $('msg').className = 'alert ' + (tipo || 'ok'); $('msg').textContent = t || ''; }
+const errTxt = (e) => e?.code === 'permission-denied' ? 'Sin permiso de lectura' : (e?.code || e?.message || 'Error');
+
+async function contar() {
+  for (const [o, d] of MAPA) {
+    estado[d] = {};
+    try { estado[d].orig = (await getCountFromServer(collection(dbOrigen, o))).data().count; } catch (e) { estado[d].err = 'Actual: ' + errTxt(e); }
+    try { estado[d].dest = (await getCountFromServer(destino(d))).data().count; } catch (e) { estado[d].err = 'SIM: ' + errTxt(e); }
+    pintar();
+  }
+}
+
+async function copiar() {
+  $('bCopiar').disabled = $('bContar').disabled = true;
+  msg('');
+  $('prog').hidden = false; $('progBar').style.width = '0%';
+  try {
+    const lotes = [];
+    for (const [o, d] of MAPA) {
+      const snap = await getDocs(collection(dbOrigen, o));
+      lotes.push([d, snap.docs]);
+    }
+    const total = lotes.reduce((a, [, docs]) => a + docs.length, 0) || 1;
+    let hechos = 0;
+    for (const [d, docs] of lotes) {
+      for (let i = 0; i < docs.length; i += 400) {
+        const b = writeBatch(db);
+        docs.slice(i, i + 400).forEach(s => b.set(doc(db, 'datos', 'cong', d, s.id), s.data()));
+        await b.commit();
+        hechos += Math.min(400, docs.length - i);
+        $('progBar').style.width = Math.round(hechos / total * 100) + '%';
+      }
+    }
+    await contar();
+    const todo = MAPA.every(([, d]) => estado[d].orig === estado[d].dest);
+    msg(todo ? `Copia completa: ${hechos} registros. Los totales coinciden.` : 'Copia terminada, pero algunos totales no coinciden. Revise la tabla y vuelva a ejecutar.', todo ? 'ok' : 'warn');
+  } catch (e) {
+    msg('No se pudo completar la copia: ' + errTxt(e) + '. Ningún dato del sistema actual fue modificado.', 'err');
+  }
+  $('bCopiar').disabled = $('bContar').disabled = false;
+}
+
+onAuthStateChanged(auth, (u) => {
+  if (!u) { location.replace('../../'); return; }
+  if (!esAdmin(u)) { $('gate').innerHTML = '<div class="muted">Esta herramienta es solo para el administrador del sistema.</div>'; return; }
+  $('gate').remove();
+  $('panel').hidden = false;
+  pintar();
+  $('bContar').onclick = () => contar();
+  $('bCopiar').onclick = () => copiar();
+});
+</script>
+</body>
+</html>

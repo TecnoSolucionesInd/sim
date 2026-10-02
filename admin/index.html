@@ -125,6 +125,7 @@ function vistaAplicativos(main) {
           <span class="pill" style="background:${a.url ? 'rgba(111,227,207,.12)' : 'rgba(255,255,255,.06)'};color:${a.url ? '#8FF0DE' : '#C3CDD8'}">${a.url ? 'Integrado' : 'Por integrar'}</span>
         </div>
         <div style="margin-top:14px;font-size:13px;color:var(--tx-2)">${a.modulos.length ? a.modulos.map(m => esc(m.nombre)).join(' · ') : 'Módulos por definir'}</div>
+        ${(a.herramientas || []).map(h => `<a class="btn" href="../${h.url}" style="margin-top:14px;height:40px;font-size:13px">${esc(h.nombre)}</a>`).join('')}
       </div>`;
     }).join('')}</div>`;
 }

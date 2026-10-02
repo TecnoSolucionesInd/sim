@@ -43,7 +43,8 @@ export const APPS = [
   {
     id: 'cong', nombre: 'Congelamiento', sub: 'Control de túneles y congeladores',
     grupo: 'op', estado: 'prod', fase: 'F1', color: '#7CC8F8',
-    url: null, // se asigna al migrar el aplicativo
+    url: 'apps/cong/',
+    herramientas: [{ nombre: 'Copia de datos desde el sistema actual', url: 'apps/cong/migrar.html' }],
     icon: 'M12 2v20M3.34 7l17.32 10M20.66 7L3.34 17M9 4l3 2 3-2M9 20l3-2 3 2M4.3 10.4l2.7.6-.4 2.8M19.7 13.6l-2.7-.6.4-2.8',
     modulos: [
       { id: 'proceso', nombre: 'En proceso' },
