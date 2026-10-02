@@ -56,7 +56,9 @@
   .overlay .track{width:220px;height:4px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden}
   .overlay .track div{height:100%;border-radius:4px;animation:bar .9s cubic-bezier(.4,0,.2,1) both}
 
+  .mbrand{display:none}
   @media (max-width:900px){
+    .mbrand{display:flex}
     .login{grid-template-columns:minmax(0,1fr)}
     .brand{display:none}
     .card{padding:34px 24px}
@@ -94,6 +96,10 @@
   <div class="card-wrap">
     <!-- Iniciar sesión -->
     <form class="card rise d2" id="fLogin" novalidate>
+      <div class="mbrand logo" style="margin-bottom:26px">
+        <div class="logo-mark"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#14332E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></div>
+        <div><div class="logo-name">SIM</div><div class="logo-sub">Sistema Integrado de Mantenimiento</div></div>
+      </div>
       <h2>Iniciar sesión</h2>
       <div class="sub">Ingrese con su usuario asignado</div>
       <div class="fgroup" style="margin-top:30px"><label class="label" for="lEmail">Correo</label><input class="field" id="lEmail" type="email" autocomplete="username" placeholder="usuario@empresa.com" required></div>
