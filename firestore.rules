@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// Reglas de seguridad del SIM.
+// Se pegan en: Firebase Console → Firestore Database → Reglas → Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() { return request.auth != null; }
+
+    // Administrador del sistema: correo fijo y verificado
+    function esAdmin() {
+      return autenticado()
+        && request.auth.token.email == 'emiranda@santamonicafishing.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    function perfilRef() { return /databases/$(database)/documents/usuarios/$(request.auth.uid); }
+    function perfil() { return get(perfilRef()).data; }
+    function activo() { return autenticado() && exists(perfilRef()) && perfil().activo == true; }
+    function permiso(app) { return perfil().get('apps', {}).get(app, {}); }
+
+    function puedeLeer(app) {
+      return esAdmin() || (activo() && permiso(app).get('rol', '') in ['admin', 'supervisor', 'operador', 'lectura']);
+    }
+    function puedeEscribir(app) {
+      return esAdmin() || (activo() && permiso(app).get('rol', '') in ['admin', 'supervisor', 'operador']);
+    }
+
+    // Perfiles y permisos: cada usuario lee el suyo; solo el administrador los gestiona
+    match /usuarios/{uid} {
+      allow read: if esAdmin() || (autenticado() && request.auth.uid == uid);
+      allow write: if esAdmin();
+    }
+
+    // Configuración general del sistema
+    match /config/{docId} {
+      allow read: if autenticado();
+      allow write: if esAdmin();
+    }
+
+    // Datos de cada aplicativo: datos/{app}/...
+    match /datos/{app}/{resto=**} {
+      allow read: if puedeLeer(app);
+      allow write: if puedeEscribir(app);
+    }
+
+    // Todo lo demás queda bloqueado
+  }
+}

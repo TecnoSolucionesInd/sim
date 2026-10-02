@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIM · Sistema Integrado de Mantenimiento</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236FE3CF'/%3E%3Cpath d='M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 4v2M12 18v2M4 12h2M18 12h2' stroke='%2314332E' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="core/sim.css">
+<style>
+  .login{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+  .brand{display:flex;flex-direction:column;justify-content:space-between;padding:56px 64px}
+  .brand h1{font-size:60px;letter-spacing:-1.5px;line-height:1.04}
+  .brand p{margin:26px 0 0;font-size:19px;line-height:1.6;color:var(--tx-2);max-width:520px}
+  .feats{display:flex;gap:12px;margin-top:38px;flex-wrap:wrap}
+  .feat{padding:10px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.16);font-size:14px;color:#D5DDE5;display:flex;align-items:center;gap:8px}
+  .feat i{width:7px;height:7px;border-radius:50%;display:block}
+  .card-wrap{display:flex;align-items:center;justify-content:center;padding:32px 20px}
+  .card{width:100%;max-width:430px;padding:44px 40px;border-radius:26px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 40px 80px -40px rgba(6,12,18,.8)}
+  .card h2{font-family:var(--f-display);font-size:28px;font-weight:600;letter-spacing:-.4px;margin:0}
+  .card .sub{margin-top:8px;font-size:15px;color:#BAC5D0}
+  .fgroup{margin-top:18px}
+  .row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .linkbtn{background:none;border:0;padding:0;color:var(--mint-2);font-size:14px;text-decoration:underline;text-underline-offset:3px}
+  .linkbtn:hover{color:#BFF7EC}
+  .secure{margin-top:26px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx-3)}
+
+  .portal{position:relative;z-index:1}
+  .main{max-width:1320px;margin:0 auto;padding:56px 32px 80px}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap}
+  .head h2{font-size:46px;letter-spacing:-1.2px;margin-top:14px}
+  .stats{display:flex;gap:12px;flex-wrap:wrap}
+  .stat{padding:16px 22px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);min-width:120px}
+  .stat b{display:block;font-family:var(--f-display);font-size:30px;font-weight:600}
+  .stat span{font-size:13px;color:#BAC5D0}
+  .filters{display:flex;gap:10px;margin-top:40px;flex-wrap:wrap}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px;margin-top:30px}
+  .tile{position:relative;overflow:hidden;text-align:left;padding:26px;min-height:236px;border-radius:24px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;flex-direction:column;justify-content:space-between;transition:transform .45s var(--ease),border-color .35s,box-shadow .45s,background .35s;animation:rise .8s var(--ease) both}
+  .tile::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.10),transparent);transform:skewX(-18deg);transition:left .8s ease}
+  .tile:hover{transform:translateY(-8px);border-color:rgba(255,255,255,.28);background:rgba(255,255,255,.09);box-shadow:0 28px 50px -24px rgba(8,14,20,.75)}
+  .tile:hover::after{left:130%}
+  .tile .ico{width:62px;height:62px;border-radius:18px;display:flex;align-items:center;justify-content:center;transition:transform .5s var(--ease)}
+  .tile:hover .ico{transform:scale(1.1) rotate(-6deg)}
+  .tile .top{display:flex;justify-content:space-between;align-items:flex-start;width:100%}
+  .tile .fase{font-family:var(--f-mono);font-size:12px;color:var(--tx-3)}
+  .tile .nm{font-family:var(--f-display);font-size:20px;font-weight:600;letter-spacing:-.3px}
+  .tile .sb{margin-top:6px;font-size:14px;color:#BAC5D0}
+  .tile .bt{margin-top:18px;display:flex;justify-content:space-between;align-items:center}
+  .tile .arrow{transition:transform .35s,opacity .35s;opacity:.45}
+  .tile:hover .arrow{transform:translateX(4px);opacity:1}
+  .tile.off{opacity:.62}
+  .empty{margin-top:30px;padding:48px;text-align:center;border-radius:22px;border:1.5px dashed rgba(255,255,255,.2);color:var(--tx-2)}
+
+  .overlay{position:fixed;inset:0;z-index:40;background:rgba(40,50,62,.82);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;animation:fadein .4s ease both}
+  .overlay .big{width:112px;height:112px;border-radius:32px;display:flex;align-items:center;justify-content:center}
+  .overlay .nm{font-family:var(--f-display);font-size:26px;font-weight:600}
+  .overlay .track{width:220px;height:4px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden}
+  .overlay .track div{height:100%;border-radius:4px;animation:bar .9s cubic-bezier(.4,0,.2,1) both}
+
+  @media (max-width:900px){
+    .login{grid-template-columns:minmax(0,1fr)}
+    .brand{display:none}
+    .card{padding:34px 24px}
+    .main{padding:36px 16px 60px}
+    .head h2{font-size:34px}
+  }
+</style>
+</head>
+<body>
+<div class="amb"></div>
+<div class="boot" id="boot"><div class="spinner"></div></div>
+
+<!-- ================= LOGIN ================= -->
+<section class="login" id="vLogin" hidden>
+  <div class="brand">
+    <div class="logo rise">
+      <div class="logo-mark" style="width:46px;height:46px;border-radius:14px">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#14332E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+      </div>
+      <div class="logo-name" style="font-size:20px">SIM</div>
+    </div>
+    <div style="max-width:620px">
+      <div class="eyebrow rise d1" style="margin-bottom:22px">Departamento de Mantenimiento</div>
+      <h1 class="h-display rise d2">Sistema Integrado<br>de Mantenimiento</h1>
+      <p class="rise d3">Un solo acceso a todos los aplicativos de la planta. Cada uno con sus módulos y permisos.</p>
+      <div class="feats rise d4">
+        <div class="feat"><i style="background:#6FE3CF"></i>Acceso único</div>
+        <div class="feat"><i style="background:#F5B94A"></i>Permisos por aplicativo</div>
+        <div class="feat"><i style="background:#A9B4FF"></i>Datos en tiempo real</div>
+      </div>
+    </div>
+    <div class="rise d5" style="font-size:13px;color:var(--tx-3)">IP Santa Mónica Fishing · Planta Paita</div>
+  </div>
+
+  <div class="card-wrap">
+    <!-- Iniciar sesión -->
+    <form class="card rise d2" id="fLogin" novalidate>
+      <h2>Iniciar sesión</h2>
+      <div class="sub">Ingrese con su usuario asignado</div>
+      <div class="fgroup" style="margin-top:30px"><label class="label" for="lEmail">Correo</label><input class="field" id="lEmail" type="email" autocomplete="username" placeholder="usuario@empresa.com" required></div>
+      <div class="fgroup"><label class="label" for="lPass">Contraseña</label><input class="field" id="lPass" type="password" autocomplete="current-password" placeholder="••••••••" required></div>
+      <div class="row-between" style="margin-top:18px">
+        <label class="check"><input type="checkbox" id="lRemember" checked>Recordar sesión</label>
+        <button type="button" class="linkbtn" data-go="fReset">¿Olvidó su clave?</button>
+      </div>
+      <div class="alert err" id="lErr" style="margin-top:18px" hidden></div>
+      <button type="submit" class="btn btn-primary" id="lBtn" style="margin-top:26px;width:100%;height:54px;font-size:16px">Ingresar
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <div class="secure"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"/></svg>Conexión cifrada · acceso según permisos asignados</div>
+      <div style="margin-top:14px;font-size:13px;color:var(--tx-3)">¿Primer ingreso del administrador? <button type="button" class="linkbtn" style="font-size:13px" data-go="fFirst">Crear clave</button></div>
+    </form>
+
+    <!-- Recuperar clave -->
+    <form class="card rise" id="fReset" novalidate hidden>
+      <h2>Restablecer clave</h2>
+      <div class="sub">Se enviará un enlace a su correo para crear una nueva clave.</div>
+      <div class="fgroup" style="margin-top:30px"><label class="label" for="rEmail">Correo</label><input class="field" id="rEmail" type="email" autocomplete="username" placeholder="usuario@empresa.com" required></div>
+      <div class="alert" id="rMsg" style="margin-top:18px" hidden></div>
+      <button type="submit" class="btn btn-primary" id="rBtn" style="margin-top:26px;width:100%;height:54px">Enviar enlace</button>
+      <div style="margin-top:18px"><button type="button" class="linkbtn" data-go="fLogin">Volver a iniciar sesión</button></div>
+    </form>
+
+    <!-- Primer acceso del administrador -->
+    <form class="card rise" id="fFirst" novalidate hidden>
+      <h2>Crear clave de administrador</h2>
+      <div class="sub">Solo para el primer ingreso del administrador del sistema.</div>
+      <div class="fgroup" style="margin-top:30px"><label class="label" for="aEmail">Correo del administrador</label><input class="field" id="aEmail" type="email" autocomplete="username" required></div>
+      <div class="fgroup"><label class="label" for="aPass">Nueva clave (mínimo 8 caracteres)</label><input class="field" id="aPass" type="password" autocomplete="new-password" required></div>
+      <div class="fgroup"><label class="label" for="aPass2">Repetir clave</label><input class="field" id="aPass2" type="password" autocomplete="new-password" required></div>
+      <div class="alert" id="aMsg" style="margin-top:18px" hidden></div>
+      <button type="submit" class="btn btn-primary" id="aBtn" style="margin-top:26px;width:100%;height:54px">Crear clave</button>
+      <div style="margin-top:18px"><button type="button" class="linkbtn" data-go="fLogin">Volver a iniciar sesión</button></div>
+    </form>
+  </div>
+</section>
+
+<!-- ================= PORTAL ================= -->
+<section class="portal" id="vPortal" hidden>
+  <header class="topbar fade">
+    <div class="logo">
+      <div class="logo-mark"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#14332E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></div>
+      <div><div class="logo-name">SIM</div><div class="logo-sub hide-sm">Sistema Integrado de Mantenimiento</div></div>
+    </div>
+    <div class="hide-sm" style="flex-grow:1;max-width:440px;position:relative">
+      <label for="q" class="sr">Buscar aplicativo</label>
+      <svg style="position:absolute;left:14px;top:13px" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#AEBAC6" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"/></svg>
+      <input id="q" class="field" placeholder="Buscar aplicativo o módulo" style="height:44px;padding-left:42px;font-size:14px;background:rgba(14,22,30,.25)">
+    </div>
+    <div class="topbar-r">
+      <div class="hide-sm mono" style="font-size:13px;color:var(--tx-2);display:flex;align-items:center;gap:8px"><span class="live"></span><span id="clock"></span></div>
+      <button class="btn btn-icon" id="btnLogout" aria-label="Cerrar sesión" title="Cerrar sesión"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg></button>
+      <div class="avatar" id="avatar" title=""></div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="alert warn rise" id="verifyBox" style="margin-bottom:28px" hidden>
+      Verifique su correo para activar los permisos de administrador. Revise también la carpeta de spam.
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" id="btnResend" style="height:40px">Reenviar correo</button>
+        <button class="btn" id="btnRecheck" style="height:40px">Ya verifiqué</button>
+      </div>
+    </div>
+
+    <div class="head">
+      <div>
+        <div class="eyebrow rise">Aplicativos</div>
+        <h2 class="h-display rise d1" id="greet"></h2>
+        <p class="rise d2 muted" style="margin:14px 0 0;font-size:17px">Seleccione un aplicativo para abrirlo con sus módulos.</p>
+      </div>
+      <div class="stats rise d3" id="stats"></div>
+    </div>
+    <div class="filters rise d3" id="filters"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden></div>
+  </main>
+</section>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="big popin" id="ovIco"></div>
+  <div class="nm rise d1" id="ovName"></div>
+  <div class="track rise d2"><div id="ovBar"></div></div>
+  <div class="mono rise d3" style="font-size:13px;color:#BAC5D0" id="ovMsg">Verificando permisos…</div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script type="module">
+import { auth } from './core/firebase.js';
+import { ADMIN_EMAIL } from './core/config.js';
+import { APPS, ESTADOS, GRUPOS } from './core/catalogo.js';
+import { esAdmin, esCorreoAdmin, cargarPerfil, appsVisibles, accesoApp, iniciales } from './core/sesion.js';
+import {
+  onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword,
+  sendPasswordResetEmail, sendEmailVerification, setPersistence, browserLocalPersistence, browserSessionPersistence
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const state = { user: null, perfil: null, filtro: 'all', q: '' };
+
+function toast(msg, tipo = 'ok') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + tipo; t.textContent = msg;
+  $('toasts').appendChild(t);
+  setTimeout(() => { t.style.transition = 'opacity .4s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3800);
+}
+
+const MSG = {
+  'auth/invalid-credential': 'Correo o clave incorrectos.',
+  'auth/wrong-password': 'Correo o clave incorrectos.',
+  'auth/user-not-found': 'Correo o clave incorrectos.',
+  'auth/invalid-email': 'El correo no tiene un formato válido.',
+  'auth/too-many-requests': 'Demasiados intentos. Espere unos minutos e intente de nuevo.',
+  'auth/user-disabled': 'Este usuario está deshabilitado.',
+  'auth/email-already-in-use': 'Este correo ya tiene una clave creada. Use "¿Olvidó su clave?" si no la recuerda.',
+  'auth/weak-password': 'La clave es muy débil. Use al menos 8 caracteres.',
+  'auth/network-request-failed': 'Sin conexión a internet.',
+  'permission-denied': 'Sin permisos para leer la información. Revise las reglas de seguridad.'
+};
+const errMsg = (e) => MSG[e?.code] || ('Ocurrió un error: ' + (e?.code || e?.message || e));
+
+// ---------- navegación entre formularios ----------
+function showForm(id) {
+  ['fLogin', 'fReset', 'fFirst'].forEach(f => $(f).hidden = f !== id);
+  if (id === 'fFirst') $('aEmail').value = $('lEmail').value || ADMIN_EMAIL;
+  if (id === 'fReset') $('rEmail').value = $('lEmail').value;
+}
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => showForm(b.dataset.go)));
+
+function busy(btn, on, label) {
+  btn.disabled = on;
+  if (on) { btn.dataset.l = btn.innerHTML; btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-top-color:#11302B"></div>'; }
+  else if (btn.dataset.l) btn.innerHTML = btn.dataset.l;
+}
+function setMsg(el, txt, tipo) { el.hidden = !txt; el.className = 'alert ' + (tipo || 'err'); el.textContent = txt || ''; }
+
+// ---------- login ----------
+$('fLogin').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const email = $('lEmail').value.trim(), pass = $('lPass').value;
+  if (!email || !pass) return setMsg($('lErr'), 'Ingrese correo y clave.');
+  setMsg($('lErr'), '');
+  busy($('lBtn'), true);
+  try {
+    await setPersistence(auth, $('lRemember').checked ? browserLocalPersistence : browserSessionPersistence);
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch (e) { setMsg($('lErr'), errMsg(e)); }
+  busy($('lBtn'), false);
+});
+
+$('fReset').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const email = $('rEmail').value.trim();
+  if (!email) return setMsg($('rMsg'), 'Ingrese su correo.');
+  busy($('rBtn'), true);
+  try {
+    auth.languageCode = 'es';
+    await sendPasswordResetEmail(auth, email);
+    setMsg($('rMsg'), 'Si el correo está registrado, recibirá un enlace en unos minutos. Revise también spam.', 'ok');
+  } catch (e) { setMsg($('rMsg'), errMsg(e)); }
+  busy($('rBtn'), false);
+});
+
+$('fFirst').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const email = $('aEmail').value.trim(), p1 = $('aPass').value, p2 = $('aPass2').value;
+  if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) return setMsg($('aMsg'), 'Este acceso es solo para el correo del administrador del sistema.');
+  if (p1.length < 8) return setMsg($('aMsg'), 'La clave debe tener al menos 8 caracteres.');
+  if (p1 !== p2) return setMsg($('aMsg'), 'Las claves no coinciden.');
+  busy($('aBtn'), true);
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, p1);
+    auth.languageCode = 'es';
+    await sendEmailVerification(cred.user);
+    toast('Clave creada. Se envió un correo de verificación.');
+  } catch (e) { setMsg($('aMsg'), errMsg(e)); }
+  busy($('aBtn'), false);
+});
+
+// ---------- portal ----------
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+}
+function tickClock() {
+  try { $('clock').textContent = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date()); } catch {}
+}
+setInterval(tickClock, 30000);
+
+const icoSvg = (a, size, sw) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${a.color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"><path d="${a.icon}"/></svg>`;
+
+function renderPortal() {
+  const { user, perfil } = state;
+  const nombre = (perfil?.nombre || user.email).split(' ')[0];
+  $('greet').textContent = `${greeting()}, ${nombre}`;
+  $('avatar').textContent = iniciales(perfil?.nombre, user.email);
+  $('avatar').title = `${perfil?.nombre || ''} · ${user.email}`;
+  tickClock();
+  $('verifyBox').hidden = !(esCorreoAdmin(user) && !user.emailVerified);
+
+  const visibles = appsVisibles(user, perfil);
+  const n = (st) => visibles.filter(a => a.estado === st).length;
+  $('stats').innerHTML = [
+    ['#8FF0DE', n('prod'), 'En producción'],
+    ['#FFCF73', n('dev'), 'En construcción'],
+    ['#DDE4EB', n('plan'), 'Planificados']
+  ].map(([c, v, l]) => `<div class="stat"><b style="color:${c}">${v}</b><span>${l}</span></div>`).join('');
+
+  $('filters').innerHTML = GRUPOS.map(g => `<button class="chip ${state.filtro === g.id ? 'on' : ''}" data-f="${g.id}">${g.label}</button>`).join('');
+  $('filters').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { state.filtro = b.dataset.f; renderPortal(); });
+
+  const q = state.q.toLowerCase();
+  const lista = visibles.filter(a => (state.filtro === 'all' || a.grupo === state.filtro) &&
+    (!q || (a.nombre + ' ' + a.sub + ' ' + a.modulos.map(m => m.nombre).join(' ')).toLowerCase().includes(q)));
+
+  $('grid').innerHTML = lista.map((a, i) => {
+    const st = ESTADOS[a.estado];
+    const off = !a.url;
+    return `<button class="tile ${off ? 'off' : ''}" data-app="${a.id}" style="animation-delay:${(0.1 + i * 0.06).toFixed(2)}s">
+      <div class="top">
+        <div class="ico" style="background:${a.color}24;border:1px solid ${a.color}55">${icoSvg(a, 30, 1.7)}</div>
+        <div class="fase">${a.fase}</div>
+      </div>
+      <div style="width:100%">
+        <div class="nm">${esc(a.nombre)}</div>
+        <div class="sb">${esc(a.sub)}</div>
+        <div class="bt">
+          <span class="pill" style="background:${st.bg};color:${st.fg}">${off && a.estado !== 'plan' ? 'Por integrar' : st.label}</span>
+          <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+      </div>
+    </button>`;
+  }).join('');
+  $('grid').querySelectorAll('[data-app]').forEach(b => b.onclick = () => abrir(b.dataset.app));
+
+  const vacio = lista.length === 0;
+  $('empty').hidden = !vacio;
+  if (vacio) $('empty').textContent = visibles.length ? 'No hay aplicativos que coincidan con la búsqueda.' : 'Aún no tiene aplicativos asignados. Solicite acceso al administrador del sistema.';
+}
+
+$('q').addEventListener('input', (e) => { state.q = e.target.value; renderPortal(); });
+
+function abrir(id) {
+  const a = APPS.find(x => x.id === id);
+  if (!a) return;
+  if (!a.url) { toast(`${a.nombre}: se habilitará al integrarse al portal.`); return; }
+  if (!accesoApp(state.user, state.perfil, id)) { toast('No tiene permisos para este aplicativo.', 'err'); return; }
+  $('ovIco').innerHTML = icoSvg(a, 54, 1.5);
+  $('ovIco').style.cssText = `background:${a.color}24;border:1px solid ${a.color}55;box-shadow:0 30px 70px -30px ${a.color}`;
+  $('ovName').textContent = a.nombre;
+  $('ovBar').style.background = a.color;
+  $('overlay').hidden = false;
+  setTimeout(() => { location.href = a.url; }, 950);
+}
+window.addEventListener('pageshow', () => { $('overlay').hidden = true; });
+
+$('btnLogout').onclick = () => signOut(auth);
+$('btnResend').onclick = async () => {
+  try { auth.languageCode = 'es'; await sendEmailVerification(state.user); toast('Correo de verificación enviado.'); }
+  catch (e) { toast(errMsg(e), 'err'); }
+};
+$('btnRecheck').onclick = async () => {
+  await state.user.reload();
+  await state.user.getIdToken(true);
+  if (state.user.emailVerified) { toast('Correo verificado. Permisos de administrador activos.'); await entrar(auth.currentUser); }
+  else toast('Aún no figura como verificado. Abra el enlace del correo e intente de nuevo.', 'err');
+};
+
+// ---------- sesión ----------
+async function entrar(user) {
+  state.user = user;
+  try { state.perfil = await cargarPerfil(user); }
+  catch (e) { state.perfil = null; if (!esCorreoAdmin(user)) console.warn(e); }
+  if (!esAdmin(user) && (!state.perfil || state.perfil.activo !== true) && !esCorreoAdmin(user)) {
+    await signOut(auth);
+    showForm('fLogin');
+    setMsg($('lErr'), state.perfil ? 'Su usuario está inactivo. Comuníquese con el administrador.' : 'Su usuario no tiene acceso habilitado. Comuníquese con el administrador.');
+    return;
+  }
+  $('vLogin').hidden = true;
+  $('vPortal').hidden = false;
+  renderPortal();
+}
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) await entrar(user);
+  else {
+    state.user = null; state.perfil = null;
+    $('vPortal').hidden = true; $('vLogin').hidden = false;
+    $('lPass').value = '';
+  }
+  $('boot').classList.add('out');
+});
+</script>
+</body>
+</html>

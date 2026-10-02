@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plantilla · SIM</title>
+<link rel="stylesheet" href="../../core/sim.css">
+<!--
+  PLANTILLA PARA UN APLICATIVO NUEVO
+  1. Copiar esta carpeta como apps/<id>/
+  2. Registrar el aplicativo en core/catalogo.js con url: 'apps/<id>/' y sus módulos
+  3. Cambiar APP_ID abajo y programar cada módulo en render()
+  4. Los datos del aplicativo se guardan en Firestore bajo  datos/<id>/<coleccion>/<documento>
+     (las reglas de seguridad ya controlan lectura/escritura según el rol asignado)
+-->
+</head>
+<body>
+<script type="module">
+import { iniciarApp, db } from '../../core/core.js';
+// import { collection, addDoc, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+// Ejemplo: const col = collection(db, 'datos', APP_ID, 'registros');
+
+const APP_ID = 'par';
+
+function render(modulo, ctx) {
+  const m = ctx.modulos.find(x => x.id === modulo);
+  ctx.main.innerHTML = `
+    <div class="eyebrow rise">${ctx.app.nombre}</div>
+    <h1 class="h-display rise d1" style="font-size:38px;margin-top:12px">${m ? m.nombre : 'Inicio'}</h1>
+    <div class="glass rise d2" style="margin-top:26px;min-height:360px;display:flex;align-items:center;justify-content:center;padding:40px;text-align:center">
+      <div class="muted">Área de trabajo del módulo${ctx.puedeEscribir ? '' : ' (solo lectura)'}</div>
+    </div>`;
+}
+
+await iniciarApp({ appId: APP_ID, alCambiarModulo: render });
+</script>
+</body>
+</html>
