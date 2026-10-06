@@ -75,6 +75,16 @@ export const APPS = [
     ]
   },
   {
+    id: 'fmt', nombre: 'Registro de formatos', sub: 'Plantillas, revisiones y lista maestra',
+    grupo: 'op', estado: 'dev', fase: 'F8', color: '#F7E07C', url: 'apps/fmt/',
+    icon: 'M7 3h8l4 4v14H7zM15 3v4h4M10 11h6M10 15h6M10 19h3',
+    modulos: [
+      { id: 'plantillas', nombre: 'Plantillas' },
+      { id: 'maestra', nombre: 'Lista maestra' },
+      { id: 'config', nombre: 'Configuración' }
+    ]
+  },
+  {
     id: 'eq', nombre: 'Equipos', sub: 'Base maestra de equipos de planta',
     grupo: 'mae', estado: 'plan', fase: 'F3', color: '#A9B4FF', url: null,
     icon: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1',

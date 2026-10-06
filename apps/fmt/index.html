@@ -1,0 +1,1229 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registro de formatos · SIM</title>
+<link rel="stylesheet" href="../../core/sim.css">
+<style>
+  .pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+  .pagehead h1{font-size:36px;margin-top:12px}
+  .acciones{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
+  .kpi{padding:18px 20px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1)}
+  .kpi span{display:block;font-size:12.5px;color:var(--tx-3)}
+  .kpi b{display:block;font-family:var(--f-display);font-weight:600;font-size:28px;margin-top:6px}
+  .filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+  .filtros .chip{height:36px;padding:0 14px;font-size:13px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+  .fcard{text-align:left;padding:20px;border-radius:20px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);transition:transform .25s var(--ease),border-color .25s,background .25s;animation:rise .6s var(--ease) both;display:flex;flex-direction:column;gap:10px;min-height:178px}
+  .fcard:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.28);background:rgba(255,255,255,.08)}
+  .cod{font-family:var(--f-mono);font-size:12.5px;padding:4px 10px;border-radius:8px;background:rgba(111,227,207,.14);color:var(--mint-2);display:inline-block}
+  .fcard h3{margin:0;font-family:var(--f-display);font-weight:600;font-size:16.5px;line-height:1.3}
+  .meta{font-size:13px;color:var(--tx-2)}
+  .ctrl{display:flex;gap:14px;font-family:var(--f-mono);font-size:12px;color:var(--tx-3);margin-top:auto;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)}
+  .vacio{padding:48px 28px;text-align:center}
+  .vacio h2{font-family:var(--f-display);font-weight:600;font-size:22px;margin:0 0 10px}
+
+  /* editor */
+  .ed-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .ed-tit{display:flex;flex-direction:column;gap:8px;min-width:0}
+  .ed-tit h1{font-size:28px;line-height:1.2}
+  .guardado{font-size:12.5px;color:var(--tx-3);display:inline-flex;align-items:center;gap:8px}
+  .ed-tabs{display:none;gap:8px;margin-bottom:16px}
+  .ed-grid{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);gap:22px;align-items:start}
+  .ed-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .panel{padding:20px 22px;border-radius:20px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1)}
+  .panel-h{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+  .panel-h h3{margin:0;font-family:var(--f-display);font-weight:600;font-size:16px}
+  .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .field.sm{height:40px;font-size:14px;padding:0 12px;border-radius:10px}
+  select.field.sm{padding-right:32px;background-position:right 10px center}
+  .seg{display:inline-flex;padding:4px;border-radius:12px;background:rgba(14,22,30,.32);border:1px solid rgba(255,255,255,.12)}
+  .seg button{height:36px;padding:0 14px;border:0;border-radius:9px;background:transparent;font-size:13.5px;color:var(--tx-2)}
+  .seg button.on{background:var(--mint);color:var(--mint-ink);font-weight:600}
+  .sec{border-radius:18px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.1);overflow:hidden;animation:rise .5s var(--ease) both}
+  .sec-h{display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08);flex-wrap:wrap}
+  .sec-h .n{width:28px;height:28px;border-radius:8px;background:rgba(111,227,207,.16);color:var(--mint-2);font-family:var(--f-mono);font-size:12.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .sec-h input{flex:1 1 140px;min-width:0}
+  .sec-b{padding:14px}
+  .tag{font-size:11.5px;font-weight:600;letter-spacing:.3px;padding:4px 10px;border-radius:999px;background:rgba(169,180,255,.16);color:#C5CCFF;white-space:nowrap}
+  .ib{width:34px;height:34px;border-radius:9px;border:1px solid transparent;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:var(--tx-2);flex-shrink:0;transition:background .2s,color .2s}
+  .ib:hover{background:rgba(255,255,255,.09);color:#fff}
+  .ib.del:hover{background:rgba(255,143,143,.14);color:#FFB3B3}
+  .ib:disabled{opacity:.3;cursor:default;background:transparent}
+  .fila{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 12px;border-radius:12px;background:rgba(14,22,30,.22);border:1px solid rgba(255,255,255,.07);margin-bottom:8px;cursor:pointer;transition:border-color .2s}
+  .fila:hover{border-color:rgba(255,255,255,.22)}
+  .fila .et{flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fila .et sup{color:var(--amber-2)}
+  .fila .tp{font-size:12px;color:var(--tx-3);white-space:nowrap}
+  .addrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .btn.sm{height:38px;padding:0 14px;font-size:13px;border-radius:10px}
+  .prow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) minmax(0,.8fr);grid-template-areas:"nom nom nom acts" "tip uni min max";gap:6px;padding:8px;border-radius:12px;background:rgba(14,22,30,.22);border:1px solid rgba(255,255,255,.07);margin-bottom:8px}
+  .prow .p-nom{grid-area:nom}.prow .acts{grid-area:acts;justify-self:end}.prow .p-tip{grid-area:tip}.prow .p-uni{grid-area:uni}.prow .p-min{grid-area:min}.prow .p-max{grid-area:max}
+  .prow .ops{grid-column:2/5}
+  .pf{display:flex;align-items:center;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(14,22,30,.32);transition:border-color .25s,box-shadow .25s;min-width:0}
+  .pf:focus-within{border-color:var(--mint);box-shadow:0 0 0 4px rgba(111,227,207,.15)}
+  .pf span{font-family:var(--f-mono);font-size:11px;color:var(--tx-3);padding:0 0 0 10px;white-space:nowrap}
+  .pf input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:var(--tx);font-size:14px;padding:0 10px 0 6px;outline:none}
+  .pf input:disabled{opacity:.45}
+  .acts{display:flex;gap:2px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .chipx{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 6px 0 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:13px}
+  .chipx button{width:24px;height:24px;border:0;border-radius:50%;background:transparent;color:var(--tx-3);display:flex;align-items:center;justify-content:center}
+  .chipx button:hover{background:rgba(255,143,143,.18);color:#FFB3B3}
+  .irow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .irow .num{width:26px;font-family:var(--f-mono);font-size:12px;color:var(--tx-3);text-align:right;flex-shrink:0}
+  .addsec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .addsec button{text-align:left;padding:14px 16px;border-radius:14px;border:1px dashed rgba(255,255,255,.22);background:transparent;transition:background .2s,border-color .2s}
+  .addsec button:hover{background:rgba(111,227,207,.08);border-color:var(--mint)}
+  .addsec b{display:block;font-size:14px;font-weight:600}
+  .addsec span{display:block;font-size:12px;color:var(--tx-3);margin-top:3px}
+  .val{font-size:13.5px;line-height:1.55}
+  .val li{margin-bottom:4px}
+  .prev{position:sticky;top:16px}
+  .prev-box{border-radius:18px;background:#56626F;border:1px solid rgba(255,255,255,.12);padding:14px;overflow:hidden}
+  .prev-esc{transform-origin:top left}
+  .prev-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .hist td,.hist th{padding:10px 12px!important;font-size:13px!important}
+  .ro .solo-ed{display:none!important}
+  .menu{position:relative}
+  .menu-l{position:absolute;right:0;top:calc(100% + 6px);z-index:25;min-width:230px;padding:6px;border-radius:14px;background:#3A4757;border:1px solid var(--line-2);box-shadow:0 30px 60px -20px rgba(6,12,18,.8);animation:rise .3s var(--ease) both}
+  .menu-l button{width:100%;height:40px;padding:0 12px;border:0;border-radius:9px;background:transparent;text-align:left;font-size:14px;color:var(--tx)}
+  .menu-l button:hover{background:rgba(255,255,255,.08)}
+  .menu-l button.del{color:#FFB3B3}
+  .tbl-wrap{overflow-x:auto}
+  .sub td{background:rgba(14,22,30,.25)}
+  .resumen{display:grid;grid-template-columns:minmax(0,1.7fr) repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
+  .resumen div{padding:12px 14px;border-radius:12px;background:rgba(14,22,30,.3)}
+  .resumen span{display:block;font-size:11.5px;color:var(--tx-3)}
+  .resumen b{display:block;font-family:var(--f-mono);font-size:14px;margin-top:4px;word-break:break-all}
+  .logo-prev{height:90px;border-radius:14px;border:1px dashed rgba(255,255,255,.24);background:#fff;display:flex;align-items:center;justify-content:center;padding:10px}
+  .logo-prev img{max-height:100%;max-width:100%;object-fit:contain}
+  @media (max-width:1280px){
+    .ed-tabs{display:flex}
+    .ed-grid{grid-template-columns:minmax(0,1fr)}
+    .ed-grid[data-tab="diseno"] .prev{display:none}
+    .ed-grid[data-tab="prev"] .ed-col{display:none}
+    .prev{position:static}
+  }
+  @media (max-width:900px){
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .pagehead h1{font-size:30px}
+    .resumen{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media (max-width:640px){
+    .g2,.g3,.addsec{grid-template-columns:minmax(0,1fr)}
+    .prow{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"nom nom" "tip uni" "min max" "acts acts"}
+    .prow .ops{grid-column:1/-1}
+    .panel{padding:16px}
+    .ed-tit h1{font-size:23px}
+  }
+</style>
+</head>
+<body>
+<script type="module">
+import { iniciarApp, toast } from '../../core/core.js';
+import * as D from './datos.js';
+import { renderHoja, HOJA_CSS } from './hoja.js';
+import {
+  SISTEMAS, FRECUENCIAS, TIPOS_CAMPO, TIPOS_FILA, TIPOS_SECCION, CONFIG_BASE,
+  uid, clonar, esc, mesClave, mesAbrev, revTxt, numCodigo, formatoCodigo, sistemaDeCodigo,
+  codigoCompleto, siguienteCodigo, defVacia, seccionNueva, campoNuevo, filaNueva, rangoTxt, validarDef, pilotos
+} from './modelo.js';
+
+document.head.insertAdjacentHTML('beforeend', `<style>${HOJA_CSS}</style>`);
+
+// ---------------- iconos ----------------
+const I = (d, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+const IC = {
+  mas: I('M12 5v14M5 12h14'), up: I('M12 19V5M6 11l6-6 6 6', 16), down: I('M12 5v14M6 13l6 6 6-6', 16),
+  x: I('M6 6l12 12M18 6L6 18', 16), del: I('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3', 16),
+  edit: I('M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4', 16), back: I('M19 12H5M11 6l-6 6 6 6'),
+  print: I('M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z'), send: I('M5 12l14-7-5 15-3-6zM11 14l3-3'),
+  more: I('M5 12h.01M12 12h.01M19 12h.01', 20), xls: I('M4 4h16v16H4zM4 10h16M10 4v16'),
+  hist: I('M12 8v4l3 2M3 12a9 9 0 1 0 3-6.7M3 4v4h4'), copy: I('M9 9h11v11H9zM5 15H4V4h11v1')
+};
+
+// ---------------- estado ----------------
+let CTX = null;
+let CFG = clonar(CONFIG_BASE);
+let PLANT = [];
+let ED = null;           // editor abierto: { id, trabajo, vista, timer, guardando, sucio }
+let FIL = { sistema: 'all', estado: 'activos', q: '' };
+let FIL_M = { estado: 'vigentes' };
+
+const esAdminApp = () => CTX && CTX.rol === 'admin';
+const usuario = () => CTX?.perfil?.nombre || CTX?.user?.email || '';
+const plant = (id) => PLANT.find(p => p.id === id);
+const sistemaNombre = (id) => (SISTEMAS.find(s => s.id === id) || {}).nombre || '—';
+const ordenar = (a) => a.sort((x, y) => numCodigo(x.codigo) - numCodigo(y.codigo));
+
+const ESTADO_UI = {
+  borrador: { label: 'Borrador', bg: 'rgba(245,185,74,.16)', fg: '#FFCF73' },
+  vigente:  { label: 'Vigente', bg: 'rgba(111,227,207,.16)', fg: '#8FF0DE' },
+  cambios:  { label: 'Vigente · cambios sin emitir', bg: 'rgba(169,180,255,.16)', fg: '#C5CCFF' },
+  obsoleto: { label: 'Obsoleto', bg: 'rgba(255,143,143,.14)', fg: '#FFB3B3' }
+};
+const estadoDe = (p) => p.estado === 'vigente' && p.trabajo ? 'cambios' : p.estado;
+const pillEstado = (p) => { const e = ESTADO_UI[estadoDe(p)]; return `<span class="pill" style="background:${e.bg};color:${e.fg}">${e.label}</span>`; };
+
+// ---------------- impresión ----------------
+// Se imprime desde un iframe aislado: solo la hoja, con su tamaño de página.
+function imprimir(html, horizontal, titulo = 'Formato') {
+  document.getElementById('printFrame')?.remove();
+  const f = document.createElement('iframe');
+  f.id = 'printFrame';
+  f.setAttribute('aria-hidden', 'true');
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  f.srcdoc = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(titulo)}</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400&display=swap">
+    <style>@page{size:A4 ${horizontal ? 'landscape' : 'portrait'};margin:0}html,body{margin:0;background:#fff}${HOJA_CSS}.hoja{min-height:0}.hoja+.hoja{break-before:page}</style>
+    </head><body>${html}</body></html>`;
+  f.onload = async () => {
+    try { await Promise.race([f.contentDocument.fonts.ready, new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
+    const t0 = document.title;
+    document.title = titulo;
+    setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => { document.title = t0; }, 1000); }, 120);
+  };
+  document.body.appendChild(f);
+}
+
+// ---------------- modales ----------------
+function modal({ titulo, cuerpo, pie, ancho = 640 }) {
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `<form class="modal" novalidate style="max-width:${ancho}px">
+    <div class="modal-h"><div style="font-family:var(--f-display);font-weight:600;font-size:20px">${titulo}</div>
+      <button type="button" class="btn btn-icon" data-x aria-label="Cerrar">${IC.x}</button></div>
+    <div class="modal-b">${cuerpo}<div class="alert err" data-err style="margin-top:16px" hidden></div></div>
+    <div class="modal-f">${pie}</div></form>`;
+  document.body.appendChild(bg);
+  const cerrar = () => bg.remove();
+  bg.querySelectorAll('[data-x]').forEach(b => b.onclick = cerrar);
+  bg.addEventListener('mousedown', (e) => { if (e.target === bg) cerrar(); });
+  const $ = (s) => bg.querySelector(s);
+  const err = (t) => { const e = $('[data-err]'); e.hidden = !t; e.textContent = t || ''; };
+  return { bg, $, cerrar, err, form: bg.querySelector('form') };
+}
+
+function confirmar(titulo, texto, { boton = 'Confirmar', peligro = false } = {}) {
+  return new Promise((res) => {
+    const m = modal({ titulo, cuerpo: `<p class="muted" style="margin:0;line-height:1.6">${texto}</p>`, pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn ${peligro ? 'btn-danger' : 'btn-primary'}">${boton}</button>`, ancho: 480 });
+    m.bg.querySelectorAll('[data-x]').forEach(b => b.addEventListener('click', () => res(false)));
+    m.form.onsubmit = (e) => { e.preventDefault(); m.cerrar(); res(true); };
+  });
+}
+
+// =====================================================================
+// MÓDULO PLANTILLAS — lista
+// =====================================================================
+function filtrarPlantillas() {
+  const q = FIL.q.trim().toLowerCase();
+  return ordenar(PLANT.filter(p => {
+    if (FIL.sistema !== 'all' && p.sistema !== FIL.sistema) return false;
+    if (FIL.estado === 'activos' && p.estado === 'obsoleto') return false;
+    if (FIL.estado !== 'activos' && FIL.estado !== 'todos' && estadoDe(p) !== FIL.estado) return false;
+    if (q && !`${p.codigo} ${(p.trabajo || p.def || {}).nombre || ''}`.toLowerCase().includes(q)) return false;
+    return true;
+  }));
+}
+
+function pintarCards(main) {
+  const box = main.querySelector('#cards');
+  if (!box) return;
+  const visibles = filtrarPlantillas();
+  box.innerHTML = visibles.map((p, i) => {
+    const d = p.trabajo || p.def || {};
+    return `<button class="fcard" data-id="${p.id}" style="animation-delay:${(0.04 * i).toFixed(2)}s">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="cod">${esc(codigoCompleto(CFG, p.codigo))}</span>${pillEstado(p)}</div>
+      <h3>${esc(d.nombre || 'Sin nombre')}</h3>
+      <div class="meta">${esc(sistemaNombre(p.sistema))} · ${esc(d.frecuencia || '')}</div>
+      <div class="ctrl">${p.def ? `<span>Ver. ${esc(p.versionManual)}</span><span>Rev. ${revTxt(p.revision)}</span><span>${mesAbrev(p.fecha)}</span>` : '<span>Sin emitir</span>'}</div>
+    </button>`;
+  }).join('') || '<div class="muted" style="padding:20px 4px">Ningún formato coincide con el filtro.</div>';
+  box.querySelectorAll('[data-id]').forEach(b => b.onclick = () => abrirEditor(b.dataset.id));
+}
+
+function vistaPlantillas(main) {
+  if (ED) return vistaEditor(main);
+  const cuenta = (e) => PLANT.filter(p => estadoDe(p) === e).length;
+  main.innerHTML = `
+    <div class="pagehead">
+      <div><div class="eyebrow rise">Registro de formatos</div><h1 class="h-display rise d1">Plantillas</h1></div>
+      <div class="acciones rise d2">${esAdminApp() && PLANT.length ? `<button class="btn btn-primary" id="bNuevo">${IC.mas}Nuevo formato</button>` : ''}</div>
+    </div>
+    ${PLANT.length ? `
+    <div class="kpis rise d2">
+      <div class="kpi"><span>Vigentes</span><b style="color:var(--mint-2)">${cuenta('vigente') + cuenta('cambios')}</b></div>
+      <div class="kpi"><span>Con cambios sin emitir</span><b style="color:#C5CCFF">${cuenta('cambios')}</b></div>
+      <div class="kpi"><span>Borradores</span><b style="color:var(--amber-2)">${cuenta('borrador')}</b></div>
+      <div class="kpi"><span>Obsoletos</span><b style="color:#FFB3B3">${cuenta('obsoleto')}</b></div>
+    </div>
+    <div class="filtros rise d3">
+      <button class="chip ${FIL.sistema === 'all' ? 'on' : ''}" data-s="all">Todos</button>
+      ${SISTEMAS.filter(s => PLANT.some(p => p.sistema === s.id)).map(s => `<button class="chip ${FIL.sistema === s.id ? 'on' : ''}" data-s="${s.id}">${esc(s.nombre)}</button>`).join('')}
+      <span style="flex-grow:1"></span>
+      <label class="sr" for="fEst">Estado</label>
+      <select class="field sm" id="fEst" style="width:auto;min-width:170px">
+        ${[['activos', 'Activos'], ['vigente', 'Vigentes'], ['cambios', 'Con cambios sin emitir'], ['borrador', 'Borradores'], ['obsoleto', 'Obsoletos'], ['todos', 'Todos']].map(([v, l]) => `<option value="${v}" ${FIL.estado === v ? 'selected' : ''}>${l}</option>`).join('')}
+      </select>
+      <label class="sr" for="fQ">Buscar</label>
+      <input class="field sm" id="fQ" type="search" placeholder="Buscar código o nombre" value="${esc(FIL.q)}" style="flex:0 1 240px;min-width:0">
+    </div>
+    <div class="cards" id="cards"></div>`
+    : `<div class="glass vacio rise d2">
+        <h2>Aún no hay formatos</h2>
+        <p class="muted" style="max-width:520px;margin:0 auto 24px;line-height:1.6">${esAdminApp() ? 'Puede cargar los formatos piloto R-001, R-002 y R-101 como borradores para revisarlos y emitirlos, o crear uno desde cero.' : 'Todavía no hay formatos emitidos.'}</p>
+        ${esAdminApp() ? `<div class="acciones" style="justify-content:center"><button class="btn btn-primary" id="bPilotos">Cargar formatos piloto</button><button class="btn" id="bNuevo2">${IC.mas}Nuevo formato</button></div>` : ''}
+      </div>`}`;
+  const $ = (s) => main.querySelector(s);
+  if ($('#bNuevo')) $('#bNuevo').onclick = () => modalNuevo();
+  if ($('#bNuevo2')) $('#bNuevo2').onclick = () => modalNuevo();
+  if ($('#bPilotos')) $('#bPilotos').onclick = cargarPilotos;
+  main.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+    FIL.sistema = b.dataset.s === 'all' ? 'all' : Number(b.dataset.s);
+    main.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b));
+    pintarCards(main);
+  });
+  if ($('#fEst')) $('#fEst').onchange = (e) => { FIL.estado = e.target.value; pintarCards(main); };
+  if ($('#fQ')) $('#fQ').oninput = (e) => { FIL.q = e.target.value; pintarCards(main); };
+  pintarCards(main);
+}
+
+async function cargarPilotos() {
+  const btn = document.getElementById('bPilotos');
+  btn.disabled = true; btn.textContent = 'Cargando…';
+  try {
+    if (!CFG.existe) { await D.guardarConfig(CFG); CFG.existe = true; }
+    for (const pl of pilotos()) {
+      if (PLANT.some(p => p.codigo === pl.codigo)) continue;
+      const sistema = sistemaDeCodigo(pl.codigo).id;
+      await D.crearPlantilla({ codigo: pl.codigo, sistema, trabajo: pl.def }, usuario());
+    }
+    PLANT = await D.listarPlantillas();
+    toast('Formatos piloto cargados como borradores.');
+  } catch (e) { toast('No se pudo cargar: ' + (e.code || e.message), 'err'); }
+  render();
+}
+
+function modalNuevo(base = null) {
+  const sis0 = base ? base.sistema : (FIL.sistema === 'all' ? 0 : FIL.sistema);
+  const m = modal({
+    titulo: base ? 'Duplicar formato' : 'Nuevo formato',
+    cuerpo: `<div class="g2">
+      <div><label class="label" for="nSis">Sistema</label><select class="field" id="nSis">${SISTEMAS.map(s => `<option value="${s.id}" ${s.id === sis0 ? 'selected' : ''}>${esc(s.nombre)} (R-${String(s.desde).padStart(3, '0')} a R-${s.hasta})</option>`).join('')}</select></div>
+      <div><label class="label" for="nCod">Código</label><input class="field mono" id="nCod"></div>
+      <div style="grid-column:1/-1"><label class="label" for="nNom">Nombre del formato</label><input class="field" id="nNom" value="${esc(base ? base.nombre + ' (copia)' : '')}" placeholder="Registro de parámetros de caldero"></div>
+      <div><label class="label" for="nFre">Frecuencia</label><select class="field" id="nFre">${FRECUENCIAS.map(f => `<option ${f === (base?.frecuencia || 'Por evento') ? 'selected' : ''}>${f}</option>`).join('')}</select></div>
+      <div><label class="label" for="nOri">Orientación de impresión</label><select class="field" id="nOri"><option value="vertical">Vertical</option><option value="horizontal" ${base?.orientacion === 'horizontal' ? 'selected' : ''}>Horizontal</option></select></div>
+    </div>
+    <div class="muted" style="font-size:13px;margin-top:14px">El código completo será <b class="mono" id="nFull"></b>. Se crea como borrador.</div>`,
+    pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary">${base ? 'Duplicar' : 'Crear borrador'}</button>`
+  });
+  const sug = () => { m.$('#nCod').value = siguienteCodigo(Number(m.$('#nSis').value), PLANT) || ''; full(); };
+  const full = () => { m.$('#nFull').textContent = codigoCompleto(CFG, normalizarCodigo(m.$('#nCod').value) || 'R-000'); };
+  m.$('#nSis').onchange = sug; m.$('#nCod').oninput = full; sug();
+  setTimeout(() => m.$('#nNom').focus(), 50);
+  m.form.onsubmit = async (e) => {
+    e.preventDefault(); m.err('');
+    const sistema = Number(m.$('#nSis').value);
+    const codigo = normalizarCodigo(m.$('#nCod').value);
+    const nombre = m.$('#nNom').value.trim();
+    const e1 = errorCodigo(codigo, sistema, null);
+    if (e1) return m.err(e1);
+    if (!nombre) return m.err('Ingrese el nombre del formato.');
+    const trabajo = base ? clonar(base) : defVacia();
+    delete trabajo.sistema;
+    Object.assign(trabajo, { nombre, frecuencia: m.$('#nFre').value, orientacion: m.$('#nOri').value });
+    if (base) renovarIds(trabajo);
+    try {
+      if (!CFG.existe) { await D.guardarConfig(CFG); CFG.existe = true; }
+      const id = await D.crearPlantilla({ codigo, sistema, trabajo }, usuario());
+      PLANT = await D.listarPlantillas();
+      m.cerrar();
+      abrirEditor(id);
+    } catch (er) { m.err('No se pudo crear: ' + (er.code || er.message)); }
+  };
+}
+
+function normalizarCodigo(v) {
+  const n = parseInt(String(v || '').replace(/\D/g, ''), 10);
+  return n ? formatoCodigo(n) : '';
+}
+function errorCodigo(codigo, sistema, idActual) {
+  if (!codigo) return 'Ingrese un código válido (por ejemplo R-102).';
+  const s = SISTEMAS.find(x => x.id === sistema);
+  const n = numCodigo(codigo);
+  if (n < s.desde || n > s.hasta) return `Para ${s.nombre} el código debe estar entre R-${String(s.desde).padStart(3, '0')} y R-${s.hasta}.`;
+  if (PLANT.some(p => p.id !== idActual && p.codigo === codigo)) return `El código ${codigo} ya está en uso.`;
+  return '';
+}
+// al duplicar, los campos reciben ids nuevos (y las duraciones se reapuntan)
+function renovarIds(def) {
+  const mapa = {};
+  def.secciones.forEach(s => {
+    s.id = uid();
+    (s.campos || []).forEach(c => { const n = uid(); mapa[c.id] = n; c.id = n; });
+    (s.filas || []).forEach(f => f.id = uid());
+    (s.items || []).forEach(x => x.id = uid());
+    if (s.tipo === 'lista') s.columnas.forEach(c => c.id = uid());
+  });
+  def.secciones.forEach(s => (s.campos || []).forEach(c => { if (c.desde) c.desde = mapa[c.desde] || ''; if (c.hasta) c.hasta = mapa[c.hasta] || ''; }));
+}
+
+// =====================================================================
+// EDITOR DE PLANTILLA
+// =====================================================================
+function abrirEditor(id) {
+  const p = plant(id);
+  if (!p) return;
+  ED = { id, trabajo: clonar(p.trabajo || p.def), vista: 'trabajo', tab: 'diseno', sucio: false, timer: null, guardando: false };
+  render();
+}
+
+async function cerrarEditor() {
+  await guardarAhora();
+  ED = null;
+  render();
+}
+
+const editable = () => esAdminApp();
+
+function cambio(repintar = true) {
+  ED.sucio = true;
+  marcarGuardado();
+  if (repintar) pintarDiseno();
+  pintarCabecera();
+  pintarPrev();
+  pintarValidacion();
+  clearTimeout(ED.timer);
+  ED.timer = setTimeout(guardarAhora, 1100);
+}
+
+async function guardarAhora() {
+  if (!ED || !ED.sucio || !editable()) return;
+  clearTimeout(ED.timer);
+  const p = plant(ED.id);
+  const ed = ED;
+  ed.sucio = false; ed.guardando = true; marcarGuardado();
+  // en un formato emitido, si el trabajo vuelve a ser igual al vigente, no hay cambios pendientes
+  let trabajo = clonar(ed.trabajo);
+  if (p.def && JSON.stringify(trabajo) === JSON.stringify(p.def)) trabajo = null;
+  const cambios = { trabajo };
+  if (p.estado === 'borrador' && ed.codigoNuevo) { Object.assign(cambios, ed.codigoNuevo); }
+  try {
+    await D.guardarTrabajo(p.id, cambios, usuario());
+    Object.assign(p, cambios);
+    ed.codigoNuevo = null;
+  } catch (e) { ed.sucio = true; toast('No se pudo guardar: ' + (e.code || e.message), 'err'); }
+  ed.guardando = false;
+  if (ED === ed) { marcarGuardado(); pintarCabecera(); }
+}
+
+function marcarGuardado() {
+  const el = document.getElementById('edGuard');
+  if (!el || !ED) return;
+  el.innerHTML = ED.guardando ? '<span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Guardando…'
+    : ED.sucio ? 'Cambios sin guardar' : '<span class="live"></span>Guardado';
+}
+
+// datos del encabezado según lo que se muestra
+function encabezado(p, vista) {
+  if (vista === 'vigente' && p.def) return { def: p.def, version: p.versionManual, revision: p.revision, fecha: p.fecha, marca: p.estado === 'obsoleto' ? 'OBSOLETO' : '' };
+  const pendiente = p.estado === 'borrador' || !!p.trabajo || (p.def && JSON.stringify(ED?.trabajo) !== JSON.stringify(p.def));
+  if (p.estado === 'borrador') return { def: ED.trabajo, version: CFG.versionManual, revision: 1, fecha: mesClave(), marca: 'BORRADOR' };
+  if (p.estado === 'obsoleto' && !pendiente) return { def: ED.trabajo, version: p.versionManual, revision: p.revision, fecha: p.fecha, marca: 'OBSOLETO' };
+  if (!pendiente) return { def: ED.trabajo, version: p.versionManual, revision: p.revision, fecha: p.fecha, marca: '' };
+  const nuevaRev = p.versionManual !== CFG.versionManual ? 1 : p.revision + 1;
+  return { def: ED.trabajo, version: CFG.versionManual, revision: nuevaRev, fecha: mesClave(), marca: 'SIN EMITIR' };
+}
+
+function vistaEditor(main) {
+  const p = plant(ED.id);
+  if (!p) { ED = null; return vistaPlantillas(main); }
+  main.innerHTML = `
+    <div class="${editable() ? '' : 'ro'}" id="edRoot">
+      <div class="ed-top">
+        <div class="ed-tit">
+          <button class="btn sm" id="edBack" style="align-self:flex-start">${IC.back}Plantillas</button>
+          <div id="edCab"></div>
+        </div>
+        <div class="acciones" id="edAcc"></div>
+      </div>
+      <div id="edAviso"></div>
+      <div class="ed-tabs"><div class="seg"><button data-tab="diseno" class="${ED.tab === 'diseno' ? 'on' : ''}">Diseño</button><button data-tab="prev" class="${ED.tab === 'prev' ? 'on' : ''}">Vista previa</button></div></div>
+      <div class="ed-grid" data-tab="${ED.tab}" id="edGrid">
+        <div class="ed-col" id="edDis"></div>
+        <div class="prev">
+          <div class="prev-bar">
+            <div class="muted" style="font-size:13px">Vista de impresión · A4 ${ED.trabajo.orientacion === 'horizontal' ? 'horizontal' : 'vertical'}</div>
+            <div id="prevSel"></div>
+          </div>
+          <div class="prev-box" id="prevBox"><div class="prev-esc" id="prevEsc"></div></div>
+        </div>
+      </div>
+    </div>`;
+  main.querySelector('#edBack').onclick = cerrarEditor;
+  main.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
+    ED.tab = b.dataset.tab;
+    main.querySelector('#edGrid').dataset.tab = ED.tab;
+    main.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x.dataset.tab === ED.tab));
+    ajustarPrev();
+  });
+  pintarCabecera();
+  pintarDiseno();
+  pintarPrev();
+}
+
+function pintarCabecera() {
+  const p = plant(ED?.id);
+  const cab = document.getElementById('edCab');
+  if (!p || !cab) return;
+  const d = ED.trabajo;
+  cab.innerHTML = `
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="cod">${esc(codigoCompleto(CFG, ED.codigoNuevo?.codigo || p.codigo))}</span>${pillEstado({ ...p, trabajo: p.trabajo || (ED.sucio && p.def ? 1 : null) })}</div>
+    <h1 class="h-display">${esc(d.nombre || 'Sin nombre')}</h1>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+      <span class="mono" style="font-size:12.5px;color:var(--tx-3)">${p.def ? `Vigente: Ver. ${esc(p.versionManual)} · Rev. ${revTxt(p.revision)} · ${mesAbrev(p.fecha)}` : 'Sin emitir'}</span>
+      ${editable() ? '<span class="guardado" id="edGuard"></span>' : ''}
+    </div>`;
+  marcarGuardado();
+
+  const pendiente = p.estado === 'borrador' || !!p.trabajo || ED.sucio;
+  const acc = document.getElementById('edAcc');
+  const accEmitir = p.estado === 'borrador' ? 'Emitir formato' : p.estado === 'obsoleto' ? 'Reactivar' : 'Emitir nueva revisión';
+  acc.innerHTML = `
+    <button class="btn" id="bPrint">${IC.print}Imprimir</button>
+    ${editable() && (pendiente || p.estado === 'obsoleto') ? `<button class="btn btn-primary" id="bEmitir">${IC.send}${accEmitir}</button>` : ''}
+    <div class="menu"><button class="btn btn-icon" id="bMas" aria-label="Más acciones">${IC.more}</button></div>`;
+  acc.querySelector('#bPrint').onclick = () => {
+    const h = encabezado(p, ED.vista);
+    const cod = ED.codigoNuevo?.codigo || p.codigo;
+    imprimir(renderHoja({ cfg: CFG, codigo: cod, ...h }), h.def.orientacion === 'horizontal', `${cod} ${h.def.nombre || ''}`.trim());
+  };
+  if (acc.querySelector('#bEmitir')) acc.querySelector('#bEmitir').onclick = modalEmitir;
+  acc.querySelector('#bMas').onclick = (e) => {
+    e.stopPropagation();
+    const caja = acc.querySelector('.menu');
+    const ya = caja.querySelector('.menu-l');
+    if (ya) return ya.remove();
+    const ops = [['hist', `${IC.hist} Historial de revisiones`]];
+    if (editable()) {
+      ops.push(['dup', `${IC.copy} Duplicar como formato nuevo`]);
+      if (p.estado === 'vigente' && p.trabajo) ops.push(['desc', 'Descartar cambios sin emitir']);
+      if (p.estado === 'vigente') ops.push(['obs', 'Marcar como obsoleto']);
+      if (p.estado === 'borrador') ops.push(['elim', `${IC.del} Eliminar borrador`, 'del']);
+    }
+    caja.insertAdjacentHTML('beforeend', `<div class="menu-l">${ops.map(([k, t, c]) => `<button type="button" data-op="${k}" class="${c || ''}" style="display:flex;align-items:center;gap:10px">${t}</button>`).join('')}</div>`);
+    caja.querySelectorAll('[data-op]').forEach(b => b.onclick = () => { caja.querySelector('.menu-l').remove(); accionMenu(b.dataset.op); });
+    setTimeout(() => document.addEventListener('click', function f() { caja.querySelector('.menu-l')?.remove(); document.removeEventListener('click', f); }), 0);
+  };
+
+  const aviso = document.getElementById('edAviso');
+  if (aviso) {
+    let t = '', cls = 'warn';
+    if (p.estado === 'borrador') t = 'Borrador: no estará disponible para el llenado hasta que se emita. Al emitirse queda como Revisión 1.0 con la versión vigente del manual.';
+    else if (p.estado === 'obsoleto') { t = 'Formato obsoleto: no está disponible para el llenado. Puede reactivarlo emitiendo una nueva revisión.'; cls = 'err'; }
+    else if (p.trabajo || ED.sucio) t = `Hay cambios sin emitir. El formato en uso sigue siendo la Revisión ${revTxt(p.revision)}.`;
+    else if (editable()) { t = 'Formato vigente. Los cambios que haga quedan pendientes hasta emitir una nueva revisión.'; cls = 'ok'; }
+    aviso.innerHTML = t ? `<div class="alert ${cls} rise" style="margin-bottom:18px">${t}</div>` : '';
+  }
+  const sel = document.getElementById('prevSel');
+  if (sel) {
+    const hayVig = !!p.def && (p.trabajo || ED.sucio);
+    sel.innerHTML = hayVig ? `<div class="seg"><button data-v="trabajo" class="${ED.vista === 'trabajo' ? 'on' : ''}">En edición</button><button data-v="vigente" class="${ED.vista === 'vigente' ? 'on' : ''}">Vigente</button></div>` : '';
+    if (!hayVig) ED.vista = 'trabajo';
+    sel.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { ED.vista = b.dataset.v; pintarCabecera(); pintarPrev(); });
+  }
+}
+
+async function accionMenu(op) {
+  const p = plant(ED.id);
+  if (op === 'hist') return modalHistorial(p);
+  if (op === 'dup') { await guardarAhora(); return modalNuevo({ ...clonar(ED.trabajo), sistema: p.sistema }); }
+  if (op === 'desc') {
+    if (!await confirmar('Descartar cambios', 'Se descartan los cambios sin emitir y se vuelve a la revisión vigente.', { boton: 'Descartar', peligro: true })) return;
+    clearTimeout(ED.timer); ED.sucio = false;
+    try { await D.guardarTrabajo(p.id, { trabajo: null }, usuario()); p.trabajo = null; ED.trabajo = clonar(p.def); toast('Cambios descartados.'); }
+    catch (e) { toast('No se pudo descartar: ' + (e.code || e.message), 'err'); }
+    return render();
+  }
+  if (op === 'obs') return modalObsoleto(p);
+  if (op === 'elim') {
+    if (!await confirmar('Eliminar borrador', `Se elimina el borrador ${esc(p.codigo)}. Esta acción no se puede deshacer.`, { boton: 'Eliminar', peligro: true })) return;
+    clearTimeout(ED.timer);
+    try { await D.eliminarPlantilla(p.id); PLANT = PLANT.filter(x => x.id !== p.id); ED = null; toast('Borrador eliminado.'); }
+    catch (e) { toast('No se pudo eliminar: ' + (e.code || e.message), 'err'); }
+    return render();
+  }
+}
+
+// ---------------- diseño (columna izquierda) ----------------
+function pintarDiseno() {
+  const cont = document.getElementById('edDis');
+  if (!cont || !ED) return;
+  const p = plant(ED.id);
+  const d = ED.trabajo;
+  const ro = !editable();
+  const dis = ro ? 'disabled' : '';
+  const codActual = ED.codigoNuevo?.codigo || p.codigo;
+  const sisActual = ED.codigoNuevo ? ED.codigoNuevo.sistema : p.sistema;
+  cont.innerHTML = `
+    <div class="panel">
+      <div class="panel-h"><h3>Datos del formato</h3></div>
+      <div class="g2">
+        ${p.estado === 'borrador' && !ro ? `
+          <div><label class="label" for="dSis">Sistema</label><select class="field sm" id="dSis">${SISTEMAS.map(s => `<option value="${s.id}" ${s.id === sisActual ? 'selected' : ''}>${esc(s.nombre)}</option>`).join('')}</select></div>
+          <div><label class="label" for="dCod">Código</label><input class="field sm mono" id="dCod" value="${esc(codActual)}"><div class="alert err" id="dCodErr" style="margin-top:8px;padding:8px 12px;font-size:12.5px" hidden></div></div>`
+        : `<div><div class="label">Sistema</div><div style="height:40px;display:flex;align-items:center">${esc(sistemaNombre(p.sistema))}</div></div>
+           <div><div class="label">Código</div><div class="mono" style="height:40px;display:flex;align-items:center">${esc(codigoCompleto(CFG, p.codigo))}</div></div>`}
+        <div style="grid-column:1/-1"><label class="label" for="dNom">Nombre del formato</label><input class="field sm" id="dNom" value="${esc(d.nombre)}" ${dis}></div>
+        <div><label class="label" for="dFre">Frecuencia</label><select class="field sm" id="dFre" ${dis}>${FRECUENCIAS.map(f => `<option ${f === d.frecuencia ? 'selected' : ''}>${f}</option>`).join('')}</select></div>
+        <div><div class="label">Orientación de impresión</div><div class="seg"><button type="button" data-ori="vertical" class="${d.orientacion !== 'horizontal' ? 'on' : ''}" ${dis}>Vertical</button><button type="button" data-ori="horizontal" class="${d.orientacion === 'horizontal' ? 'on' : ''}" ${dis}>Horizontal</button></div></div>
+      </div>
+      <div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:16px">
+        <label class="check"><input type="checkbox" id="dTur" ${d.datosGenerales?.turno ? 'checked' : ''} ${dis}>Registrar turno</label>
+        <label class="check"><input type="checkbox" id="dHor" ${d.datosGenerales?.hora ? 'checked' : ''} ${dis}>Registrar hora</label>
+        <label class="check"><input type="checkbox" id="dObs" ${d.observaciones ? 'checked' : ''} ${dis}>Observaciones / acción correctiva</label>
+      </div>
+    </div>
+    <div id="secs" style="display:flex;flex-direction:column;gap:14px">${d.secciones.map((s, i) => seccionEd(s, i, d.secciones.length, ro)).join('')}</div>
+    ${ro ? '' : `<div class="panel"><div class="panel-h"><h3>Agregar sección</h3></div><div class="addsec">${TIPOS_SECCION.map(t => `<button type="button" data-addsec="${t.id}"><b>${IC.mas} ${t.nombre}</b><span>${t.desc}</span></button>`).join('')}</div></div>`}
+    <div class="panel">
+      <div class="panel-h"><h3>Firmas</h3>${ro || d.firmas.length >= 4 ? '' : `<button type="button" class="btn sm" id="addFir">${IC.mas}Firma</button>`}</div>
+      ${d.firmas.map((f, i) => `<div class="irow"><span class="num">${i + 1}</span><input class="field sm" data-fir="${i}" value="${esc(f)}" placeholder="Ejecutado por" ${dis}>${ro ? '' : `<button type="button" class="ib del" data-delfir="${i}" aria-label="Quitar firma" ${d.firmas.length <= 1 ? 'disabled' : ''}>${IC.x}</button>`}</div>`).join('')}
+    </div>
+    ${ro ? '' : '<div class="panel"><div class="panel-h"><h3>Revisión antes de emitir</h3></div><div id="edVal" class="val"></div></div>'}`;
+  if (!ro) enlazarDiseno(cont);
+  pintarValidacion();
+}
+
+function seccionEd(s, i, n, ro) {
+  const tipo = TIPOS_SECCION.find(t => t.id === s.tipo);
+  const dis = ro ? 'disabled' : '';
+  let cuerpo = '';
+  if (s.tipo === 'campos') {
+    cuerpo = s.campos.map((c, j) => {
+      const t = TIPOS_CAMPO.find(x => x.id === c.tipo);
+      const extra = c.tipo === 'numero' ? [c.unidad, rangoTxt(c)].filter(Boolean).join(' · ') : c.tipo === 'seleccion' ? `${c.opciones.length} opciones` : '';
+      return `<div class="fila" data-campo="${s.id}:${c.id}">
+        <span class="et">${esc(c.etiqueta || 'Campo sin nombre')}${c.requerido ? '<sup> *</sup>' : ''}</span>
+        <span class="tp">${esc(t?.nombre || c.tipo)}${extra ? ' · ' + esc(extra) : ''}${c.ancho === 2 ? ' · ancho completo' : ''}</span>
+        ${ro ? '' : `<span class="acts"><button type="button" class="ib" data-mvc="${s.id}:${j}:-1" aria-label="Subir" ${j === 0 ? 'disabled' : ''}>${IC.up}</button><button type="button" class="ib" data-mvc="${s.id}:${j}:1" aria-label="Bajar" ${j === s.campos.length - 1 ? 'disabled' : ''}>${IC.down}</button></span>`}
+      </div>`;
+    }).join('') + (ro ? '' : `<div class="addrow"><button type="button" class="btn sm" data-addcampo="${s.id}">${IC.mas}Campo</button></div>`);
+  } else if (s.tipo === 'tabla') {
+    cuerpo = `<div class="label">Columnas (equipos o puntos de lectura)</div>
+      <div class="chips" style="margin-bottom:16px">${s.columnas.map((c, j) => `<span class="chipx">${esc(c)}${ro ? '' : `<button type="button" data-delcol="${s.id}:${j}" aria-label="Quitar ${esc(c)}">${IC.x}</button>`}</span>`).join('')}
+        ${ro ? '' : `<input class="field sm" data-addcol="${s.id}" placeholder="Agregar columna y Enter" style="width:210px">`}</div>
+      <div class="label">Parámetros</div>
+      ${s.filas.map((f, j) => `<div class="prow">
+        <input class="field sm p-nom" data-fl="${s.id}:${j}:etiqueta" value="${esc(f.etiqueta)}" placeholder="Nombre del parámetro" aria-label="Parámetro ${j + 1}" ${dis}>
+        <select class="field sm p-tip" data-fl="${s.id}:${j}:tipo" aria-label="Tipo" ${dis}>${TIPOS_FILA.map(t => `<option value="${t.id}" ${t.id === f.tipo ? 'selected' : ''}>${t.nombre}</option>`).join('')}</select>
+        ${f.tipo === 'seleccion'
+          ? `<label class="pf ops"><span>opciones</span><input data-fl="${s.id}:${j}:opciones" value="${esc(f.opciones.join(' / '))}" placeholder="Operando / Parado" ${dis}></label>`
+          : `<label class="pf p-uni"><span>unidad</span><input data-fl="${s.id}:${j}:unidad" value="${esc(f.unidad)}" placeholder="—" ${dis}></label>
+             <label class="pf p-min"><span>mín</span><input data-fl="${s.id}:${j}:min" value="${esc(f.min)}" inputmode="decimal" placeholder="—" ${f.tipo !== 'numero' ? 'disabled' : dis}></label>
+             <label class="pf p-max"><span>máx</span><input data-fl="${s.id}:${j}:max" value="${esc(f.max)}" inputmode="decimal" placeholder="—" ${f.tipo !== 'numero' ? 'disabled' : dis}></label>`}
+        ${ro ? '' : `<span class="acts"><button type="button" class="ib" data-mvf="${s.id}:${j}:-1" aria-label="Subir" ${j === 0 ? 'disabled' : ''}>${IC.up}</button><button type="button" class="ib" data-mvf="${s.id}:${j}:1" aria-label="Bajar" ${j === s.filas.length - 1 ? 'disabled' : ''}>${IC.down}</button><button type="button" class="ib del" data-delf="${s.id}:${j}" aria-label="Quitar parámetro">${IC.del}</button></span>`}
+      </div>`).join('')}
+      ${ro ? '' : `<div class="addrow"><button type="button" class="btn sm" data-addf="${s.id}">${IC.mas}Parámetro</button></div>`}`;
+  } else if (s.tipo === 'checklist') {
+    cuerpo = s.items.map((x, j) => `<div class="irow"><span class="num">${j + 1}</span><input class="field sm" data-it="${s.id}:${j}" value="${esc(x.texto)}" placeholder="Ítem de verificación" ${dis}>${ro ? '' : `<button type="button" class="ib" data-mvi="${s.id}:${j}:-1" aria-label="Subir" ${j === 0 ? 'disabled' : ''}>${IC.up}</button><button type="button" class="ib" data-mvi="${s.id}:${j}:1" aria-label="Bajar" ${j === s.items.length - 1 ? 'disabled' : ''}>${IC.down}</button><button type="button" class="ib del" data-deli="${s.id}:${j}" aria-label="Quitar ítem">${IC.del}</button>`}</div>`).join('')
+      + (ro ? '' : `<div class="addrow"><button type="button" class="btn sm" data-addi="${s.id}">${IC.mas}Ítem</button><button type="button" class="btn sm" data-addvar="${s.id}">Pegar varios</button></div>`);
+  } else if (s.tipo === 'lista') {
+    cuerpo = `<div class="label">Columnas</div>${s.columnas.map((c, j) => `<div class="irow">
+        <input class="field sm" data-lc="${s.id}:${j}:nombre" value="${esc(c.nombre)}" placeholder="Descripción" ${dis}>
+        <select class="field sm" data-lc="${s.id}:${j}:tipo" style="width:130px;flex-shrink:0" ${dis}><option value="texto" ${c.tipo === 'texto' ? 'selected' : ''}>Texto</option><option value="numero" ${c.tipo === 'numero' ? 'selected' : ''}>Número</option></select>
+        ${ro ? '' : `<button type="button" class="ib del" data-dellc="${s.id}:${j}" aria-label="Quitar columna" ${s.columnas.length <= 1 ? 'disabled' : ''}>${IC.del}</button>`}</div>`).join('')}
+      <div class="addrow" style="align-items:center;justify-content:space-between">
+        ${ro ? '<span></span>' : `<button type="button" class="btn sm" data-addlc="${s.id}">${IC.mas}Columna</button>`}
+        <label class="check" style="font-size:13px">Filas en el formato impreso <input class="field sm" type="number" min="1" max="20" data-filimp="${s.id}" value="${s.filasImpresas}" style="width:72px" ${dis}></label>
+      </div>`;
+  }
+  return `<div class="sec" data-sec="${s.id}">
+    <div class="sec-h">
+      <span class="n">${i + 1}</span><span class="tag">${esc(tipo?.nombre || s.tipo)}</span>
+      <input class="field sm" data-sectit="${s.id}" value="${esc(s.titulo)}" placeholder="Título de la sección" ${dis}>
+      ${s.tipo === 'campos' ? `<label class="sr" for="cols_${s.id}">Columnas</label><select class="field sm" id="cols_${s.id}" data-seccols="${s.id}" style="width:auto" title="Columnas en el formato impreso" ${dis}><option value="0" ${!s.columnas ? 'selected' : ''}>Columnas: auto</option><option value="2" ${s.columnas === 2 ? 'selected' : ''}>2 columnas</option><option value="3" ${s.columnas === 3 ? 'selected' : ''}>3 columnas</option></select>` : ''}
+      ${ro ? '' : `<span class="acts"><button type="button" class="ib" data-mvs="${i}:-1" aria-label="Subir sección" ${i === 0 ? 'disabled' : ''}>${IC.up}</button><button type="button" class="ib" data-mvs="${i}:1" aria-label="Bajar sección" ${i === n - 1 ? 'disabled' : ''}>${IC.down}</button><button type="button" class="ib del" data-dels="${i}" aria-label="Eliminar sección">${IC.del}</button></span>`}
+    </div>
+    <div class="sec-b">${cuerpo}</div>
+  </div>`;
+}
+
+const mover = (arr, i, dir) => { const j = i + dir; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; };
+const secPor = (id) => ED.trabajo.secciones.find(s => s.id === id);
+
+function enlazarDiseno(cont) {
+  const d = ED.trabajo;
+  const on = (sel, ev, fn) => cont.querySelectorAll(sel).forEach(el => el.addEventListener(ev, fn));
+  const q = (s) => cont.querySelector(s);
+  const p = plant(ED.id);
+
+  if (q('#dCod')) {
+    const aplicar = () => {
+      const sistema = Number(q('#dSis').value);
+      const codigo = normalizarCodigo(q('#dCod').value);
+      const e = errorCodigo(codigo, sistema, p.id);
+      q('#dCodErr').hidden = !e; q('#dCodErr').textContent = e;
+      if (e) return;
+      ED.codigoNuevo = (codigo === p.codigo && sistema === p.sistema) ? null : { codigo, sistema };
+      if (ED.codigoNuevo) { cambio(false); } else pintarPrev();
+      pintarCabecera();
+    };
+    q('#dSis').onchange = () => { q('#dCod').value = siguienteCodigo(Number(q('#dSis').value), PLANT, p.id) || ''; aplicar(); };
+    q('#dCod').onchange = aplicar;
+  }
+  q('#dNom').oninput = (e) => { d.nombre = e.target.value; cambio(false); const h = document.querySelector('#edCab h1'); if (h) h.textContent = d.nombre || 'Sin nombre'; };
+  q('#dFre').onchange = (e) => { d.frecuencia = e.target.value; cambio(false); };
+  on('[data-ori]', 'click', (e) => { d.orientacion = e.currentTarget.dataset.ori; cambio(); const bar = document.querySelector('.prev-bar .muted'); if (bar) bar.textContent = `Vista de impresión · A4 ${d.orientacion}`; });
+  q('#dTur').onchange = (e) => { d.datosGenerales = { ...d.datosGenerales, turno: e.target.checked }; cambio(false); };
+  q('#dHor').onchange = (e) => { d.datosGenerales = { ...d.datosGenerales, hora: e.target.checked }; cambio(false); };
+  q('#dObs').onchange = (e) => { d.observaciones = e.target.checked; cambio(false); };
+
+  // secciones
+  on('[data-addsec]', 'click', (e) => { const s = seccionNueva(e.currentTarget.dataset.addsec); d.secciones.push(s); cambio(); setTimeout(() => { const el = cont.querySelector(`[data-sectit="${s.id}"]`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.select(); }, 60); });
+  on('[data-sectit]', 'input', (e) => { secPor(e.target.dataset.sectit).titulo = e.target.value; cambio(false); });
+  on('[data-seccols]', 'change', (e) => { secPor(e.target.dataset.seccols).columnas = Number(e.target.value); cambio(false); });
+  on('[data-mvs]', 'click', (e) => { const [i, dir] = e.currentTarget.dataset.mvs.split(':').map(Number); mover(d.secciones, i, dir); cambio(); });
+  on('[data-dels]', 'click', async (e) => {
+    const i = Number(e.currentTarget.dataset.dels);
+    const s = d.secciones[i];
+    if (!await confirmar('Eliminar sección', `Se elimina la sección "${esc(s.titulo || 'sin título')}" con todo su contenido.`, { boton: 'Eliminar', peligro: true })) return;
+    const ids = new Set((s.campos || []).map(c => c.id));
+    d.secciones.splice(i, 1);
+    d.secciones.forEach(x => (x.campos || []).forEach(c => { if (ids.has(c.desde)) c.desde = ''; if (ids.has(c.hasta)) c.hasta = ''; }));
+    cambio();
+  });
+
+  // campos
+  on('[data-campo]', 'click', (e) => { if (e.target.closest('.acts')) return; const [sid, cid] = e.currentTarget.dataset.campo.split(':'); modalCampo(sid, cid); });
+  on('[data-mvc]', 'click', (e) => { e.stopPropagation(); const [sid, j, dir] = e.currentTarget.dataset.mvc.split(':'); mover(secPor(sid).campos, Number(j), Number(dir)); cambio(); });
+  on('[data-addcampo]', 'click', (e) => modalCampo(e.currentTarget.dataset.addcampo, null));
+
+  // tabla
+  on('[data-addcol]', 'keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const v = e.target.value.trim(); if (!v) return;
+    const s = secPor(e.target.dataset.addcol);
+    if (s.columnas.length >= 12) return toast('Máximo 12 columnas por tabla.', 'err');
+    s.columnas.push(v); cambio();
+    setTimeout(() => cont.querySelector(`[data-addcol="${s.id}"]`)?.focus(), 30);
+  });
+  on('[data-delcol]', 'click', (e) => { const [sid, j] = e.currentTarget.dataset.delcol.split(':'); secPor(sid).columnas.splice(Number(j), 1); cambio(); });
+  on('[data-fl]', 'input', (e) => {
+    const [sid, j, k] = e.target.dataset.fl.split(':');
+    const f = secPor(sid).filas[Number(j)];
+    if (k === 'opciones') f.opciones = e.target.value.split('/').map(x => x.trim()).filter(Boolean);
+    else if (k === 'min' || k === 'max') f[k] = e.target.value.replace(',', '.').trim();
+    else if (k !== 'tipo') f[k] = e.target.value;
+    if (k !== 'tipo') cambio(false);
+  });
+  on('[data-fl]', 'change', (e) => { if (e.target.dataset.fl.endsWith(':tipo')) { const [sid, j] = e.target.dataset.fl.split(':'); const f = secPor(sid).filas[Number(j)]; f.tipo = e.target.value; if (f.tipo !== 'numero') { f.min = ''; f.max = ''; } cambio(); } });
+  on('[data-mvf]', 'click', (e) => { const [sid, j, dir] = e.currentTarget.dataset.mvf.split(':'); mover(secPor(sid).filas, Number(j), Number(dir)); cambio(); });
+  on('[data-delf]', 'click', (e) => { const [sid, j] = e.currentTarget.dataset.delf.split(':'); secPor(sid).filas.splice(Number(j), 1); cambio(); });
+  on('[data-addf]', 'click', (e) => { const s = secPor(e.currentTarget.dataset.addf); s.filas.push(filaNueva()); cambio(); setTimeout(() => cont.querySelector(`[data-fl="${s.id}:${s.filas.length - 1}:etiqueta"]`)?.focus(), 30); });
+
+  // checklist
+  on('[data-it]', 'input', (e) => { const [sid, j] = e.target.dataset.it.split(':'); secPor(sid).items[Number(j)].texto = e.target.value; cambio(false); });
+  on('[data-it]', 'keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const [sid, j] = e.target.dataset.it.split(':');
+    const s = secPor(sid);
+    s.items.splice(Number(j) + 1, 0, { id: uid(), texto: '' }); cambio();
+    setTimeout(() => cont.querySelector(`[data-it="${sid}:${Number(j) + 1}"]`)?.focus(), 30);
+  });
+  on('[data-mvi]', 'click', (e) => { const [sid, j, dir] = e.currentTarget.dataset.mvi.split(':'); mover(secPor(sid).items, Number(j), Number(dir)); cambio(); });
+  on('[data-deli]', 'click', (e) => { const [sid, j] = e.currentTarget.dataset.deli.split(':'); secPor(sid).items.splice(Number(j), 1); cambio(); });
+  on('[data-addi]', 'click', (e) => { const s = secPor(e.currentTarget.dataset.addi); s.items.push({ id: uid(), texto: '' }); cambio(); setTimeout(() => cont.querySelector(`[data-it="${s.id}:${s.items.length - 1}"]`)?.focus(), 30); });
+  on('[data-addvar]', 'click', (e) => modalVarios(e.currentTarget.dataset.addvar));
+
+  // lista
+  on('[data-lc]', 'input', (e) => { const [sid, j, k] = e.target.dataset.lc.split(':'); secPor(sid).columnas[Number(j)][k] = e.target.value; cambio(false); });
+  on('[data-lc]', 'change', (e) => { const [sid, j, k] = e.target.dataset.lc.split(':'); secPor(sid).columnas[Number(j)][k] = e.target.value; cambio(false); });
+  on('[data-dellc]', 'click', (e) => { const [sid, j] = e.currentTarget.dataset.dellc.split(':'); secPor(sid).columnas.splice(Number(j), 1); cambio(); });
+  on('[data-addlc]', 'click', (e) => { const s = secPor(e.currentTarget.dataset.addlc); if (s.columnas.length >= 8) return toast('Máximo 8 columnas.', 'err'); s.columnas.push({ id: uid(), nombre: '', tipo: 'texto' }); cambio(); });
+  on('[data-filimp]', 'change', (e) => { const n = Math.max(1, Math.min(20, Number(e.target.value) || 5)); e.target.value = n; secPor(e.target.dataset.filimp).filasImpresas = n; cambio(false); });
+
+  // firmas
+  on('[data-fir]', 'input', (e) => { d.firmas[Number(e.target.dataset.fir)] = e.target.value; cambio(false); });
+  on('[data-delfir]', 'click', (e) => { d.firmas.splice(Number(e.currentTarget.dataset.delfir), 1); cambio(); });
+  if (q('#addFir')) q('#addFir').onclick = () => { d.firmas.push(''); cambio(); setTimeout(() => cont.querySelector(`[data-fir="${d.firmas.length - 1}"]`)?.focus(), 30); };
+}
+
+function pintarValidacion() {
+  const el = document.getElementById('edVal');
+  if (!el || !ED) return;
+  const err = validarDef(ED.trabajo);
+  el.innerHTML = err.length
+    ? `<div style="color:var(--amber-2);margin-bottom:8px">Pendiente para poder emitir:</div><ul style="margin:0;padding-left:18px;color:var(--tx-2)">${err.map(e => `<li>${esc(e)}</li>`).join('')}</ul>`
+    : '<div style="color:var(--mint-2)">El formato está completo y listo para emitir.</div>';
+}
+
+// ---------------- vista previa ----------------
+let prevTimer = null;
+function pintarPrev() {
+  clearTimeout(prevTimer);
+  prevTimer = setTimeout(() => {
+    const box = document.getElementById('prevEsc');
+    if (!box || !ED) return;
+    const p = plant(ED.id);
+    const h = encabezado(p, ED.vista);
+    box.innerHTML = renderHoja({ cfg: CFG, codigo: ED.codigoNuevo?.codigo || p.codigo, ...h });
+    ajustarPrev();
+  }, 120);
+}
+function ajustarPrev() {
+  const box = document.getElementById('prevBox'), esc_ = document.getElementById('prevEsc');
+  if (!box || !esc_ || !esc_.firstElementChild) return;
+  const hoja = esc_.firstElementChild;
+  const ancho = box.clientWidth - 28;
+  if (ancho <= 0) return;
+  const k = Math.min(1, ancho / hoja.offsetWidth);
+  esc_.style.transform = `scale(${k})`;
+  esc_.style.width = hoja.offsetWidth + 'px';
+  box.style.height = (hoja.offsetHeight * k + 28) + 'px';
+}
+window.addEventListener('resize', () => ajustarPrev());
+
+// ---------------- modal de campo ----------------
+function modalCampo(sid, cid) {
+  const s = secPor(sid);
+  const nuevo = !cid;
+  const c = nuevo ? campoNuevo('texto') : clonar(s.campos.find(x => x.id === cid));
+  const fechas = ED.trabajo.secciones.flatMap(x => (x.campos || []).filter(y => y.tipo === 'fechaHora' && y.id !== c.id).map(y => ({ id: y.id, et: `${x.titulo || 'Sección'} › ${y.etiqueta || 'sin nombre'}` })));
+  const m = modal({
+    titulo: nuevo ? 'Nuevo campo' : 'Editar campo',
+    cuerpo: `<div class="g2">
+      <div style="grid-column:1/-1"><label class="label" for="cEt">Nombre del campo</label><input class="field" id="cEt" value="${esc(c.etiqueta)}" placeholder="Presión de vapor"></div>
+      <div><label class="label" for="cTp">Tipo</label><select class="field" id="cTp">${TIPOS_CAMPO.map(t => `<option value="${t.id}" ${t.id === c.tipo ? 'selected' : ''}>${t.nombre}</option>`).join('')}</select></div>
+      <div><label class="label" for="cAn">Ancho en el formato</label><select class="field" id="cAn"><option value="1">Media fila</option><option value="2" ${c.ancho === 2 ? 'selected' : ''}>Fila completa</option></select></div>
+    </div>
+    <div id="cExtra" style="margin-top:16px"></div>
+    <div style="margin-top:16px"><label class="label" for="cAy">Texto de ayuda (opcional)</label><input class="field" id="cAy" value="${esc(c.ayuda)}" placeholder="Se muestra debajo del campo"></div>
+    <label class="check" style="margin-top:16px"><input type="checkbox" id="cReq" ${c.requerido ? 'checked' : ''}>Obligatorio</label>`,
+    pie: `${nuevo ? '' : `<button type="button" class="btn btn-danger" id="cDel" style="margin-right:auto">${IC.del}Eliminar</button>`}<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary">${nuevo ? 'Agregar campo' : 'Guardar'}</button>`
+  });
+  const extra = () => {
+    const t = m.$('#cTp').value;
+    const box = m.$('#cExtra');
+    if (t === 'numero') box.innerHTML = `<div class="g3">
+      <div><label class="label" for="cUn">Unidad</label><input class="field" id="cUn" value="${esc(c.unidad)}" placeholder="psi"></div>
+      <div><label class="label" for="cMi">Mínimo</label><input class="field" id="cMi" value="${esc(c.min)}" inputmode="decimal" placeholder="—"></div>
+      <div><label class="label" for="cMa">Máximo</label><input class="field" id="cMa" value="${esc(c.max)}" inputmode="decimal" placeholder="—"></div></div>
+      <div class="muted" style="font-size:12.5px;margin-top:8px">Un valor fuera de rango se marca como alerta y exige acción correctiva.</div>`;
+    else if (t === 'seleccion') box.innerHTML = `<label class="label" for="cOp">Opciones (una por línea)</label><textarea class="field" id="cOp" rows="5" style="height:auto;padding:12px 16px;line-height:1.5">${esc(c.opciones.join('\n'))}</textarea>`;
+    else if (t === 'duracion') box.innerHTML = fechas.length < 2
+      ? '<div class="alert warn">La duración se calcula entre dos campos de tipo "Fecha y hora". Agréguelos primero al formato.</div>'
+      : `<div class="g2"><div><label class="label" for="cDe">Desde</label><select class="field" id="cDe"><option value="">Seleccione</option>${fechas.map(f => `<option value="${f.id}" ${f.id === c.desde ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select></div>
+         <div><label class="label" for="cHa">Hasta</label><select class="field" id="cHa"><option value="">Seleccione</option>${fechas.map(f => `<option value="${f.id}" ${f.id === c.hasta ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select></div></div>
+         <div class="muted" style="font-size:12.5px;margin-top:8px">Se calcula automáticamente al llenar el formato.</div>`;
+    else if (t === 'equipo') box.innerHTML = `<div class="muted" style="font-size:13px">El técnico elige el equipo de la lista registrada en Configuración${CFG.equipos.length ? ` (${CFG.equipos.length} equipos)` : ''}.</div>`;
+    else box.innerHTML = '';
+  };
+  m.$('#cTp').onchange = () => { if (m.$('#cTp').value === 'textoLargo') m.$('#cAn').value = '2'; extra(); };
+  extra();
+  setTimeout(() => m.$('#cEt').focus(), 50);
+  if (m.$('#cDel')) m.$('#cDel').onclick = async () => {
+    const usado = ED.trabajo.secciones.some(x => (x.campos || []).some(y => y.desde === c.id || y.hasta === c.id));
+    if (!await confirmar('Eliminar campo', `Se elimina "${esc(c.etiqueta || 'campo')}"${usado ? '. Una duración calculada lo usa y quedará sin referencia' : ''}.`, { boton: 'Eliminar', peligro: true })) return;
+    s.campos = s.campos.filter(x => x.id !== c.id);
+    ED.trabajo.secciones.forEach(x => (x.campos || []).forEach(y => { if (y.desde === c.id) y.desde = ''; if (y.hasta === c.id) y.hasta = ''; }));
+    m.cerrar(); cambio();
+  };
+  m.form.onsubmit = (e) => {
+    e.preventDefault(); m.err('');
+    c.etiqueta = m.$('#cEt').value.trim();
+    c.tipo = m.$('#cTp').value;
+    c.ancho = Number(m.$('#cAn').value);
+    c.ayuda = m.$('#cAy').value.trim();
+    c.requerido = m.$('#cReq').checked;
+    if (!c.etiqueta) return m.err('Ingrese el nombre del campo.');
+    c.unidad = ''; c.min = ''; c.max = ''; c.opciones = []; c.desde = ''; c.hasta = '';
+    if (c.tipo === 'numero') {
+      c.unidad = m.$('#cUn').value.trim();
+      c.min = m.$('#cMi').value.replace(',', '.').trim();
+      c.max = m.$('#cMa').value.replace(',', '.').trim();
+      if (c.min !== '' && isNaN(Number(c.min))) return m.err('El mínimo debe ser un número.');
+      if (c.max !== '' && isNaN(Number(c.max))) return m.err('El máximo debe ser un número.');
+      if (c.min !== '' && c.max !== '' && Number(c.min) > Number(c.max)) return m.err('El mínimo no puede ser mayor que el máximo.');
+    }
+    if (c.tipo === 'seleccion') {
+      c.opciones = m.$('#cOp').value.split('\n').map(x => x.trim()).filter(Boolean);
+      if (c.opciones.length < 2) return m.err('Ingrese al menos dos opciones.');
+    }
+    if (c.tipo === 'duracion') {
+      if (!m.$('#cDe')) return m.err('Agregue primero dos campos de tipo "Fecha y hora".');
+      c.desde = m.$('#cDe').value; c.hasta = m.$('#cHa').value;
+      if (!c.desde || !c.hasta) return m.err('Seleccione desde y hasta qué campo se calcula.');
+      if (c.desde === c.hasta) return m.err('"Desde" y "Hasta" deben ser campos distintos.');
+    }
+    if (nuevo) s.campos.push(c);
+    else s.campos[s.campos.findIndex(x => x.id === c.id)] = c;
+    m.cerrar(); cambio();
+  };
+}
+
+function modalVarios(sid) {
+  const m = modal({
+    titulo: 'Agregar varios ítems',
+    cuerpo: '<label class="label" for="vTx">Un ítem por línea</label><textarea class="field" id="vTx" rows="8" style="height:auto;padding:12px 16px;line-height:1.5"></textarea>',
+    pie: '<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary">Agregar</button>', ancho: 560
+  });
+  setTimeout(() => m.$('#vTx').focus(), 50);
+  m.form.onsubmit = (e) => {
+    e.preventDefault();
+    const lineas = m.$('#vTx').value.split('\n').map(x => x.replace(/^\s*(\d+[.)-]|[-•*])\s*/, '').trim()).filter(Boolean);
+    if (!lineas.length) return m.err('Escriba al menos un ítem.');
+    const s = secPor(sid);
+    s.items = s.items.filter(x => x.texto.trim()).concat(lineas.map(t => ({ id: uid(), texto: t })));
+    m.cerrar(); cambio();
+  };
+}
+
+// ---------------- emitir / obsoleto / historial ----------------
+async function modalEmitir() {
+  await guardarAhora();
+  const p = plant(ED.id);
+  const def = ED.trabajo;
+  const err = validarDef(def);
+  if (ED.codigoNuevo) return toast('Corrija el código antes de emitir.', 'err');
+  const tipo = p.estado === 'borrador' ? 'emision' : p.estado === 'obsoleto' ? 'reactivacion' : 'revision';
+  const rev = p.estado === 'borrador' || p.versionManual !== CFG.versionManual ? 1 : p.revision + 1;
+  const titulo = { emision: 'Emitir formato', revision: 'Emitir nueva revisión', reactivacion: 'Reactivar formato' }[tipo];
+  const m = modal({
+    titulo,
+    cuerpo: `<div class="resumen">
+        <div><span>Código</span><b>${esc(codigoCompleto(CFG, p.codigo))}</b></div>
+        <div><span>Versión</span><b>${esc(CFG.versionManual)}</b></div>
+        <div><span>Revisión</span><b>${revTxt(rev)}</b></div>
+        <div><span>Fecha</span><b>${mesAbrev(mesClave())}</b></div>
+      </div>
+      ${err.length ? `<div class="alert err"><div style="font-weight:600;margin-bottom:6px">El formato no se puede emitir todavía:</div><ul style="margin:0;padding-left:18px">${err.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : `
+      <label class="label" for="eMot">${tipo === 'emision' ? 'Descripción' : 'Motivo del cambio'}</label>
+      <textarea class="field" id="eMot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5" placeholder="${tipo === 'emision' ? '' : 'Se ajustan los rangos de presión de descarga'}">${tipo === 'emision' ? 'Emisión inicial' : ''}</textarea>
+      <div class="muted" style="font-size:13px;margin-top:12px;line-height:1.55">${tipo === 'emision' ? 'Desde la emisión el formato queda disponible para el llenado.' : 'Los registros ya llenados conservan la revisión con la que se emitieron.'} Queda una copia congelada de esta revisión en el historial.</div>`}`,
+    pie: `<button type="button" class="btn" data-x>${err.length ? 'Cerrar' : 'Cancelar'}</button>${err.length ? '' : `<button type="submit" class="btn btn-primary" id="eOk">${IC.send}${titulo.split(' ')[0]}</button>`}`
+  });
+  if (err.length) return;
+  setTimeout(() => { const t = m.$('#eMot'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 50);
+  m.form.onsubmit = async (e) => {
+    e.preventDefault(); m.err('');
+    const motivo = m.$('#eMot').value.trim();
+    if (!motivo) return m.err('Indique el motivo del cambio.');
+    const b = m.$('#eOk'); b.disabled = true; b.textContent = 'Emitiendo…';
+    try {
+      const cambios = await D.emitir({ ...p, trabajo: clonar(ED.trabajo) }, CFG, { motivo, usuario: usuario() });
+      Object.assign(p, cambios);
+      ED.trabajo = clonar(p.def); ED.sucio = false; ED.vista = 'trabajo';
+      m.cerrar();
+      toast(`${p.codigo} emitido · Revisión ${revTxt(p.revision)}`);
+      render();
+    } catch (er) { m.err('No se pudo emitir: ' + (er.code || er.message)); b.disabled = false; b.textContent = 'Emitir'; }
+  };
+}
+
+function modalObsoleto(p) {
+  const m = modal({
+    titulo: 'Marcar como obsoleto',
+    cuerpo: `<p class="muted" style="margin:0 0 16px;line-height:1.6">${esc(codigoCompleto(CFG, p.codigo))} dejará de estar disponible para el llenado. Sus registros e historial se conservan.</p>
+      <label class="label" for="oMot">Motivo</label><textarea class="field" id="oMot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5" placeholder="Reemplazado por R-102"></textarea>`,
+    pie: '<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-danger">Marcar obsoleto</button>', ancho: 520
+  });
+  setTimeout(() => m.$('#oMot').focus(), 50);
+  m.form.onsubmit = async (e) => {
+    e.preventDefault();
+    const motivo = m.$('#oMot').value.trim();
+    if (!motivo) return m.err('Indique el motivo.');
+    try { Object.assign(p, await D.marcarObsoleto(p, { motivo, usuario: usuario() })); m.cerrar(); toast(`${p.codigo} marcado como obsoleto.`); render(); }
+    catch (er) { m.err('No se pudo actualizar: ' + (er.code || er.message)); }
+  };
+}
+
+const TIPO_HIST = { emision: 'Emisión', revision: 'Nueva revisión', version: 'Cambio de versión del manual', obsoleto: 'Obsoleto', reactivacion: 'Reactivación' };
+function modalHistorial(p) {
+  const h = [...(p.historial || [])].reverse();
+  const m = modal({
+    titulo: `Historial · ${esc(p.codigo)}`, ancho: 860,
+    cuerpo: h.length ? `<div class="tbl-wrap"><table class="table hist" style="min-width:640px">
+      <thead><tr><th>Fecha</th><th>Ver.</th><th>Rev.</th><th>Movimiento</th><th>Motivo</th><th>Usuario</th><th></th></tr></thead>
+      <tbody>${h.map((x, i) => `<tr>
+        <td class="mono">${mesAbrev(x.fecha)}<div style="font-size:11px;color:var(--tx-3)">${x.fechaHora ? new Date(x.fechaHora).toLocaleDateString('es-PE') : ''}</div></td>
+        <td class="mono">${esc(x.version || '—')}</td><td class="mono">${revTxt(x.revision)}</td>
+        <td>${esc(TIPO_HIST[x.tipo] || x.tipo)}</td><td style="max-width:240px">${esc(x.motivo || '')}</td><td style="font-size:12.5px;color:var(--tx-2)">${esc(x.usuario || '')}</td>
+        <td>${x.tipo !== 'obsoleto' ? `<button type="button" class="ib" data-pr="${x.version}|${x.revision}" aria-label="Imprimir revisión" title="Imprimir esta revisión">${IC.print}</button>` : ''}</td>
+      </tr>`).join('')}</tbody></table></div>` : '<p class="muted" style="margin:0">El formato todavía no se ha emitido.</p>',
+    pie: '<button type="button" class="btn" data-x>Cerrar</button>'
+  });
+  m.bg.querySelectorAll('[data-pr]').forEach(b => b.onclick = async () => {
+    const [v, r] = b.dataset.pr.split('|');
+    try {
+      const snap = await D.leerRevision(p.id, v, Number(r));
+      if (!snap) return toast('No se encontró la copia de esa revisión.', 'err');
+      const vigente = p.versionManual === v && p.revision === Number(r) && p.estado === 'vigente';
+      imprimir(renderHoja({ cfg: { ...CFG, prefijo: snap.prefijo || CFG.prefijo }, codigo: snap.codigo, def: snap.def, version: snap.version, revision: snap.revision, fecha: snap.fecha, marca: vigente ? '' : 'NO VIGENTE' }), snap.def.orientacion === 'horizontal', `${snap.codigo} Rev ${revTxt(snap.revision)}`);
+    } catch (e) { toast('No se pudo leer: ' + (e.code || e.message), 'err'); }
+  });
+}
+
+// =====================================================================
+// MÓDULO LISTA MAESTRA
+// =====================================================================
+function filasMaestra() {
+  return ordenar(PLANT.filter(p => p.def && (FIL_M.estado === 'todos' || (FIL_M.estado === 'vigentes' ? p.estado === 'vigente' : p.estado === 'obsoleto'))));
+}
+
+function vistaMaestra(main) {
+  const filas = filasMaestra();
+  main.innerHTML = `
+    <div class="pagehead">
+      <div><div class="eyebrow rise">Control documental</div><h1 class="h-display rise d1">Lista maestra de formatos</h1></div>
+      <div class="acciones rise d2"><button class="btn" id="mXls">${IC.xls}Excel</button><button class="btn" id="mPrint">${IC.print}Imprimir</button></div>
+    </div>
+    <div class="filtros rise d2">
+      <div class="seg">${[['vigentes', 'Vigentes'], ['obsoletos', 'Obsoletos'], ['todos', 'Todos']].map(([v, l]) => `<button data-fm="${v}" class="${FIL_M.estado === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <span style="flex-grow:1"></span>
+      <span class="muted" style="font-size:13px">Versión del manual <b class="mono" style="color:var(--tx)">${esc(CFG.versionManual)}</b> · ${filas.length} formato${filas.length === 1 ? '' : 's'}</span>
+    </div>
+    <div class="glass rise d3 tbl-wrap">
+      <table class="table" style="min-width:860px">
+        <thead><tr><th>Código</th><th>Nombre del formato</th><th>Sistema</th><th>Frecuencia</th><th>Versión</th><th>Revisión</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
+        <tbody>${filas.map((p, i) => `<tr class="slide" style="animation-delay:${(0.03 * i).toFixed(2)}s">
+          <td class="mono" style="white-space:nowrap">${esc(codigoCompleto(CFG, p.codigo))}</td>
+          <td style="min-width:240px">${esc(p.def.nombre)}</td><td>${esc(sistemaNombre(p.sistema))}</td><td style="white-space:nowrap">${esc(p.def.frecuencia)}</td>
+          <td class="mono">${esc(p.versionManual)}</td><td class="mono">${revTxt(p.revision)}</td><td class="mono" style="white-space:nowrap">${mesAbrev(p.fecha)}</td>
+          <td>${p.estado === 'obsoleto' ? pillEstado(p) : pillEstado({ estado: 'vigente' })}</td>
+          <td style="text-align:right"><button class="ib" data-h="${p.id}" aria-label="Historial" title="Historial de revisiones">${IC.hist}</button></td>
+        </tr>`).join('') || `<tr><td colspan="9" class="muted" style="padding:28px 20px">${PLANT.some(p => p.def) ? 'No hay formatos en este estado.' : 'Todavía no se ha emitido ningún formato. Los borradores aparecen aquí una vez emitidos.'}</td></tr>`}</tbody>
+      </table>
+    </div>`;
+  main.querySelectorAll('[data-fm]').forEach(b => b.onclick = () => { FIL_M.estado = b.dataset.fm; vistaMaestra(main); });
+  main.querySelectorAll('[data-h]').forEach(b => b.onclick = () => modalHistorial(plant(b.dataset.h)));
+  main.querySelector('#mPrint').onclick = () => imprimir(hojaMaestra(filas), true, 'Lista maestra de formatos');
+  main.querySelector('#mXls').onclick = () => exportarExcel(filas);
+}
+
+const hoyTxt = () => new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+function hojaMaestra(filas) {
+  const logo = CFG.logo ? `<img src="${CFG.logo}" alt="">` : `<span>${esc(CFG.empresa)}</span>`;
+  const tit = FIL_M.estado === 'obsoletos' ? 'Formatos obsoletos' : 'Lista maestra de formatos';
+  return `<div class="hoja h">
+    <div class="hj-cab" style="grid-template-columns:34mm minmax(0,1fr) 62mm">
+      <div class="hj-logo">${logo}</div>
+      <div class="hj-tit"><b>${tit}</b><small>${esc(CFG.departamento)}${CFG.planta ? ' · ' + esc(CFG.planta) : ''}</small></div>
+      <div class="hj-cod">
+        <div><span>PREFIJO:</span><em>${esc(CFG.prefijo)}</em></div>
+        <div><span>VERSIÓN:</span><em>${esc(CFG.versionManual)} (manual)</em></div>
+        <div><span>FORMATOS:</span><em>${filas.length}</em></div>
+        <div><span>EMITIDA:</span><em>${hoyTxt()}</em></div>
+      </div>
+    </div>
+    <div class="hj-sec"><table class="hj-t">
+      <thead><tr><th style="width:4%">N°</th><th class="l" style="width:15%">Código</th><th class="l">Nombre del formato</th><th class="l" style="width:14%">Sistema</th><th style="width:10%">Frecuencia</th><th style="width:7%">Versión</th><th style="width:7%">Revisión</th><th style="width:7%">Fecha</th><th style="width:8%">Estado</th></tr></thead>
+      <tbody>${filas.map((p, i) => `<tr><td class="c">${i + 1}</td><td class="l" style="font-family:'JetBrains Mono',monospace;font-size:7.6pt">${esc(codigoCompleto(CFG, p.codigo))}</td><td class="l">${esc(p.def.nombre)}</td><td class="l">${esc(sistemaNombre(p.sistema))}</td><td class="c">${esc(p.def.frecuencia)}</td><td class="c">${esc(p.versionManual)}</td><td class="c">${revTxt(p.revision)}</td><td class="c">${mesAbrev(p.fecha)}</td><td class="c">${p.estado === 'obsoleto' ? 'Obsoleto' : 'Vigente'}</td></tr>`).join('') || '<tr><td colspan="9" class="c">Sin formatos</td></tr>'}</tbody>
+    </table></div>
+    <div class="hj-pie"><span>Documento controlado · ${esc(CFG.prefijo)} · Lista maestra de formatos</span><span>${esc(CFG.empresa)}</span></div>
+  </div>`;
+}
+
+let xlsxCarga = null;
+function cargarXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!xlsxCarga) xlsxCarga = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => res(window.XLSX); s.onerror = () => { xlsxCarga = null; rej(new Error('No se pudo cargar el generador de Excel.')); };
+    document.head.appendChild(s);
+  });
+  return xlsxCarga;
+}
+
+async function exportarExcel(filas) {
+  try {
+    const X = await cargarXlsx();
+    const cab = [[CFG.empresa], [`Lista maestra de formatos · ${CFG.departamento}`], [`Versión del manual: ${CFG.versionManual} · Emitida: ${hoyTxt()}`], []];
+    const tabla = [['N°', 'Código', 'Nombre del formato', 'Sistema', 'Frecuencia', 'Versión', 'Revisión', 'Fecha', 'Estado']]
+      .concat(filas.map((p, i) => [i + 1, codigoCompleto(CFG, p.codigo), p.def.nombre, sistemaNombre(p.sistema), p.def.frecuencia, p.versionManual, revTxt(p.revision), mesAbrev(p.fecha), p.estado === 'obsoleto' ? 'Obsoleto' : 'Vigente']));
+    const ws = X.utils.aoa_to_sheet(cab.concat(tabla));
+    ws['!cols'] = [{ wch: 5 }, { wch: 20 }, { wch: 46 }, { wch: 24 }, { wch: 13 }, { wch: 9 }, { wch: 9 }, { wch: 9 }, { wch: 10 }];
+    ws['!merges'] = [0, 1, 2].map(r => ({ s: { r, c: 0 }, e: { r, c: 8 } }));
+    const hist = [['Código', 'Nombre del formato', 'Fecha', 'Versión', 'Revisión', 'Movimiento', 'Motivo', 'Usuario']];
+    filas.forEach(p => (p.historial || []).forEach(x => hist.push([codigoCompleto(CFG, p.codigo), p.def.nombre, mesAbrev(x.fecha), x.version || '', revTxt(x.revision), TIPO_HIST[x.tipo] || x.tipo, x.motivo || '', x.usuario || ''])));
+    const wh = X.utils.aoa_to_sheet(hist);
+    wh['!cols'] = [{ wch: 20 }, { wch: 40 }, { wch: 9 }, { wch: 9 }, { wch: 9 }, { wch: 26 }, { wch: 46 }, { wch: 24 }];
+    const wb = X.utils.book_new();
+    X.utils.book_append_sheet(wb, ws, 'Lista maestra');
+    X.utils.book_append_sheet(wb, wh, 'Historial');
+    X.writeFile(wb, `Lista_maestra_formatos_${mesClave()}.xlsx`);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// =====================================================================
+// MÓDULO CONFIGURACIÓN
+// =====================================================================
+function vistaConfig(main) {
+  const ro = !esAdminApp();
+  const dis = ro ? 'disabled' : '';
+  const c = clonar(CFG);
+  main.innerHTML = `
+    <div class="pagehead">
+      <div><div class="eyebrow rise">Registro de formatos</div><h1 class="h-display rise d1">Configuración</h1></div>
+      ${ro ? '' : `<div class="acciones rise d2"><button class="btn btn-primary" id="kSave">Guardar cambios</button></div>`}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:18px">
+      <div class="panel rise d2">
+        <div class="panel-h"><h3>Control documental</h3></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:16px;border-radius:14px;background:rgba(14,22,30,.3);margin-bottom:16px">
+          <div><div style="font-size:12.5px;color:var(--tx-3)">Versión vigente del manual</div><div class="mono" style="font-size:30px;margin-top:4px">${esc(CFG.versionManual)}</div></div>
+          ${ro ? '' : '<button class="btn" id="kVer">Cambiar versión</button>'}
+        </div>
+        <label class="label" for="kPre">Prefijo de codificación</label>
+        <input class="field mono" id="kPre" value="${esc(c.prefijo)}" ${dis}>
+        <div class="muted" style="font-size:12.5px;margin-top:8px;line-height:1.5">Ejemplo: <span class="mono">${esc(c.prefijo)}/R-101</span>. Todos los formatos heredan la versión del manual; la revisión y la fecha son propias de cada formato.</div>
+      </div>
+      <div class="panel rise d3">
+        <div class="panel-h"><h3>Encabezado del formato</h3></div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div><label class="label" for="kEmp">Empresa</label><input class="field" id="kEmp" value="${esc(c.empresa)}" ${dis}></div>
+          <div class="g2">
+            <div><label class="label" for="kPla">Planta</label><input class="field" id="kPla" value="${esc(c.planta)}" ${dis}></div>
+            <div><label class="label" for="kDep">Departamento</label><input class="field" id="kDep" value="${esc(c.departamento)}" ${dis}></div>
+          </div>
+          <div><div class="label">Logo</div>
+            <div class="logo-prev" id="kLogoPrev">${c.logo ? `<img src="${c.logo}" alt="Logo">` : '<span style="color:#6B7886;font-size:13px">Sin logo · se muestra el nombre de la empresa</span>'}</div>
+            ${ro ? '' : `<div class="acciones" style="margin-top:10px"><label class="btn sm" style="cursor:pointer">Subir imagen<input type="file" accept="image/*" id="kLogo" hidden></label><button type="button" class="btn sm" id="kLogoX" ${c.logo ? '' : 'hidden'}>Quitar logo</button></div>`}
+          </div>
+        </div>
+      </div>
+      <div class="panel rise d3">
+        <div class="panel-h"><h3>Turnos</h3></div>
+        <div class="chips" id="kTur"></div>
+        ${ro ? '' : '<input class="field sm" id="kTurIn" placeholder="Agregar turno y Enter" style="width:220px;margin-top:12px">'}
+      </div>
+      <div class="panel rise d4">
+        <div class="panel-h"><h3>Equipos</h3><span class="muted" style="font-size:12.5px" id="kEqN"></span></div>
+        <label class="label" for="kEq">Un equipo por línea: código | descripción</label>
+        <textarea class="field mono" id="kEq" rows="8" style="height:auto;padding:12px 16px;line-height:1.6;font-size:13px" placeholder="CP-01 | Compresor tornillo N° 1" ${dis}>${esc(c.equipos.map(e => e.descripcion ? `${e.codigo} | ${e.descripcion}` : e.codigo).join('\n'))}</textarea>
+        <div class="muted" style="font-size:12.5px;margin-top:8px">Lista para los campos de tipo Equipo, hasta integrar la base maestra de Equipos.</div>
+      </div>
+    </div>`;
+  const $ = (s) => main.querySelector(s);
+  const pintarTur = () => {
+    $('#kTur').innerHTML = c.turnos.map((t, i) => `<span class="chipx">${esc(t)}${ro ? '' : `<button type="button" data-dt="${i}" aria-label="Quitar ${esc(t)}">${IC.x}</button>`}</span>`).join('') || '<span class="muted" style="font-size:13px">Sin turnos</span>';
+    main.querySelectorAll('[data-dt]').forEach(b => b.onclick = () => { c.turnos.splice(Number(b.dataset.dt), 1); pintarTur(); });
+  };
+  const leerEq = () => $('#kEq').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [cod, ...r] = l.split('|'); return { codigo: cod.trim(), descripcion: r.join('|').trim() }; }).filter(e => e.codigo);
+  const contarEq = () => { const n = leerEq().length; $('#kEqN').textContent = `${n} equipo${n === 1 ? '' : 's'}`; };
+  pintarTur(); contarEq();
+  $('#kEq').oninput = contarEq;
+  if (ro) return;
+  $('#kTurIn').onkeydown = (e) => { if (e.key !== 'Enter') return; e.preventDefault(); const v = e.target.value.trim(); if (v && !c.turnos.includes(v)) c.turnos.push(v); e.target.value = ''; pintarTur(); };
+  $('#kLogo').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { c.logo = await reducirImagen(f); $('#kLogoPrev').innerHTML = `<img src="${c.logo}" alt="Logo">`; $('#kLogoX').hidden = false; }
+    catch { toast('No se pudo leer la imagen.', 'err'); }
+  };
+  $('#kLogoX').onclick = () => { c.logo = ''; $('#kLogoPrev').innerHTML = '<span style="color:#6B7886;font-size:13px">Sin logo · se muestra el nombre de la empresa</span>'; $('#kLogoX').hidden = true; };
+  $('#kVer').onclick = modalVersion;
+  $('#kSave').onclick = async () => {
+    const prefijo = $('#kPre').value.trim().replace(/\/+$/, '');
+    if (!prefijo) return toast('Ingrese el prefijo de codificación.', 'err');
+    if (prefijo !== CFG.prefijo && PLANT.some(p => p.def) && !await confirmar('Cambiar prefijo', `Todos los formatos pasarán a codificarse como <b class="mono">${esc(prefijo)}/R-XXX</b>. Las revisiones ya emitidas conservan su prefijo en el historial.`, { boton: 'Cambiar prefijo' })) return;
+    Object.assign(c, { prefijo, empresa: $('#kEmp').value.trim(), planta: $('#kPla').value.trim(), departamento: $('#kDep').value.trim(), equipos: leerEq() });
+    const b = $('#kSave'); b.disabled = true; b.textContent = 'Guardando…';
+    try { await D.guardarConfig({ ...c, versionManual: CFG.versionManual }); CFG = { ...c, versionManual: CFG.versionManual, existe: true }; toast('Configuración guardada.'); }
+    catch (er) { toast('No se pudo guardar: ' + (er.code || er.message), 'err'); }
+    b.disabled = false; b.textContent = 'Guardar cambios';
+  };
+}
+
+function reducirImagen(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onerror = rej;
+    r.onload = () => {
+      const img = new Image();
+      img.onerror = rej;
+      img.onload = () => {
+        const k = Math.min(1, 480 / img.width, 200 / img.height);
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        res(cv.toDataURL('image/png'));
+      };
+      img.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+function modalVersion() {
+  const vig = PLANT.filter(p => p.estado === 'vigente');
+  const m = modal({
+    titulo: 'Cambiar versión del manual', ancho: 560,
+    cuerpo: `<div class="g2">
+        <div><div class="label">Versión actual</div><div class="mono" style="height:48px;display:flex;align-items:center;font-size:18px">${esc(CFG.versionManual)}</div></div>
+        <div><label class="label" for="vNue">Nueva versión</label><input class="field mono" id="vNue" placeholder="7.0"></div>
+      </div>
+      <label class="label" for="vMot" style="margin-top:16px">Motivo</label>
+      <textarea class="field" id="vMot" rows="2" style="height:auto;padding:12px 16px;line-height:1.5" placeholder="Actualización del manual de mantenimiento"></textarea>
+      <div class="alert warn" style="margin-top:16px">${vig.length ? `Los ${vig.length} formatos vigentes pasan a la nueva versión con Revisión 1.0 y fecha ${mesAbrev(mesClave())}. Los cambios sin emitir se mantienen pendientes.` : 'No hay formatos vigentes; la nueva versión se aplicará a los que se emitan.'}</div>`,
+    pie: '<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="vOk">Aplicar versión</button>'
+  });
+  setTimeout(() => m.$('#vNue').focus(), 50);
+  m.form.onsubmit = async (e) => {
+    e.preventDefault(); m.err('');
+    let v = m.$('#vNue').value.trim().replace(',', '.');
+    if (/^\d+$/.test(v)) v += '.0';
+    if (!/^\d+(\.\d+)?$/.test(v)) return m.err('Ingrese una versión válida, por ejemplo 7.0.');
+    if (v === CFG.versionManual) return m.err('Es la misma versión vigente.');
+    const motivo = m.$('#vMot').value.trim();
+    if (!motivo) return m.err('Indique el motivo.');
+    const b = m.$('#vOk'); b.disabled = true; b.textContent = 'Aplicando…';
+    try {
+      if (!CFG.existe) { await D.guardarConfig(CFG); CFG.existe = true; }
+      const res = await D.aplicarVersion(PLANT, CFG, { version: v, motivo, usuario: usuario() });
+      Object.entries(res).forEach(([id, cambios]) => Object.assign(plant(id), cambios));
+      CFG.versionManual = v;
+      m.cerrar(); toast(`Versión ${v} aplicada.`); render();
+    } catch (er) { m.err('No se pudo aplicar: ' + (er.code || er.message)); b.disabled = false; b.textContent = 'Aplicar versión'; }
+  };
+}
+
+// =====================================================================
+function render() {
+  if (!CTX) return;
+  const mod = CTX.modulo;
+  if (mod !== 'plantillas' && ED) { guardarAhora(); ED = null; }
+  CTX.main.innerHTML = '';
+  if (mod === 'maestra') vistaMaestra(CTX.main);
+  else if (mod === 'config') vistaConfig(CTX.main);
+  else vistaPlantillas(CTX.main);
+}
+
+window.addEventListener('beforeunload', (e) => { if (ED && ED.sucio) { guardarAhora(); e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 's' && ED) { e.preventDefault(); guardarAhora(); } });
+
+let listo = false;
+CTX = await iniciarApp({
+  appId: 'fmt',
+  alCambiarModulo: (mod, ctx) => {
+    CTX = ctx;
+    if (!listo) { ctx.main.innerHTML = '<div style="display:flex;justify-content:center;padding:80px 0"><div class="spinner"></div></div>'; return; }
+    render();
+  }
+});
+try {
+  [CFG, PLANT] = await Promise.all([D.cargarConfig(), D.listarPlantillas()]);
+} catch (e) { toast('No se pudieron leer los datos: ' + (e.code || e.message), 'err'); }
+listo = true;
+render();
+</script>
+</body>
+</html>

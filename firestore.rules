@@ -38,10 +38,20 @@ service cloud.firestore {
       allow write: if esAdmin();
     }
 
+    function esAdminDe(app) {
+      return esAdmin() || (activo() && permiso(app).get('rol', '') == 'admin');
+    }
+
     // Datos de cada aplicativo: datos/{app}/...
     match /datos/{app}/{resto=**} {
       allow read: if puedeLeer(app);
-      allow write: if puedeEscribir(app);
+      allow write: if app != 'fmt' && puedeEscribir(app);
+    }
+
+    // Registro de formatos: plantillas y configuración solo las modifica el rol Admin del aplicativo
+    match /datos/fmt/{coleccion}/{resto=**} {
+      allow write: if (coleccion in ['plantillas', 'config'] && esAdminDe('fmt'))
+                    || (!(coleccion in ['plantillas', 'config']) && puedeEscribir('fmt'));
     }
 
     // Todo lo demás queda bloqueado

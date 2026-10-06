@@ -33,6 +33,7 @@ apps/cong/              Congelamiento integrado (generado por tools/integrar_con
 apps/cong/migrar.html   Copia de datos desde el Firebase actual (solo lectura del original)
 apps/cost/              Costos integrado (generado por tools/integrar_costos.py) — sin datos en el código
 apps/cost/cargar.html   Carga de órdenes Nisira al SIM desde el HTML generado
+apps/fmt/               Registro de formatos: index.html (UI), modelo.js (catálogos y pilotos), hoja.js (formato impreso), datos.js (Firestore)
 tools/                  Scripts de integración
 apps/_plantilla/        Plantilla para crear un aplicativo nuevo
 firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
@@ -62,6 +63,7 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 | F5 | Materiales e inventario (maestro) | Planificado |
 | F6 | Conformidades · Reporte de mantenimiento | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Planificado |
+| F8 | Registro de formatos | Constructor de plantillas, lista maestra y configuración en pruebas · pendiente: llenado y registros |
 
 ## Congelamiento (F1)
 - Origen: proyecto Firebase `sist-integrado-mantenimiento` (colecciones `sim_*`), aplicativo en uso en la cuenta anterior.
@@ -82,6 +84,26 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - Cambios en la lógica/diseño: `python3 tools/integrar_costos.py <Costos_Mantenimiento_App.html>` regenera `apps/cost/index.html`.
 - Respaldo / Cargar respaldo / Restablecer: visibles solo para rol Admin. Rol Lectura = modo consulta (no guarda).
 
+## Registro de formatos (F8)
+- Formatos diseñados desde cero para auditoría. Encabezado de control: CÓDIGO, VERSIÓN, REVISIÓN, FECHA.
+- Código: `<prefijo>/R-XXX` (prefijo `IPSMSA/MMTO`), numerado por sistema: R-001–099 General, R-101 Refrigeración,
+  R-201 Calderos, R-301 Ósmosis, R-401 Planta de hielo, R-501 Congelado, R-601 Eléctrico, R-701 Infraestructura.
+- Versión: heredada del manual (parámetro único en Configuración, hoy 6.0). Revisión: propia de cada formato, inicia en 1.0
+  y sube 1.0 por cada cambio emitido. Fecha: mes-año de vigencia (`Oct-26`, meses: Ene…Set…Dic).
+- Al cambiar la versión del manual, todos los vigentes pasan a la nueva versión con Revisión 1.0 y fecha del mes.
+- Estados: borrador → vigente (emitido) → obsoleto (reactivable con nueva revisión). Los cambios sobre un vigente quedan en
+  `trabajo` hasta emitir; el formato en uso sigue siendo `def`.
+- Datos: `datos/fmt/config/general`, `datos/fmt/plantillas/{id}` (codigo, sistema, estado, def, trabajo, versionManual,
+  prefijo, revision, fecha, historial) y `datos/fmt/plantillas/{id}/revisiones/v<ver>-r<rev>` (copia congelada de cada emisión).
+- Secciones: campos (2 o 3 columnas), tabla de parámetros (equipos × parámetros con rango), checklist (C/NC/N.A.), lista repetible.
+  Tipos de campo: texto, texto largo, número con rango, selección, sí/no, conforme, fecha, hora, fecha y hora, duración calculada, equipo, foto.
+- Pilotos cargados como borradores: R-001 Reporte de mantenimiento correctivo, R-002 Liberación de equipo post-mantenimiento,
+  R-101 Registro de parámetros de sala de máquinas (rangos y nombres de compresores por definir antes de emitir).
+- Impresión: hoja A4 desde un iframe aislado (vertical u horizontal según el formato). Lista maestra en PDF y Excel.
+- Equipos: lista temporal en Configuración hasta integrar el maestro de Equipos (F3).
+- Permisos: plantillas y configuración solo las modifica el rol Admin del aplicativo (regla en `firestore.rules`).
+- Siguiente: módulo de llenado (técnico, celular, sin señal) y registros con revisión/aprobación, PDF con QR e indicadores.
+
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
 2. Authentication → Configuración → Dominios autorizados: agregar `tecnosolucionesind.github.io`.
@@ -91,3 +113,4 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - 2026-10-02 — Repositorio creado. Portal, núcleo, Administración, plantilla y reglas (F0).
 - 2026-10-02 — F0 configurado en consola y probado por el administrador. Congelamiento integrado + herramienta de copia de datos (F1).
 - 2026-10-02 — Copia de datos de Congelamiento completada por el administrador. Costos integrado sin datos en el código + herramienta de carga (F2).
+- 2026-10-06 — Registro de formatos (F8): constructor de plantillas con revisiones, lista maestra y configuración. Reglas actualizadas (volver a publicar `firestore.rules`).
