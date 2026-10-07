@@ -48,10 +48,45 @@ service cloud.firestore {
       allow write: if app != 'fmt' && puedeEscribir(app);
     }
 
+    function esRevisorFmt() {
+      return esAdmin() || (activo() && permiso('fmt').get('rol', '') in ['admin', 'supervisor']);
+    }
+
+    // Base de equipos: la leen todos los usuarios activos (los formatos la usan)
+    match /datos/eq/{resto=**} {
+      allow read: if esAdmin() || activo();
+    }
+
     // Registro de formatos: plantillas y configuración solo las modifica el rol Admin del aplicativo
     match /datos/fmt/{coleccion}/{resto=**} {
       allow write: if (coleccion in ['plantillas', 'config'] && esAdminDe('fmt'))
-                    || (!(coleccion in ['plantillas', 'config']) && puedeEscribir('fmt'));
+                    || (!(coleccion in ['plantillas', 'config', 'registros']) && puedeEscribir('fmt'));
+    }
+
+    // Registros llenados: los crea quien los firma; el supervisor aprueba u observa; el autor corrige lo observado.
+    // Un registro aprobado ya no se modifica.
+    match /datos/fmt/registros/{id} {
+      allow create: if puedeEscribir('fmt')
+                    && request.resource.data.creadoPor == request.auth.uid
+                    && request.resource.data.estado == 'enviado';
+      allow update: if (esRevisorFmt()
+                        && resource.data.estado == 'enviado'
+                        && request.resource.data.estado in ['aprobado', 'observado']
+                        && request.resource.data.creadoPor == resource.data.creadoPor
+                        && request.resource.data.numero == resource.data.numero
+                        && (request.resource.data.estado != 'aprobado' || resource.data.creadoPor != request.auth.uid || esAdmin()))
+                    || (puedeEscribir('fmt')
+                        && resource.data.creadoPor == request.auth.uid
+                        && resource.data.estado == 'observado'
+                        && request.resource.data.estado == 'enviado'
+                        && request.resource.data.creadoPor == resource.data.creadoPor
+                        && request.resource.data.numero == resource.data.numero);
+      allow delete: if esAdmin();
+    }
+    match /datos/fmt/registros/{id}/fotos/{foto} {
+      allow write: if puedeEscribir('fmt')
+                   && (!exists(/databases/$(database)/documents/datos/fmt/registros/$(id))
+                       || get(/databases/$(database)/documents/datos/fmt/registros/$(id)).data.estado != 'aprobado');
     }
 
     // Todo lo demás queda bloqueado

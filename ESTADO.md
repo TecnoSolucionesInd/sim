@@ -28,12 +28,16 @@ core/catalogo.js        catálogo de aplicativos, roles, estados, grupos  ← aq
 core/sesion.js          perfil del usuario y cálculo de permisos
 core/core.js            iniciarApp(): guardia de sesión/permisos + cabecera y menú de módulos
 core/sim.css            estilos comunes (tema gris azulado medio, Sora / IBM Plex Sans / JetBrains Mono)
+core/maestros.js        catálogos compartidos: sistemas de planta, estados de equipo, criticidad
+core/equipos.js         lectura de la base de equipos (datos/eq/equipos) para cualquier aplicativo
 admin/                  Aplicativo Administración: Usuarios, Permisos, Aplicativos
 apps/cong/              Congelamiento integrado (generado por tools/integrar_congelamiento.py)
 apps/cong/migrar.html   Copia de datos desde el Firebase actual (solo lectura del original)
 apps/cost/              Costos integrado (generado por tools/integrar_costos.py) — sin datos en el código
 apps/cost/cargar.html   Carga de órdenes Nisira al SIM desde el HTML generado
-apps/fmt/               Registro de formatos: index.html (UI), modelo.js (catálogos y pilotos), hoja.js (formato impreso), datos.js (Firestore)
+apps/eq/                Equipos: base maestra, carga masiva Excel, importación desde Costos
+apps/fmt/               Registro de formatos: index.html (plantillas, lista maestra, configuración), llenado.js (Llenar), registros.js (Registros),
+                        modelo.js (catálogos y pilotos), logica.js (turnos, periodos, validación), hoja.js (formato impreso), datos.js (Firestore), ui.js
 tools/                  Scripts de integración
 apps/_plantilla/        Plantilla para crear un aplicativo nuevo
 firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
@@ -58,12 +62,12 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 | F0 | Portal + Administración | Construido (pruebas) |
 | F1 | Congelamiento (conserva su diseño) | Integrado en pruebas · pendiente copia de datos y cambio de enlace |
 | F2 | Costos de mantenimiento (conserva su diseño) | Integrado en pruebas · pendiente cargar datos y respaldo |
-| F3 | Equipos (maestro) | Planificado |
+| F3 | Equipos (maestro) | Construido (pruebas) |
 | F4 | Registro de parámetros (Ósmosis, Salas de máquinas, Calderos) | Planificado |
 | F5 | Materiales e inventario (maestro) | Planificado |
 | F6 | Conformidades · Reporte de mantenimiento | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Planificado |
-| F8 | Registro de formatos | Constructor de plantillas, lista maestra y configuración en pruebas · pendiente: llenado y registros |
+| F8 | Registro de formatos | Plantillas, llenado en celular, registros y revisión en pruebas · pendiente: indicadores |
 
 ## Congelamiento (F1)
 - Origen: proyecto Firebase `sist-integrado-mantenimiento` (colecciones `sim_*`), aplicativo en uso en la cuenta anterior.
@@ -84,6 +88,13 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - Cambios en la lógica/diseño: `python3 tools/integrar_costos.py <Costos_Mantenimiento_App.html>` regenera `apps/cost/index.html`.
 - Respaldo / Cargar respaldo / Restablecer: visibles solo para rol Admin. Rol Lectura = modo consulta (no guarda).
 
+## Equipos (F3)
+- Base maestra única del SIM en `datos/eq/equipos/{id}`: codigo (único), descripcion, sistema (id de `core/maestros.js`), ubicacion, tipo,
+  marca, modelo, serie, potencia, criticidad (A/B/C), estado (operativo | fuera | baja), notas, origenCosto.
+- La leen todos los usuarios activos (la usan los formatos); la escriben los roles con escritura en Equipos.
+- Carga: uno por uno, Excel (plantilla descargable; actualiza por código) o importación del catálogo de Costos (código provisional por sistema: REF-001, CAL-001…).
+- La ficha muestra los formatos vigentes que incluyen al equipo y sus últimos registros.
+
 ## Registro de formatos (F8)
 - Formatos diseñados desde cero para auditoría. Encabezado de control: CÓDIGO, VERSIÓN, REVISIÓN, FECHA.
 - Código: `<prefijo>/R-XXX` (prefijo `IPSMSA/MMTO`), numerado por sistema: R-001–099 General, R-101 Refrigeración,
@@ -100,9 +111,18 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - Pilotos cargados como borradores: R-001 Reporte de mantenimiento correctivo, R-002 Liberación de equipo post-mantenimiento,
   R-101 Registro de parámetros de sala de máquinas (rangos y nombres de compresores por definir antes de emitir).
 - Impresión: hoja A4 desde un iframe aislado (vertical u horizontal según el formato). Lista maestra en PDF y Excel.
-- Equipos: lista temporal en Configuración hasta integrar el maestro de Equipos (F3).
 - Permisos: plantillas y configuración solo las modifica el rol Admin del aplicativo (regla en `firestore.rules`).
-- Siguiente: módulo de llenado (técnico, celular, sin señal) y registros con revisión/aprobación, PDF con QR e indicadores.
+- Tablas de parámetros: columnas desde la base de equipos (filtro sistema / tipo / ubicación; ubicación "se elige al llenar")
+  o lista fija. Opción de estado por equipo (operando, parado, en mantenimiento, fuera de servicio): solo se exigen lecturas a los que operan.
+- Firmas con modo: usuario que envía (firma electrónica), firma en pantalla (nombre + trazo) y supervisor al aprobar.
+- Campo Sí/No con "genera": al responder Sí se crea un pendiente de otro formato (R-001 → R-002) con el equipo y la referencia.
+- Llenar (celular): pendientes por turno/periodo (fecha operativa según hora de inicio de turnos), pendientes generados,
+  observados del usuario, borradores en el dispositivo (localStorage) y cola de envío sin señal (se reintenta al volver la conexión).
+- Registros: `datos/fmt/registros/{id}` (valores en `v`, firmas, alertas, equipos, dur, historial), fotos comprimidas en
+  `registros/{id}/fotos/{campoId}` (Firestore, sin Storage), número `R-XXX-aaaa-00001` por transacción en `contadores/{codigo}-{año}`,
+  pendientes en `pendientes/{id}`. Estados: enviado → aprobado | observado → (corregido) enviado. Aprobado no se modifica.
+- Impresión del registro lleno: hoja oficial con valores, fotos, firmas y QR al original (`apps/fmt/?r=<id>#registros`), ajustada a una página A4.
+- Siguiente: indicadores (cumplimiento de formatos, horas de parada, MTTR por equipo, tendencias de parámetros).
 
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
@@ -114,3 +134,4 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - 2026-10-02 — F0 configurado en consola y probado por el administrador. Congelamiento integrado + herramienta de copia de datos (F1).
 - 2026-10-02 — Copia de datos de Congelamiento completada por el administrador. Costos integrado sin datos en el código + herramienta de carga (F2).
 - 2026-10-06 — Registro de formatos (F8): constructor de plantillas con revisiones, lista maestra y configuración. Reglas actualizadas (volver a publicar `firestore.rules`).
+- 2026-10-07 — Equipos (F3): base maestra con carga Excel e importación desde Costos. Registro de formatos: llenado en celular, registros, revisión, impresión con QR. Reglas actualizadas (volver a publicar `firestore.rules`).

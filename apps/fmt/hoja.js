@@ -1,7 +1,8 @@
 // Renderizador de la hoja del formato (vista previa e impresión).
 // renderHoja(datos) devuelve el HTML de una hoja A4 con el encabezado de control documental.
 
-import { esc, rangoTxt, revTxt, mesAbrev, codigoCompleto } from './modelo.js';
+import { esc, rangoTxt, revTxt, mesAbrev, codigoCompleto, turnosDe, firmasDe, tablaDeEquipos, pideUbicacion, ESTADOS_COLUMNA } from './modelo.js';
+import { columnasTabla, etiquetaCol, estadoColumna, fueraDeRango, minutosEntre, duracionTxt, fechaTxt, fechaHoraTxt } from './logica.js';
 
 export const HOJA_CSS = `
 .hoja{position:relative;box-sizing:border-box;background:#fff;color:#14202B;font-family:'IBM Plex Sans',Arial,sans-serif;font-size:9pt;line-height:1.3;padding:8mm 10mm 7mm;width:210mm;min-height:297mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
@@ -55,102 +56,189 @@ export const HOJA_CSS = `
 .hj-marca{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
 .hj-marca span{transform:rotate(-30deg);font-family:'Sora',Arial,sans-serif;font-weight:700;font-size:64pt;letter-spacing:6pt;color:rgba(180,35,44,.10);white-space:nowrap}
 .hj-vacio{border:0.6pt dashed #9AA8B6;border-top:0;padding:3mm;font-size:7.6pt;color:#8A96A3;text-align:center}
+.hj-v{color:#0E1A26;font-weight:500;font-size:8.4pt}
+.hj-ln.alto .hj-v{white-space:pre-wrap;font-weight:400}
+.hj-b.on{background:#1E3A5C;border-color:#1E3A5C;position:relative}
+.hj-b.on::after{content:"";position:absolute;left:0.95mm;top:0.25mm;width:0.9mm;height:1.8mm;border:solid #fff;border-width:0 0.5mm 0.5mm 0;transform:rotate(45deg)}
+.hj-ops span.on{font-weight:600;color:#0E1A26}
+.hj-al{color:#B4232C!important;font-weight:700!important}
+.hj-t td.al{background:#FBE9EA;color:#B4232C;font-weight:700}
+.hj-t td.na{color:#8A96A3;background:#F4F6F8;text-align:center}
+.hj-t td.vv{text-align:center;font-weight:500;color:#0E1A26}
+.hj-t td.est{text-align:center;font-size:7pt;font-weight:600;color:#1E3A5C;background:#F4F6F8}
+.hj-t td.est.no{color:#8A5A00;background:#FFF4DC}
+.hj-t th small{display:block;font-weight:400;font-size:6.6pt;color:#4A5866;margin-top:0.3mm}
+.hj-foto img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.hj-foto.con{height:34mm;border-style:solid;padding:1mm;background:#fff}
+.hj-obs .hj-v{white-space:pre-wrap;font-weight:400;font-size:8pt}
+.hj-fir .firma{display:flex;align-items:center;gap:2mm}
+.hj-fir .firma img{max-height:12mm;max-width:70%;object-fit:contain;margin:-1mm 0}
+.hj-sello{display:inline-flex;flex-direction:column;border:0.6pt solid #1E3A5C;border-radius:1mm;padding:0.6mm 2mm;color:#1E3A5C;font-size:6.6pt;line-height:1.25}
+.hj-sello b{font-size:7pt}
+.hj-fir .pend{color:#8A96A3;font-style:italic;font-size:7pt}
+.hj-pie.qr{align-items:center}
+.hj-qr{display:flex;align-items:center;gap:2mm;text-align:right}
+.hj-qr svg,.hj-qr img{width:17mm;height:17mm;display:block}
 `;
 
-const caja = (t) => `<span><i class="hj-b"></i>${esc(t)}</span>`;
+const caja = (t, on = false) => `<span class="${on ? 'on' : ''}"><i class="hj-b ${on ? 'on' : ''}"></i>${esc(t)}</span>`;
+const vv = (t, cls = '') => `<span class="hj-v ${cls}">${esc(t)}</span>`;
 
-function campoHtml(cf, def) {
+function campoHtml(cf, R) {
   const req = cf.requerido ? '<sup> *</sup>' : '';
   const lab = `<label>${esc(cf.etiqueta || 'Campo sin nombre')}${req}</label>`;
-  const ay = cf.ayuda ? `<div class="hj-ay">${esc(cf.ayuda)}</div>` : '';
+  const ay = cf.ayuda && !R ? `<div class="hj-ay">${esc(cf.ayuda)}</div>` : '';
+  const x = R ? R.v[cf.id] : undefined;
+  const hay = x != null && x !== '';
   let cuerpo;
   switch (cf.tipo) {
-    case 'textoLargo': cuerpo = '<div class="hj-ln alto"></div>'; break;
+    case 'textoLargo': cuerpo = `<div class="hj-ln alto">${hay ? vv(x) : ''}</div>`; break;
     case 'numero': {
       const r = rangoTxt(cf);
-      cuerpo = `<div class="hj-ln"><span></span><span>${esc(cf.unidad || '')}${r ? ` · Rango ${esc(r)}` : ''}</span></div>`;
+      const al = hay && fueraDeRango(cf, x);
+      cuerpo = `<div class="hj-ln"><span>${hay ? vv(String(x).replace('.', ','), al ? 'hj-al' : '') : ''}</span><span>${esc(cf.unidad || '')}${r ? ` · Rango ${esc(r)}` : ''}</span></div>`;
       break;
     }
-    case 'seleccion': cuerpo = `<div class="hj-ops">${(cf.opciones || []).map(caja).join('')}</div>`; break;
-    case 'siNo': cuerpo = `<div class="hj-ops">${caja('Sí')}${caja('No')}</div>`; break;
-    case 'conforme': cuerpo = `<div class="hj-ops">${caja('Conforme')}${caja('No conforme')}${caja('N.A.')}</div>`; break;
-    case 'fecha': cuerpo = '<div class="hj-ln"><span></span><span>dd/mm/aaaa</span></div>'; break;
-    case 'hora': cuerpo = '<div class="hj-ln"><span></span><span>hh:mm</span></div>'; break;
-    case 'fechaHora': cuerpo = '<div class="hj-ln"><span></span><span>dd/mm/aaaa · hh:mm</span></div>'; break;
-    case 'duracion': cuerpo = '<div class="hj-ln"><span></span><span>h:mm</span></div>'; break;
-    case 'equipo': cuerpo = '<div class="hj-ln"><span></span><span>Código · descripción</span></div>'; break;
-    case 'foto': cuerpo = '<div class="hj-foto">Foto adjunta en el sistema</div>'; break;
-    default: cuerpo = '<div class="hj-ln"></div>';
+    case 'seleccion': cuerpo = `<div class="hj-ops">${(cf.opciones || []).map(o => caja(o, x === o)).join('')}</div>`; break;
+    case 'siNo': cuerpo = `<div class="hj-ops">${caja('Sí', x === 'Sí')}${caja('No', x === 'No')}</div>`; break;
+    case 'conforme': cuerpo = `<div class="hj-ops">${caja('Conforme', x === 'Conforme')}${caja('No conforme', x === 'No conforme')}${caja('N.A.', x === 'N.A.')}</div>`; break;
+    case 'fecha': cuerpo = `<div class="hj-ln"><span>${hay ? vv(fechaTxt(x)) : ''}</span><span>${R ? '' : 'dd/mm/aaaa'}</span></div>`; break;
+    case 'hora': cuerpo = `<div class="hj-ln"><span>${hay ? vv(x) : ''}</span><span>${R ? '' : 'hh:mm'}</span></div>`; break;
+    case 'fechaHora': cuerpo = `<div class="hj-ln"><span>${hay ? vv(fechaHoraTxt(x)) : ''}</span><span>${R ? '' : 'dd/mm/aaaa · hh:mm'}</span></div>`; break;
+    case 'duracion': {
+      const m = R ? minutosEntre(R.v[cf.desde], R.v[cf.hasta]) : null;
+      cuerpo = `<div class="hj-ln"><span>${m != null ? vv(duracionTxt(m), m < 0 ? 'hj-al' : '') : ''}</span><span>${R ? '' : 'h:mm'}</span></div>`;
+      break;
+    }
+    case 'equipo': cuerpo = `<div class="hj-ln"><span>${x && x.codigo ? vv(`${x.codigo} · ${x.descripcion || ''}`) : ''}</span><span>${R ? '' : 'Código · descripción'}</span></div>`; break;
+    case 'referencia': cuerpo = `<div class="hj-ln"><span>${hay ? vv(x) : ''}</span><span>${R ? '' : 'N° de registro'}</span></div>`; break;
+    case 'foto': {
+      const img = R && R.fotos ? R.fotos[cf.id] : null;
+      cuerpo = img ? `<div class="hj-foto con"><img src="${img}" alt=""></div>` : `<div class="hj-foto">${R ? (x ? 'Foto en el sistema' : 'Sin foto') : 'Foto adjunta en el sistema'}</div>`;
+      break;
+    }
+    default: cuerpo = `<div class="hj-ln">${hay ? vv(x) : ''}</div>`;
   }
   return lab + cuerpo + ay;
 }
 
-function seccionHtml(s, def, cols) {
+function seccionHtml(s, def, cols, R, equipos) {
   const tit = `<div class="hj-sech">${esc(s.titulo || 'Sección')}</div>`;
   if (s.tipo === 'campos') {
     if (!s.campos.length) return `<div class="hj-sec">${tit}<div class="hj-vacio">Sin campos</div></div>`;
     const n = [2, 3].includes(Number(s.columnas)) ? Number(s.columnas) : cols;
     return `<div class="hj-sec">${tit}<div class="hj-grid" style="grid-template-columns:repeat(${n},minmax(0,1fr))">${
-      s.campos.map(cf => `<div class="hj-f" style="${cf.ancho === 2 ? 'grid-column:1/-1' : ''}">${campoHtml(cf, def)}</div>`).join('')
+      s.campos.map(cf => `<div class="hj-f" style="${cf.ancho === 2 ? 'grid-column:1/-1' : ''}">${campoHtml(cf, R)}</div>`).join('')
     }</div></div>`;
   }
   if (s.tipo === 'tabla') {
-    const w = Math.max(10, Math.min(24, Math.floor(70 / Math.max(1, s.columnas.length))));
+    let columnas;
+    if (R) columnas = R.v[s.id]?.cols || [];
+    else {
+      columnas = columnasTabla(s, equipos || [], '');
+      if (!columnas.length && tablaDeEquipos(s)) columnas = [1, 2, 3].map(i => ({ id: 'x' + i, codigo: '', descripcion: `Equipo ${i}` }));
+    }
+    const t = R ? (R.v[s.id] || {}) : {};
+    const filas = s.filas;
+    const head = columnas.map(c => `<th>${esc(c.codigo || c.descripcion)}${c.codigo && c.descripcion ? `<small>${esc(c.descripcion)}</small>` : ''}</th>`).join('');
+    const filaEstado = s.estadoEquipo ? `<tr><td class="l">Estado del equipo</td><td class="c"></td><td class="r"></td>${columnas.map(c => {
+      if (!R) return `<td class="c" style="font-size:6.6pt">${ESTADOS_COLUMNA.map(e => e.corto).join(' / ')}</td>`;
+      const e = estadoColumna(R, s, c);
+      return `<td class="est ${e !== 'operando' ? 'no' : ''}">${esc((ESTADOS_COLUMNA.find(x => x.id === e) || {}).label || '')}</td>`;
+    }).join('')}</tr>` : '';
     return `<div class="hj-sec">${tit}<table class="hj-t">
-      <thead><tr><th class="l" style="width:${s.columnas.length > 4 ? 26 : 30}%">Parámetro</th><th style="width:8%">Unidad</th><th style="width:11%">Rango</th>${s.columnas.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-      <tbody>${s.filas.length ? s.filas.map(fl => `<tr>
-        <td class="l">${esc(fl.etiqueta || 'Parámetro')}${fl.tipo === 'seleccion' && fl.opciones.length ? `<small>${fl.opciones.map(esc).join(' / ')}</small>` : ''}</td>
+      <thead><tr><th class="l" style="width:${columnas.length > 4 ? 24 : 28}%">Parámetro</th><th style="width:7%">Unidad</th><th style="width:10%">Rango</th>${head}</tr></thead>
+      <tbody>${filaEstado}${filas.length ? filas.map(fl => `<tr>
+        <td class="l">${esc(fl.etiqueta || 'Parámetro')}${fl.tipo === 'seleccion' && fl.opciones.length && !R ? `<small>${fl.opciones.map(esc).join(' / ')}</small>` : ''}</td>
         <td class="c">${esc(fl.unidad || '')}</td><td class="r">${esc(fl.tipo === 'numero' ? rangoTxt(fl) : '')}</td>
-        ${s.columnas.map(() => '<td></td>').join('')}</tr>`).join('')
-        : `<tr><td colspan="${3 + s.columnas.length}" class="c">Sin parámetros</td></tr>`}</tbody></table></div>`;
+        ${columnas.map(c => {
+          if (!R) return '<td></td>';
+          if (estadoColumna(R, s, c) !== 'operando') return '<td class="na">—</td>';
+          const x = t.c?.[fl.id]?.[c.id];
+          if (x == null || x === '') return '<td class="na"></td>';
+          const al = fl.tipo === 'numero' && fueraDeRango(fl, x);
+          return `<td class="vv ${al ? 'al' : ''}">${esc(fl.tipo === 'numero' ? String(x).replace('.', ',') : x)}</td>`;
+        }).join('')}</tr>`).join('')
+        : `<tr><td colspan="${3 + columnas.length}" class="c">Sin parámetros</td></tr>`}</tbody></table></div>`;
   }
   if (s.tipo === 'checklist') {
+    const t = R ? (R.v[s.id] || {}) : {};
+    const box = (on) => `<i class="hj-b ${on ? 'on' : ''}"></i>`;
     return `<div class="hj-sec">${tit}<table class="hj-t">
       <thead><tr><th style="width:6%">N°</th><th class="l">Ítem de verificación</th><th style="width:7%">C</th><th style="width:7%">NC</th><th style="width:7%">N.A.</th><th style="width:27%">Observación</th></tr></thead>
-      <tbody>${s.items.length ? s.items.map((x, i) => `<tr><td class="c">${i + 1}</td><td class="l">${esc(x.texto || 'Ítem')}</td><td class="c"><i class="hj-b"></i></td><td class="c"><i class="hj-b"></i></td><td class="c"><i class="hj-b"></i></td><td></td></tr>`).join('')
+      <tbody>${s.items.length ? s.items.map((x, i) => { const r = t[x.id] || {}; return `<tr><td class="c">${i + 1}</td><td class="l">${esc(x.texto || 'Ítem')}</td><td class="c">${box(r.r === 'C')}</td><td class="c ${r.r === 'NC' ? 'al' : ''}">${box(r.r === 'NC')}</td><td class="c">${box(r.r === 'NA')}</td><td class="l">${esc(r.obs || '')}</td></tr>`; }).join('')
         : '<tr><td colspan="6" class="c">Sin ítems</td></tr>'}</tbody></table></div>`;
   }
   if (s.tipo === 'lista') {
-    const n = Math.max(1, Math.min(20, Number(s.filasImpresas) || 5));
+    const filas = R ? (R.v[s.id] || []).filter(f => s.columnas.some(c => String(f[c.id] ?? '').trim())) : [];
+    const n = R ? Math.max(1, filas.length) : Math.max(1, Math.min(20, Number(s.filasImpresas) || 5));
     return `<div class="hj-sec">${tit}<table class="hj-t">
       <thead><tr><th style="width:6%">N°</th>${s.columnas.map(c => `<th class="${c.tipo === 'texto' ? 'l' : ''}" style="${c.tipo === 'numero' ? 'width:14%' : ''}">${esc(c.nombre || 'Columna')}</th>`).join('')}</tr></thead>
-      <tbody>${Array.from({ length: n }, (_, i) => `<tr><td class="c">${i + 1}</td>${s.columnas.map(() => '<td></td>').join('')}</tr>`).join('')}</tbody></table></div>`;
+      <tbody>${R && !filas.length ? `<tr><td colspan="${s.columnas.length + 1}" class="na">Sin registros</td></tr>`
+        : Array.from({ length: n }, (_, i) => `<tr><td class="c">${i + 1}</td>${s.columnas.map(c => `<td class="${c.tipo === 'numero' ? 'vv' : 'l'}">${esc(filas[i]?.[c.id] ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   }
   return '';
 }
 
+function firmaHtml(f, i, R) {
+  const x = R ? (R.firmas || [])[i] || {} : null;
+  let nombre = '', firma = '', fecha = '';
+  if (R) {
+    if (f.modo === 'manuscrita') {
+      nombre = x.nombre || '';
+      firma = x.imagen ? `<img src="${x.imagen}" alt="">` : '';
+      fecha = x.fechaHora ? fechaHoraTxt(x.fechaHora) : '';
+    } else if (x.nombre) {
+      nombre = x.nombre;
+      firma = `<span class="hj-sello"><b>Firmado electrónicamente</b><span>${esc(x.usuario || x.nombre)}</span></span>`;
+      fecha = x.fechaHora ? fechaHoraTxt(x.fechaHora) : '';
+    } else if (f.modo === 'aprobador') firma = '<span class="pend">Pendiente de verificación</span>';
+  }
+  return `<div><h6>${esc(f.nombre)}</h6>
+    <p>Nombre:${nombre ? `<span class="hj-v" style="font-size:7.8pt">${esc(nombre)}</span>` : '<i></i>'}</p>
+    <p class="firma">Firma:${firma}</p>
+    <p style="padding-bottom:1.6mm">Fecha y hora:${fecha ? `<span class="hj-v" style="font-size:7.8pt">${esc(fecha)}</span>` : '<i></i>'}</p></div>`;
+}
+
 /**
- * datos: { cfg, codigo, def, version, revision, fecha, marca }
+ * datos: { cfg, codigo, def, version, revision, fecha, marca, equipos, reg, qr }
  *  - version/revision/fecha: valores del encabezado (revision numérica; fecha 'aaaa-mm')
  *  - marca: texto de marca de agua (p. ej. 'BORRADOR') o vacío
+ *  - equipos: base de equipos (columnas de tablas en el formato en blanco)
+ *  - reg: registro lleno { numero, fechaOp, turno, hora, ubicacion, v, observaciones, firmas, fotos } (opcional)
+ *  - qr: SVG o imagen del código QR del registro (opcional)
  */
-export function renderHoja({ cfg, codigo, def, version, revision, fecha, marca = '' }) {
+export function renderHoja({ cfg, codigo, def, version, revision, fecha, marca = '', equipos = [], reg = null, qr = '' }) {
+  const R = reg ? { ...reg, v: reg.v || {} } : null;
   const h = def.orientacion === 'horizontal';
   const cols = h ? 3 : 2;
   const dg = def.datosGenerales || {};
-  const gen = [['N° de registro', ''], ['Fecha', '']];
-  if (dg.turno) gen.push(['Turno', (cfg.turnos || []).length ? `<span class="hj-ops" style="margin:0">${cfg.turnos.map(caja).join('')}</span>` : '']);
-  if (dg.hora) gen.push(['Hora', '']);
+  const tur = turnosDe(cfg).map(t => t.nombre);
+  const gen = [['N° de registro', R ? (R.numero ? vv(R.numero) : '<span class="hj-v" style="color:#8A96A3;font-weight:400">Por asignar</span>') : ''], ['Fecha', R && R.fechaOp ? vv(fechaTxt(R.fechaOp)) : '']];
+  if (dg.turno) gen.push(['Turno', tur.length ? `<span class="hj-ops" style="margin:0">${tur.map(t => caja(t, R && R.turno === t)).join('')}</span>` : '']);
+  if (dg.hora) gen.push(['Hora', R && R.hora ? vv(R.hora) : '']);
+  if (pideUbicacion(def)) gen.push(['Ubicación', R && R.ubicacion ? vv(R.ubicacion) : '']);
   const logo = cfg.logo ? `<img src="${cfg.logo}" alt="">` : `<span>${esc(cfg.empresa || '')}</span>`;
-  const firmas = def.firmas || [];
+  const firmas = firmasDe(def);
+  const cod = codigoCompleto(cfg, codigo || 'R-000');
   return `<div class="hoja ${h ? 'h' : ''}">
-    ${marca ? `<div class="hj-marca"><span>${esc(marca)}</span></div>` : ''}
+    ${marca ? `<div class="hj-marca"><span style="${marca.length > 10 ? 'font-size:46pt' : ''}">${esc(marca)}</span></div>` : ''}
     <div class="hj-cab">
       <div class="hj-logo">${logo}</div>
       <div class="hj-tit"><b>${esc(def.nombre || 'Formato sin nombre')}</b><small>${esc(cfg.departamento || '')}${cfg.planta ? ' · ' + esc(cfg.planta) : ''}</small></div>
       <div class="hj-cod">
-        <div><span>CÓDIGO:</span><em>${esc(codigoCompleto(cfg, codigo || 'R-000'))}</em></div>
+        <div><span>CÓDIGO:</span><em>${esc(cod)}</em></div>
         <div><span>VERSIÓN:</span><em>${esc(version || '—')}</em></div>
         <div><span>REVISIÓN:</span><em>${esc(revTxt(revision))}</em></div>
         <div><span>FECHA:</span><em>${esc(mesAbrev(fecha))}</em></div>
       </div>
     </div>
-    <div class="hj-gen" style="grid-template-columns:${gen.map(g => g[0] === 'Turno' ? '1.4fr' : '1fr').join(' ')}">
+    <div class="hj-gen" style="grid-template-columns:${gen.map(g => g[0] === 'Turno' ? '1.4fr' : g[0] === 'N° de registro' && R ? '1.3fr' : '1fr').join(' ')}">
       ${gen.map(g => `<div><label>${g[0]}:</label>${g[1] || '<i></i>'}</div>`).join('')}
     </div>
-    ${(def.secciones || []).map(s => seccionHtml(s, def, cols)).join('') || '<div class="hj-sec"><div class="hj-vacio">Agregue secciones al formato</div></div>'}
-    ${def.observaciones ? '<div class="hj-sec"><div class="hj-sech">Observaciones / acción correctiva</div><div class="hj-obs">Obligatoria cuando un valor está fuera de rango o un ítem es no conforme.</div></div>' : ''}
-    ${firmas.length ? `<div class="hj-fir" style="grid-template-columns:repeat(${firmas.length},minmax(0,1fr))">${firmas.map(f => `<div><h6>${esc(f)}</h6><p>Nombre:<i></i></p><p class="firma">Firma:</p><p style="padding-bottom:1.6mm">Fecha y hora:<i></i></p></div>`).join('')}</div>` : ''}
-    <div class="hj-pie"><span>Documento controlado · ${esc(codigoCompleto(cfg, codigo || 'R-000'))} · Versión ${esc(version || '—')} · Revisión ${esc(revTxt(revision))}</span><span>${esc(cfg.empresa || '')}</span></div>
+    ${(def.secciones || []).map(s => seccionHtml(s, def, cols, R, equipos)).join('') || '<div class="hj-sec"><div class="hj-vacio">Agregue secciones al formato</div></div>'}
+    ${def.observaciones ? `<div class="hj-sec"><div class="hj-sech">Observaciones / acción correctiva</div><div class="hj-obs">${R ? (R.observaciones ? vv(R.observaciones) : '<span style="color:#8A96A3">Sin observaciones</span>') : 'Obligatoria cuando un valor está fuera de rango o un ítem es no conforme.'}</div></div>` : ''}
+    ${firmas.length ? `<div class="hj-fir" style="grid-template-columns:repeat(${firmas.length},minmax(0,1fr))">${firmas.map((f, i) => firmaHtml(f, i, R)).join('')}</div>` : ''}
+    <div class="hj-pie ${qr ? 'qr' : ''}"><span>Documento controlado · ${esc(cod)} · Versión ${esc(version || '—')} · Revisión ${esc(revTxt(revision))}${R && R.numero ? `<br>Registro ${esc(R.numero)} · ${esc(cfg.empresa || '')}` : ''}</span>${qr ? `<span class="hj-qr"><span>Verifique el original<br>escaneando el código</span>${qr}</span>` : `<span>${esc(cfg.empresa || '')}</span>`}</div>
   </div>`;
 }

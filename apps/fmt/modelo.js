@@ -1,15 +1,7 @@
 // Modelo del aplicativo Registro de formatos: catálogos, utilidades y formatos piloto.
 
-export const SISTEMAS = [
-  { id: 0, nombre: 'General de Mantenimiento', desde: 1,   hasta: 99 },
-  { id: 1, nombre: 'Refrigeración',            desde: 101, hasta: 199 },
-  { id: 2, nombre: 'Calderos',                 desde: 201, hasta: 299 },
-  { id: 3, nombre: 'Ósmosis',                  desde: 301, hasta: 399 },
-  { id: 4, nombre: 'Planta de hielo',          desde: 401, hasta: 499 },
-  { id: 5, nombre: 'Congelado',                desde: 501, hasta: 599 },
-  { id: 6, nombre: 'Eléctrico',                desde: 601, hasta: 699 },
-  { id: 7, nombre: 'Infraestructura',          desde: 701, hasta: 799 }
-];
+import { SISTEMAS } from '../../core/maestros.js';
+export { SISTEMAS };
 
 export const FRECUENCIAS = ['Por turno', 'Diario', 'Semanal', 'Quincenal', 'Mensual', 'Trimestral', 'Según plan', 'Por evento'];
 
@@ -25,7 +17,21 @@ export const TIPOS_CAMPO = [
   { id: 'fechaHora', nombre: 'Fecha y hora' },
   { id: 'duracion',  nombre: 'Duración calculada' },
   { id: 'equipo',    nombre: 'Equipo' },
+  { id: 'referencia',nombre: 'Registro relacionado' },
   { id: 'foto',      nombre: 'Foto' }
+];
+
+export const MODOS_FIRMA = [
+  { id: 'usuario',    nombre: 'Usuario que envía',    desc: 'Se firma con el usuario del sistema al enviar' },
+  { id: 'manuscrita', nombre: 'Firma en pantalla',    desc: 'Nombre y firma con el dedo en el celular' },
+  { id: 'aprobador',  nombre: 'Supervisor al aprobar', desc: 'La registra el supervisor al aprobar el registro' }
+];
+
+export const ESTADOS_COLUMNA = [
+  { id: 'operando', label: 'Operando', corto: 'OP' },
+  { id: 'parado', label: 'Parado', corto: 'PAR' },
+  { id: 'mantenimiento', label: 'En mantenimiento', corto: 'MANT' },
+  { id: 'fuera', label: 'Fuera de servicio', corto: 'F/S' }
 ];
 
 export const TIPOS_FILA = [
@@ -36,7 +42,7 @@ export const TIPOS_FILA = [
 
 export const TIPOS_SECCION = [
   { id: 'campos',    nombre: 'Campos',              desc: 'Datos sueltos en dos columnas' },
-  { id: 'tabla',     nombre: 'Tabla de parámetros', desc: 'Parámetros por equipo, con rangos' },
+  { id: 'tabla',     nombre: 'Tabla de parámetros', desc: 'Lecturas por equipo de la base, con rangos' },
   { id: 'checklist', nombre: 'Checklist',           desc: 'Ítems Conforme / No conforme / N.A.' },
   { id: 'lista',     nombre: 'Lista repetible',     desc: 'Filas que se agregan al llenar' }
 ];
@@ -48,9 +54,27 @@ export const CONFIG_BASE = {
   planta: 'Planta Paita',
   departamento: 'Departamento de Mantenimiento',
   logo: '',
-  turnos: ['Día', 'Noche'],
-  equipos: []
+  turnos: [{ nombre: 'Día', inicio: '07:00' }, { nombre: 'Noche', inicio: '19:00' }]
 };
+
+// Turnos con hora de inicio (acepta la forma antigua: lista de nombres)
+export function turnosDe(cfg) {
+  const t = (cfg && cfg.turnos && cfg.turnos.length ? cfg.turnos : CONFIG_BASE.turnos);
+  const def = ['07:00', '19:00', '23:00'];
+  return t.map((x, i) => typeof x === 'string' ? { nombre: x, inicio: def[i] || '07:00' } : { nombre: x.nombre, inicio: x.inicio || def[i] || '07:00' })
+    .filter(x => x.nombre);
+}
+
+// Firmas como objetos { nombre, modo } (acepta la forma antigua: lista de textos)
+export function firmasDe(def) {
+  const f = (def && def.firmas) || [];
+  return f.map((x, i) => {
+    if (typeof x !== 'string') return { nombre: x.nombre || '', modo: x.modo || 'usuario' };
+    const n = x;
+    const modo = /verific|aprob|supervis|revis/i.test(n) ? 'aprobador' : i === 0 ? 'usuario' : 'manuscrita';
+    return { nombre: n, modo };
+  });
+}
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
 
@@ -89,20 +113,34 @@ export function defVacia(nombre = '') {
     datosGenerales: { turno: true, hora: false },
     observaciones: true,
     secciones: [],
-    firmas: ['Ejecutado por', 'Verificado por']
+    firmas: [{ nombre: 'Ejecutado por', modo: 'usuario' }, { nombre: 'Verificado por', modo: 'aprobador' }]
   };
 }
 
 export function seccionNueva(tipo) {
   const base = { id: uid(), tipo, titulo: '' };
   if (tipo === 'campos') return { ...base, titulo: 'Datos', columnas: 0, campos: [] };
-  if (tipo === 'tabla') return { ...base, titulo: 'Parámetros', columnas: ['Equipo 1', 'Equipo 2'], filas: [] };
+  if (tipo === 'tabla') return { ...base, titulo: 'Parámetros', fuente: 'equipos', filtro: { sistema: '', tipo: '', ubicacion: '' }, estadoEquipo: true, columnas: ['Equipo 1', 'Equipo 2'], filas: [] };
   if (tipo === 'checklist') return { ...base, titulo: 'Verificación', items: [] };
   if (tipo === 'lista') return { ...base, titulo: 'Detalle', columnas: [{ id: uid(), nombre: 'Descripción', tipo: 'texto' }, { id: uid(), nombre: 'Cantidad', tipo: 'numero' }], filasImpresas: 5 };
   return base;
 }
 
-export const campoNuevo = (tipo = 'texto') => ({ id: uid(), etiqueta: '', tipo, requerido: false, ancho: tipo === 'textoLargo' ? 2 : 1, unidad: '', min: '', max: '', opciones: [], ayuda: '', desde: '', hasta: '' });
+export const campoNuevo = (tipo = 'texto') => ({ id: uid(), etiqueta: '', tipo, requerido: false, ancho: tipo === 'textoLargo' ? 2 : 1, unidad: '', min: '', max: '', opciones: [], ayuda: '', desde: '', hasta: '', filtro: { sistema: '', tipo: '' }, genera: '' });
+
+// Tabla: si toma sus columnas de la base de equipos
+export const tablaDeEquipos = (s) => s.tipo === 'tabla' && s.fuente === 'equipos';
+// Tabla cuya ubicación se elige al llenar
+export const pideUbicacion = (def) => (def.secciones || []).some(s => tablaDeEquipos(s) && s.filtro && s.filtro.ubicacion === '*');
+
+export function filtroTxt(f, sistemas = SISTEMAS) {
+  if (!f) return '';
+  const p = [];
+  if (f.sistema !== '' && f.sistema != null) p.push((sistemas.find(x => x.id === Number(f.sistema)) || {}).nombre || '');
+  if (f.tipo) p.push(f.tipo);
+  if (f.ubicacion === '*') p.push('ubicación al llenar'); else if (f.ubicacion) p.push(f.ubicacion);
+  return p.filter(Boolean).join(' · ');
+}
 export const filaNueva = () => ({ id: uid(), etiqueta: '', tipo: 'numero', unidad: '', min: '', max: '', opciones: [], requerido: true });
 
 export function rangoTxt(x) {
@@ -131,7 +169,10 @@ export function validarDef(def) {
       });
     }
     if (s.tipo === 'tabla') {
-      if (!s.columnas.length) err.push(`"${t}" no tiene columnas.`);
+      if (tablaDeEquipos(s)) {
+        const fl = s.filtro || {};
+        if ((fl.sistema === '' || fl.sistema == null) && !fl.tipo) err.push(`"${t}": indique al menos el sistema o el tipo de equipo de las columnas.`);
+      } else if (!s.columnas.length) err.push(`"${t}" no tiene columnas.`);
       if (!s.filas.length) err.push(`"${t}" no tiene parámetros.`);
       s.filas.forEach((f, j) => {
         if (!f.etiqueta.trim()) err.push(`"${t}": el parámetro ${j + 1} no tiene nombre.`);
@@ -148,8 +189,11 @@ export function validarDef(def) {
       if (s.columnas.some(x => !x.nombre.trim())) err.push(`"${t}" tiene columnas sin nombre.`);
     }
   });
-  if (!def.firmas.length) err.push('Agregue al menos una firma.');
-  if (def.firmas.some(f => !f.trim())) err.push('Hay firmas sin nombre.');
+  const fir = firmasDe(def);
+  if (!fir.length) err.push('Agregue al menos una firma.');
+  if (fir.some(f => !f.nombre.trim())) err.push('Hay firmas sin nombre.');
+  if (fir.filter(f => f.modo === 'usuario').length > 1) err.push('Solo una firma puede ser la del usuario que envía.');
+  if (fir.filter(f => f.modo === 'aprobador').length > 1) err.push('Solo una firma puede ser la del supervisor que aprueba.');
   return err;
 }
 
@@ -162,6 +206,7 @@ export function pilotos() {
   const r001Falla = c('Fecha y hora de la falla', 'fechaHora', { requerido: true });
   const r001Ini = c('Inicio de la atención', 'fechaHora', { requerido: true });
   const r001Fin = c('Fin de la atención', 'fechaHora', { requerido: true });
+  const FU = { nombre: 'Ejecutado por', modo: 'usuario' }, FA = { nombre: 'Verificado por', modo: 'aprobador' };
 
   const r001 = {
     codigo: 'R-001',
@@ -192,10 +237,10 @@ export function pilotos() {
         { id: uid(), tipo: 'campos', titulo: 'Evidencias y cierre', columnas: 3, campos: [
           c('Foto antes', 'foto'),
           c('Foto después', 'foto'),
-          c('¿Requiere liberación del equipo (R-002)?', 'siNo', { requerido: true })
+          c('¿Requiere liberación del equipo (R-002)?', 'siNo', { requerido: true, genera: 'R-002' })
         ] }
       ],
-      firmas: ['Ejecutado por', 'Verificado por']
+      firmas: [FU, FA]
     }
   };
 
@@ -209,7 +254,7 @@ export function pilotos() {
         { id: uid(), tipo: 'campos', titulo: 'Identificación', columnas: 0, campos: [
           c('Equipo', 'equipo', { requerido: true }),
           c('Tipo de intervención', 'seleccion', { requerido: true, opciones: ['Preventivo', 'Correctivo', 'Mejora'] }),
-          c('N° de reporte R-001 relacionado', 'texto'),
+          c('Reporte de mantenimiento relacionado', 'referencia', { ayuda: 'N° del R-001 cuando la liberación viene de un correctivo' }),
           c('Fecha y hora de liberación', 'fechaHora', { requerido: true })
         ] },
         { id: uid(), tipo: 'checklist', titulo: 'Verificación de liberación', items: [
@@ -226,11 +271,10 @@ export function pilotos() {
           c('Foto del equipo liberado', 'foto', { requerido: true })
         ] }
       ],
-      firmas: ['Entrega — Mantenimiento', 'Recibe — Área usuaria']
+      firmas: [{ nombre: 'Entrega — Mantenimiento', modo: 'usuario' }, { nombre: 'Recibe — Área usuaria', modo: 'manuscrita' }, FA]
     }
   };
 
-  const est = ['Operando', 'Parado', 'En mantenimiento'];
   const r101 = {
     codigo: 'R-101',
     def: {
@@ -239,8 +283,7 @@ export function pilotos() {
       orientacion: 'horizontal',
       datosGenerales: { turno: true, hora: true },
       secciones: [
-        { id: uid(), tipo: 'tabla', titulo: 'Compresores', columnas: ['Compresor 1', 'Compresor 2', 'Compresor 3'], filas: [
-          f('Estado', 'seleccion', { opciones: est }),
+        { id: uid(), tipo: 'tabla', titulo: 'Compresores', fuente: 'equipos', filtro: { sistema: 1, tipo: 'Compresor', ubicacion: '' }, estadoEquipo: true, columnas: [], filas: [
           f('Presión de succión', 'numero', { unidad: 'psi' }),
           f('Presión de descarga', 'numero', { unidad: 'psi' }),
           f('Presión de aceite', 'numero', { unidad: 'psi' }),
@@ -254,7 +297,7 @@ export function pilotos() {
           c('Condensadores en servicio', 'numero', { requerido: true, unidad: 'und' })
         ] }
       ],
-      firmas: ['Ejecutado por', 'Verificado por']
+      firmas: [FU, FA]
     }
   };
 

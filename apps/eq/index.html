@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Equipos · SIM</title>
+<link rel="stylesheet" href="../../core/sim.css">
+<style>
+  .pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+  .pagehead h1{font-size:36px;margin-top:12px}
+  .acciones{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
+  .kpi{padding:18px 20px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1)}
+  .kpi span{display:block;font-size:12.5px;color:var(--tx-3)}
+  .kpi b{display:block;font-family:var(--f-display);font-weight:600;font-size:28px;margin-top:6px}
+  .filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  .filtros .chip{height:36px;padding:0 14px;font-size:13px}
+  .field.sm{height:40px;font-size:14px;padding:0 12px;border-radius:10px}
+  select.field.sm{padding-right:32px;background-position:right 10px center}
+  .btn.sm{height:38px;padding:0 14px;font-size:13px;border-radius:10px}
+  .lista{border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);overflow:hidden}
+  .fila{display:grid;grid-template-columns:130px minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 60px 150px;gap:14px;align-items:center;padding:13px 20px;border-bottom:1px solid rgba(255,255,255,.06);text-align:left;width:100%;background:transparent;border-left:0;border-right:0;border-top:0;color:var(--tx);font-size:14px;transition:background .2s}
+  .fila:hover{background:rgba(255,255,255,.04)}
+  .fila.hd{font-family:var(--f-mono);font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--tx-3);cursor:default;padding:14px 20px}
+  .fila.hd:hover{background:transparent}
+  .fila .c{font-family:var(--f-mono);font-size:13px;color:var(--mint-2)}
+  .fila .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fila .s{color:var(--tx-2);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .crit{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;font-family:var(--f-mono);font-size:13px;font-weight:600}
+  .crit.A{background:rgba(255,143,143,.16);color:#FFB3B3}.crit.B{background:rgba(245,185,74,.16);color:#FFCF73}.crit.C{background:rgba(255,255,255,.08);color:#C3CDD8}
+  .mas{display:flex;justify-content:center;padding:16px}
+  .vacio{padding:48px 28px;text-align:center}
+  .vacio h2{font-family:var(--f-display);font-weight:600;font-size:22px;margin:0 0 10px}
+  .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .ficha{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:22px}
+  .lado h4{margin:0 0 10px;font-family:var(--f-display);font-weight:600;font-size:14px}
+  .lado .it{padding:10px 12px;border-radius:12px;background:rgba(14,22,30,.28);margin-bottom:8px;font-size:13px;line-height:1.45}
+  .lado .it b{font-family:var(--f-mono);font-size:12px;color:var(--mint-2);font-weight:500}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));gap:18px}
+  .panel{padding:22px;border-radius:20px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1)}
+  .panel h3{margin:0 0 6px;font-family:var(--f-display);font-weight:600;font-size:17px}
+  .panel p{margin:0 0 16px;color:var(--tx-2);font-size:13.5px;line-height:1.55}
+  .prev{max-height:420px;overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.1)}
+  .prev table{width:100%;border-collapse:collapse;font-size:13px}
+  .prev th{position:sticky;top:0;background:#3A4757;font-family:var(--f-mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tx-3);text-align:left;padding:10px 12px;font-weight:500}
+  .prev td{padding:9px 12px;border-top:1px solid rgba(255,255,255,.06);vertical-align:top}
+  .st{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .st.n{background:rgba(111,227,207,.16);color:#8FF0DE}.st.u{background:rgba(169,180,255,.16);color:#C5CCFF}.st.e{background:rgba(255,143,143,.14);color:#FFB3B3}.st.o{background:rgba(255,255,255,.08);color:#C3CDD8}
+  .resumen{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0;font-size:13.5px}
+  @media (max-width:1100px){
+    .fila{grid-template-columns:110px minmax(0,1fr) 44px;grid-template-areas:"c d k" "c m e";row-gap:4px}
+    .fila>:nth-child(1){grid-area:c}.fila>:nth-child(2){grid-area:d}.fila>:nth-child(6){grid-area:k;justify-self:end}.fila>:nth-child(7){grid-area:e;justify-self:end}
+    .fila>:nth-child(3),.fila>:nth-child(4){display:none}
+    .fila>:nth-child(5){grid-area:m}
+    .fila.hd{display:none}
+  }
+  @media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.pagehead h1{font-size:30px}.ficha{grid-template-columns:minmax(0,1fr)}}
+  @media (max-width:640px){
+    .g2,.g3{grid-template-columns:minmax(0,1fr)}
+    .fila{grid-template-columns:minmax(0,1fr) 40px;grid-template-areas:"c k" "d d" "m e";padding:14px 16px}
+    .fila>:nth-child(7){justify-self:start}
+  }
+</style>
+</head>
+<body>
+<script type="module">
+import { iniciarApp, toast, db } from '../../core/core.js';
+import { SISTEMAS, sistemaPorId, ESTADOS_EQUIPO, CRITICIDAD, norm } from '../../core/maestros.js';
+import { colEquipos, listarEquipos, ordenEquipos, valoresDe } from '../../core/equipos.js';
+import { doc, getDoc, getDocs, collection, query, where, writeBatch, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const I = (d, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+const IC = { mas: I('M12 5v14M5 12h14'), x: I('M6 6l12 12M18 6L6 18', 16), xls: I('M4 4h16v16H4zM4 10h16M10 4v16'), up: I('M12 16V4M6 10l6-6 6 6M4 20h16'), down: I('M12 4v12M6 10l6 6 6-6M4 20h16') };
+
+let CTX = null, EQ = [], FIL = { sistema: 'all', ubicacion: '', tipo: '', estado: 'activos', q: '' }, LIM = 150;
+const nombreUsuario = () => CTX?.perfil?.nombre || CTX?.user?.email || '';
+const puede = () => CTX?.puedeEscribir;
+
+const pillEstado = (id) => { const e = ESTADOS_EQUIPO.find(x => x.id === id) || ESTADOS_EQUIPO[0]; return `<span class="pill" style="background:${e.bg};color:${e.fg}">${e.label}</span>`; };
+const sisNom = (id) => sistemaPorId(id)?.nombre || '—';
+
+// ---------------- modal ----------------
+function modal({ titulo, cuerpo, pie, ancho = 640 }) {
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `<form class="modal" novalidate style="max-width:${ancho}px">
+    <div class="modal-h"><div style="font-family:var(--f-display);font-weight:600;font-size:20px">${titulo}</div>
+      <button type="button" class="btn btn-icon" data-x aria-label="Cerrar">${IC.x}</button></div>
+    <div class="modal-b">${cuerpo}<div class="alert err" data-err style="margin-top:16px" hidden></div></div>
+    <div class="modal-f">${pie}</div></form>`;
+  document.body.appendChild(bg);
+  const cerrar = () => bg.remove();
+  bg.querySelectorAll('[data-x]').forEach(b => b.onclick = cerrar);
+  bg.addEventListener('mousedown', (e) => { if (e.target === bg) cerrar(); });
+  const $ = (s) => bg.querySelector(s);
+  const err = (t) => { const e = $('[data-err]'); e.hidden = !t; e.textContent = t || ''; if (t) e.scrollIntoView({ block: 'nearest' }); };
+  return { bg, $, cerrar, err, form: bg.querySelector('form') };
+}
+
+// =====================================================================
+// BASE DE EQUIPOS
+// =====================================================================
+function filtrados() {
+  const q = norm(FIL.q);
+  return EQ.filter(e => {
+    if (FIL.sistema !== 'all' && Number(e.sistema) !== FIL.sistema) return false;
+    if (FIL.ubicacion && norm(e.ubicacion) !== norm(FIL.ubicacion)) return false;
+    if (FIL.tipo && norm(e.tipo) !== norm(FIL.tipo)) return false;
+    if (FIL.estado === 'activos' && e.estado === 'baja') return false;
+    if (!['activos', 'todos'].includes(FIL.estado) && (e.estado || 'operativo') !== FIL.estado) return false;
+    if (q && !norm(`${e.codigo} ${e.descripcion} ${e.marca} ${e.modelo} ${e.serie} ${e.ubicacion} ${e.tipo}`).includes(q)) return false;
+    return true;
+  });
+}
+
+function vistaBase(main) {
+  const act = EQ.filter(e => e.estado !== 'baja');
+  main.innerHTML = `
+    <div class="pagehead">
+      <div><div class="eyebrow rise">Equipos</div><h1 class="h-display rise d1">Base de equipos</h1></div>
+      <div class="acciones rise d2">
+        ${EQ.length ? `<button class="btn" id="bXls">${IC.xls}Excel</button>` : ''}
+        ${puede() ? `<button class="btn btn-primary" id="bNuevo">${IC.mas}Nuevo equipo</button>` : ''}
+      </div>
+    </div>
+    ${EQ.length ? `
+    <div class="kpis rise d2">
+      <div class="kpi"><span>Equipos activos</span><b>${act.length}</b></div>
+      <div class="kpi"><span>Operativos</span><b style="color:var(--mint-2)">${act.filter(e => (e.estado || 'operativo') === 'operativo').length}</b></div>
+      <div class="kpi"><span>Fuera de servicio</span><b style="color:var(--amber-2)">${act.filter(e => e.estado === 'fuera').length}</b></div>
+      <div class="kpi"><span>Criticidad A</span><b style="color:#FFB3B3">${act.filter(e => e.criticidad === 'A').length}</b></div>
+    </div>
+    <div class="filtros rise d3">
+      <button class="chip ${FIL.sistema === 'all' ? 'on' : ''}" data-s="all">Todos</button>
+      ${SISTEMAS.filter(s => EQ.some(e => Number(e.sistema) === s.id)).map(s => `<button class="chip ${FIL.sistema === s.id ? 'on' : ''}" data-s="${s.id}">${esc(s.nombre)}</button>`).join('')}
+    </div>
+    <div class="filtros rise d3">
+      <label class="sr" for="fU">Ubicación</label><select class="field sm" id="fU" style="width:auto;max-width:220px"><option value="">Todas las ubicaciones</option>${valoresDe(EQ, 'ubicacion').map(v => `<option ${norm(v) === norm(FIL.ubicacion) ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>
+      <label class="sr" for="fT">Tipo</label><select class="field sm" id="fT" style="width:auto;max-width:220px"><option value="">Todos los tipos</option>${valoresDe(EQ, 'tipo').map(v => `<option ${norm(v) === norm(FIL.tipo) ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>
+      <label class="sr" for="fE">Estado</label><select class="field sm" id="fE" style="width:auto">${[['activos', 'Activos'], ['operativo', 'Operativos'], ['fuera', 'Fuera de servicio'], ['baja', 'De baja'], ['todos', 'Todos']].map(([v, l]) => `<option value="${v}" ${FIL.estado === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <span style="flex-grow:1"></span>
+      <label class="sr" for="fQ">Buscar</label><input class="field sm" id="fQ" type="search" placeholder="Buscar código, descripción, marca…" value="${esc(FIL.q)}" style="flex:0 1 280px;min-width:0">
+    </div>
+    <div class="lista rise d4" id="lista"></div>`
+    : `<div class="glass vacio rise d2">
+        <h2>Aún no hay equipos registrados</h2>
+        <p class="muted" style="max-width:540px;margin:0 auto 24px;line-height:1.6">Registre los equipos uno por uno, cárguelos desde una plantilla Excel o importe el catálogo de equipos del aplicativo Costos.</p>
+        ${puede() ? `<div class="acciones" style="justify-content:center"><a class="btn btn-primary" href="#carga">${IC.up}Carga masiva</a><button class="btn" id="bNuevo2">${IC.mas}Nuevo equipo</button></div>` : ''}
+      </div>`}`;
+  const $ = (s) => main.querySelector(s);
+  if ($('#bNuevo')) $('#bNuevo').onclick = () => ficha(null);
+  if ($('#bNuevo2')) $('#bNuevo2').onclick = () => ficha(null);
+  if ($('#bXls')) $('#bXls').onclick = () => exportar(filtrados());
+  main.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+    FIL.sistema = b.dataset.s === 'all' ? 'all' : Number(b.dataset.s); LIM = 150;
+    main.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b)); pintarLista(main);
+  });
+  if ($('#fU')) $('#fU').onchange = (e) => { FIL.ubicacion = e.target.value; LIM = 150; pintarLista(main); };
+  if ($('#fT')) $('#fT').onchange = (e) => { FIL.tipo = e.target.value; LIM = 150; pintarLista(main); };
+  if ($('#fE')) $('#fE').onchange = (e) => { FIL.estado = e.target.value; LIM = 150; pintarLista(main); };
+  if ($('#fQ')) $('#fQ').oninput = (e) => { FIL.q = e.target.value; LIM = 150; pintarLista(main); };
+  pintarLista(main);
+}
+
+function pintarLista(main) {
+  const box = main.querySelector('#lista');
+  if (!box) return;
+  const f = filtrados();
+  box.innerHTML = `<div class="fila hd"><span>Código</span><span>Descripción</span><span>Sistema</span><span>Ubicación</span><span>Tipo</span><span>Crit.</span><span>Estado</span></div>
+    ${f.slice(0, LIM).map(e => `<button class="fila" data-id="${e.id}">
+      <span class="c">${esc(e.codigo)}</span>
+      <span class="t">${esc(e.descripcion)}</span>
+      <span class="s">${esc(sisNom(e.sistema))}</span>
+      <span class="s">${esc(e.ubicacion || '—')}</span>
+      <span class="s">${esc(e.tipo || '—')}</span>
+      <span>${e.criticidad ? `<span class="crit ${e.criticidad}">${e.criticidad}</span>` : ''}</span>
+      <span>${pillEstado(e.estado || 'operativo')}</span>
+    </button>`).join('') || '<div class="muted" style="padding:22px 20px">Ningún equipo coincide con el filtro.</div>'}
+    ${f.length > LIM ? `<div class="mas"><button class="btn sm" id="bMas">Mostrar más (${f.length - LIM} restantes)</button></div>` : ''}
+    <div style="padding:12px 20px;font-size:12.5px;color:var(--tx-3)">${f.length} de ${EQ.length} equipos</div>`;
+  box.querySelectorAll('[data-id]').forEach(b => b.onclick = () => ficha(EQ.find(e => e.id === b.dataset.id)));
+  const m = box.querySelector('#bMas'); if (m) m.onclick = () => { LIM += 300; pintarLista(main); };
+}
+
+// ---------------- ficha del equipo ----------------
+function ficha(e) {
+  const nuevo = !e;
+  const ro = !puede();
+  const dis = ro ? 'disabled' : '';
+  const v = e || { codigo: '', descripcion: '', sistema: FIL.sistema === 'all' ? '' : FIL.sistema, ubicacion: FIL.ubicacion, tipo: FIL.tipo, marca: '', modelo: '', serie: '', potencia: '', criticidad: '', estado: 'operativo', notas: '' };
+  const dl = (id, campo) => `<datalist id="${id}">${valoresDe(EQ, campo).map(x => `<option value="${esc(x)}">`).join('')}</datalist>`;
+  const m = modal({
+    titulo: nuevo ? 'Nuevo equipo' : esc(v.codigo), ancho: nuevo ? 720 : 980,
+    cuerpo: `<div class="${nuevo ? '' : 'ficha'}"><div>
+      <div class="g2">
+        <div><label class="label" for="eCod">Código</label><input class="field mono" id="eCod" value="${esc(v.codigo)}" placeholder="CP-01" ${dis}></div>
+        <div><label class="label" for="eSis">Sistema</label><select class="field" id="eSis" ${dis}><option value="">Seleccione</option>${SISTEMAS.map(s => `<option value="${s.id}" ${String(s.id) === String(v.sistema) ? 'selected' : ''}>${esc(s.nombre)}</option>`).join('')}</select></div>
+        <div style="grid-column:1/-1"><label class="label" for="eDes">Descripción</label><input class="field" id="eDes" value="${esc(v.descripcion)}" placeholder="Compresor de tornillo N° 1" ${dis}></div>
+        <div><label class="label" for="eUbi">Ubicación</label><input class="field" id="eUbi" list="dlUbi" value="${esc(v.ubicacion)}" placeholder="Sala de máquinas" ${dis}>${dl('dlUbi', 'ubicacion')}</div>
+        <div><label class="label" for="eTip">Tipo de equipo</label><input class="field" id="eTip" list="dlTip" value="${esc(v.tipo)}" placeholder="Compresor" ${dis}>${dl('dlTip', 'tipo')}</div>
+        <div><label class="label" for="eMar">Marca</label><input class="field" id="eMar" list="dlMar" value="${esc(v.marca)}" ${dis}>${dl('dlMar', 'marca')}</div>
+        <div><label class="label" for="eMod">Modelo</label><input class="field" id="eMod" value="${esc(v.modelo)}" ${dis}></div>
+        <div><label class="label" for="eSer">N° de serie</label><input class="field" id="eSer" value="${esc(v.serie)}" ${dis}></div>
+        <div><label class="label" for="ePot">Potencia / capacidad</label><input class="field" id="ePot" value="${esc(v.potencia)}" placeholder="250 HP" ${dis}></div>
+        <div><label class="label" for="eCri">Criticidad</label><select class="field" id="eCri" ${dis}><option value="">Sin definir</option>${CRITICIDAD.map(c => `<option value="${c.id}" ${c.id === v.criticidad ? 'selected' : ''} title="${esc(c.desc)}">${c.label}</option>`).join('')}</select></div>
+        <div><label class="label" for="eEst">Estado</label><select class="field" id="eEst" ${dis}>${ESTADOS_EQUIPO.map(s => `<option value="${s.id}" ${s.id === (v.estado || 'operativo') ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+        <div style="grid-column:1/-1"><label class="label" for="eNot">Notas</label><textarea class="field" id="eNot" rows="2" style="height:auto;padding:12px 16px;line-height:1.5" ${dis}>${esc(v.notas)}</textarea></div>
+      </div></div>
+      ${nuevo ? '' : `<div class="lado">
+        <h4>Formatos que le aplican</h4><div id="lFmt"><div class="skel" style="height:40px"></div></div>
+        <h4 style="margin-top:20px">Últimos registros</h4><div id="lReg"><div class="skel" style="height:40px"></div></div>
+      </div>`}
+    </div>`,
+    pie: ro ? '<button type="button" class="btn" data-x>Cerrar</button>'
+      : `${!nuevo && CTX.rol === 'admin' ? '<button type="button" class="btn btn-danger" id="eDel" style="margin-right:auto">Eliminar</button>' : ''}<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="eOk">${nuevo ? 'Registrar equipo' : 'Guardar cambios'}</button>`
+  });
+  if (!nuevo) relacionados(v, m);
+  if (nuevo) setTimeout(() => m.$('#eCod').focus(), 50);
+  if (m.$('#eDel')) m.$('#eDel').onclick = async () => {
+    if (!confirm(`¿Eliminar ${v.codigo} de la base? Los registros ya llenados conservan sus datos. Para retirarlo del uso, se recomienda marcarlo "De baja".`)) return;
+    try { await deleteDoc(doc(colEquipos(), v.id)); EQ = EQ.filter(x => x.id !== v.id); m.cerrar(); toast('Equipo eliminado.'); render(); }
+    catch (er) { m.err('No se pudo eliminar: ' + (er.code || er.message)); }
+  };
+  if (ro) return;
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault(); m.err('');
+    const d = {
+      codigo: m.$('#eCod').value.trim().toUpperCase(), descripcion: m.$('#eDes').value.trim(),
+      sistema: m.$('#eSis').value === '' ? '' : Number(m.$('#eSis').value),
+      ubicacion: m.$('#eUbi').value.trim(), tipo: m.$('#eTip').value.trim(), marca: m.$('#eMar').value.trim(),
+      modelo: m.$('#eMod').value.trim(), serie: m.$('#eSer').value.trim(), potencia: m.$('#ePot').value.trim(),
+      criticidad: m.$('#eCri').value, estado: m.$('#eEst').value, notas: m.$('#eNot').value.trim()
+    };
+    if (!d.codigo) return m.err('Ingrese el código del equipo.');
+    if (!d.descripcion) return m.err('Ingrese la descripción.');
+    if (d.sistema === '') return m.err('Seleccione el sistema.');
+    if (EQ.some(x => x.id !== v.id && norm(x.codigo) === norm(d.codigo))) return m.err(`El código ${d.codigo} ya está registrado.`);
+    // respeta la forma ya escrita de ubicación y tipo para no duplicar por tildes o mayúsculas
+    ['ubicacion', 'tipo', 'marca'].forEach(k => { const ya = valoresDe(EQ, k).find(x => norm(x) === norm(d[k])); if (ya) d[k] = ya; });
+    const b = m.$('#eOk'); b.disabled = true; b.textContent = 'Guardando…';
+    try {
+      const ref = nuevo ? doc(colEquipos()) : doc(colEquipos(), v.id);
+      const batch = writeBatch(db);
+      batch.set(ref, { ...d, ...(nuevo ? { creado: serverTimestamp() } : {}), actualizado: serverTimestamp(), actualizadoPor: nombreUsuario() }, { merge: true });
+      await batch.commit();
+      if (nuevo) EQ.push({ id: ref.id, ...d }); else Object.assign(v, d);
+      EQ.sort(ordenEquipos);
+      m.cerrar(); toast(nuevo ? `${d.codigo} registrado.` : 'Cambios guardados.'); render();
+    } catch (er) { m.err('No se pudo guardar: ' + (er.code || er.message)); b.disabled = false; b.textContent = nuevo ? 'Registrar equipo' : 'Guardar cambios'; }
+  };
+}
+
+// formatos vigentes que usan este equipo y últimos registros (requiere acceso de lectura a Registro de formatos)
+async function relacionados(e, m) {
+  const fBox = m.$('#lFmt'), rBox = m.$('#lReg');
+  try {
+    const s = await getDocs(collection(db, 'datos', 'fmt', 'plantillas'));
+    const out = [];
+    s.docs.map(d => d.data()).filter(p => p.estado === 'vigente' && p.def).sort((a, b) => String(a.codigo).localeCompare(b.codigo)).forEach(p => {
+      const usos = [];
+      p.def.secciones.forEach(sec => {
+        if (sec.tipo === 'tabla' && sec.fuente === 'equipos' && aplica(e, sec.filtro)) usos.push(sec.titulo);
+        (sec.campos || []).forEach(c => { if (c.tipo === 'equipo' && aplica(e, c.filtro)) usos.push(c.etiqueta); });
+      });
+      if (usos.length) out.push(`<div class="it"><b>${esc(p.codigo)}</b> ${esc(p.def.nombre)}<div style="color:var(--tx-3);font-size:12px;margin-top:2px">${esc([...new Set(usos)].join(' · '))}</div></div>`);
+    });
+    fBox.innerHTML = out.join('') || '<div class="muted" style="font-size:13px">Ningún formato vigente lo incluye.</div>';
+  } catch { fBox.innerHTML = '<div class="muted" style="font-size:13px">Sin acceso a Registro de formatos.</div>'; }
+  try {
+    const s = await getDocs(query(collection(db, 'datos', 'fmt', 'registros'), where('equipos', 'array-contains', e.codigo)));
+    const regs = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.enviado || '').localeCompare(String(a.enviado || ''))).slice(0, 8);
+    const ESTR = { enviado: 'Por revisar', observado: 'Observado', aprobado: 'Aprobado' };
+    rBox.innerHTML = regs.map(r => `<a class="it" style="display:block;text-decoration:none;color:inherit" href="../fmt/?r=${encodeURIComponent(r.id)}#registros"><b>${esc(r.numero || r.codigo)}</b> ${esc(r.nombre || '')}<div style="color:var(--tx-3);font-size:12px;margin-top:2px">${esc(r.fechaOp || '')} · ${esc(ESTR[r.estado] || r.estado)}${r.nAlertas ? ` · ${r.nAlertas} alerta${r.nAlertas > 1 ? 's' : ''}` : ''}</div></a>`).join('')
+      || '<div class="muted" style="font-size:13px">Sin registros todavía.</div>';
+  } catch { rBox.innerHTML = '<div class="muted" style="font-size:13px">Sin acceso a Registro de formatos.</div>'; }
+}
+const aplica = (e, f) => {
+  if (!f) return false;
+  const vacio = (f.sistema === '' || f.sistema == null) && !f.tipo && (!f.ubicacion || f.ubicacion === '*');
+  if (vacio) return false; // los campos sin filtro aplican a todos; no se listan uno por uno
+  return (f.sistema === '' || f.sistema == null || Number(e.sistema) === Number(f.sistema))
+    && (!f.tipo || norm(e.tipo) === norm(f.tipo))
+    && (!f.ubicacion || f.ubicacion === '*' || norm(e.ubicacion) === norm(f.ubicacion));
+};
+
+// =====================================================================
+// CARGA MASIVA
+// =====================================================================
+const COLS = [
+  ['codigo', 'Código'], ['descripcion', 'Descripción'], ['sistema', 'Sistema'], ['ubicacion', 'Ubicación'], ['tipo', 'Tipo'],
+  ['marca', 'Marca'], ['modelo', 'Modelo'], ['serie', 'N° serie'], ['potencia', 'Potencia'], ['criticidad', 'Criticidad'], ['estado', 'Estado'], ['notas', 'Notas']
+];
+
+function vistaCarga(main) {
+  if (!puede()) { main.innerHTML = '<div class="alert warn">Su rol en Equipos es de solo consulta.</div>'; return; }
+  main.innerHTML = `
+    <div class="pagehead"><div><div class="eyebrow rise">Equipos</div><h1 class="h-display rise d1">Carga masiva</h1></div></div>
+    <div class="cards">
+      <div class="panel rise d2">
+        <h3>1. Plantilla Excel</h3>
+        <p>Descargue la plantilla, complete un equipo por fila y súbala. Si el código ya existe, se actualizan los datos que vengan llenos.</p>
+        <button class="btn" id="cPlant">${IC.down}Descargar plantilla</button>
+      </div>
+      <div class="panel rise d2">
+        <h3>2. Subir Excel</h3>
+        <p>Se revisa cada fila antes de importar: código, descripción y sistema son obligatorios.</p>
+        <label class="btn btn-primary" style="cursor:pointer">${IC.up}Seleccionar archivo<input type="file" id="cFile" accept=".xlsx,.xls,.csv" hidden></label>
+      </div>
+      <div class="panel rise d3">
+        <h3>Importar desde Costos</h3>
+        <p>Toma el catálogo de equipos del aplicativo Costos de mantenimiento. Se les asigna un código provisional por sistema, que puede editar después.</p>
+        <button class="btn" id="cCost">Revisar catálogo de Costos</button>
+      </div>
+      <div class="panel rise d3">
+        <h3>Exportar base</h3>
+        <p>Descarga la base completa en Excel, con el mismo formato de la plantilla, para editarla y volver a subirla.</p>
+        <button class="btn" id="cExp" ${EQ.length ? '' : 'disabled'}>${IC.xls}Exportar ${EQ.length} equipos</button>
+      </div>
+    </div>
+    <div id="cPrev" style="margin-top:22px"></div>`;
+  const $ = (s) => main.querySelector(s);
+  $('#cPlant').onclick = plantillaExcel;
+  $('#cExp').onclick = () => exportar(EQ);
+  $('#cFile').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) leerExcel(f, $('#cPrev')); };
+  $('#cCost').onclick = () => desdeCostos($('#cPrev'));
+}
+
+let xlsxCarga = null;
+function XLSXlib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!xlsxCarga) xlsxCarga = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => res(window.XLSX); s.onerror = () => { xlsxCarga = null; rej(new Error('No se pudo cargar el lector de Excel. Revise la conexión.')); };
+    document.head.appendChild(s);
+  });
+  return xlsxCarga;
+}
+
+const filaExcel = (e) => [e.codigo, e.descripcion, sisNom(e.sistema), e.ubicacion || '', e.tipo || '', e.marca || '', e.modelo || '', e.serie || '', e.potencia || '', e.criticidad || '', (ESTADOS_EQUIPO.find(s => s.id === (e.estado || 'operativo')) || {}).label, e.notas || ''];
+
+async function plantillaExcel() {
+  try {
+    const X = await XLSXlib();
+    const ws = X.utils.aoa_to_sheet([COLS.map(c => c[1]), ['CP-01', 'Compresor de tornillo N° 1', 'Refrigeración', 'Sala de máquinas', 'Compresor', 'Frick', 'RWB II 222', '', '250 HP', 'A', 'Operativo', '']]);
+    ws['!cols'] = [12, 34, 22, 20, 18, 14, 14, 14, 12, 10, 16, 30].map(w => ({ wch: w }));
+    const listas = X.utils.aoa_to_sheet([['Sistema', 'Criticidad', 'Estado'], ...SISTEMAS.map((s, i) => [s.nombre, ['A', 'B', 'C'][i] || '', ESTADOS_EQUIPO[i]?.label || ''])]);
+    listas['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 18 }];
+    const wb = X.utils.book_new();
+    X.utils.book_append_sheet(wb, ws, 'Equipos');
+    X.utils.book_append_sheet(wb, listas, 'Listas');
+    X.writeFile(wb, 'Plantilla_equipos_SIM.xlsx');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function exportar(lista) {
+  try {
+    const X = await XLSXlib();
+    const ws = X.utils.aoa_to_sheet([COLS.map(c => c[1]), ...lista.map(filaExcel)]);
+    ws['!cols'] = [12, 34, 22, 20, 18, 14, 14, 14, 12, 10, 16, 30].map(w => ({ wch: w }));
+    const wb = X.utils.book_new();
+    X.utils.book_append_sheet(wb, ws, 'Equipos');
+    const d = new Date();
+    X.writeFile(wb, `Equipos_SIM_${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.xlsx`);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function leerSistema(v) {
+  const t = norm(v);
+  if (!t) return null;
+  if (/^\d+$/.test(t)) return sistemaPorId(Number(t))?.id ?? null;
+  const s = SISTEMAS.find(x => norm(x.nombre) === t || norm(x.corto) === t)
+    || SISTEMAS.find(x => norm(x.nombre).startsWith(t) || t.startsWith(norm(x.nombre)))
+    || (t.includes('osmosis') ? SISTEMAS[3] : t.includes('hielo') ? SISTEMAS[4] : t.includes('caldero') ? SISTEMAS[2] : t.includes('refrig') ? SISTEMAS[1] : t.includes('congel') ? SISTEMAS[5] : t.includes('electr') ? SISTEMAS[6] : t.includes('infra') ? SISTEMAS[7] : null);
+  return s ? s.id : null;
+}
+function leerEstado(v) {
+  const t = norm(v);
+  if (!t || t.startsWith('oper')) return 'operativo';
+  if (t.includes('fuera') || t.includes('parad')) return 'fuera';
+  if (t.includes('baja')) return 'baja';
+  return null;
+}
+
+async function leerExcel(file, box) {
+  box.innerHTML = '<div class="glass" style="padding:28px;display:flex;justify-content:center"><div class="spinner"></div></div>';
+  try {
+    const X = await XLSXlib();
+    const wb = X.read(await file.arrayBuffer(), { type: 'array' });
+    const ws = wb.Sheets['Equipos'] || wb.Sheets[wb.SheetNames[0]];
+    const filas = X.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+    const hi = filas.findIndex(r => r.some(c => norm(c) === 'codigo'));
+    if (hi < 0) throw new Error('No se encontró la fila de encabezados (debe tener una columna "Código").');
+    const cab = filas[hi].map(norm);
+    const idx = {};
+    COLS.forEach(([k, l]) => { const i = cab.indexOf(norm(l)); if (i >= 0) idx[k] = i; });
+    if (idx.serie == null) { const i = cab.findIndex(c => c.includes('serie')); if (i >= 0) idx.serie = i; }
+    const datos = filas.slice(hi + 1).filter(r => r.some(c => String(c).trim()));
+    const vistos = new Set();
+    const items = datos.map((r, n) => {
+      const g = (k) => idx[k] == null ? '' : String(r[idx[k]] ?? '').trim();
+      const d = { codigo: g('codigo').toUpperCase(), descripcion: g('descripcion'), sistemaTxt: g('sistema'), ubicacion: g('ubicacion'), tipo: g('tipo'), marca: g('marca'), modelo: g('modelo'), serie: g('serie'), potencia: g('potencia'), criticidad: g('criticidad').slice(0, 1).toUpperCase(), estadoTxt: g('estado'), notas: g('notas') };
+      const errs = [];
+      if (!d.codigo) errs.push('sin código');
+      const ex = EQ.find(e => norm(e.codigo) === norm(d.codigo));
+      if (!d.descripcion && !ex) errs.push('sin descripción');
+      d.sistema = leerSistema(d.sistemaTxt);
+      if (d.sistema === null && !(ex && !d.sistemaTxt)) errs.push(d.sistemaTxt ? `sistema "${d.sistemaTxt}" no reconocido` : 'sin sistema');
+      d.estado = leerEstado(d.estadoTxt);
+      if (d.estado === null) errs.push(`estado "${d.estadoTxt}" no reconocido`);
+      if (d.criticidad && !['A', 'B', 'C'].includes(d.criticidad)) errs.push('criticidad debe ser A, B o C');
+      if (d.codigo && vistos.has(norm(d.codigo))) errs.push('código repetido en el archivo');
+      vistos.add(norm(d.codigo));
+      return { fila: hi + n + 2, d, ex, errs };
+    });
+    previa(box, items, 'excel');
+  } catch (e) { box.innerHTML = `<div class="alert err">${esc(e.message)}</div>`; }
+}
+
+async function desdeCostos(box) {
+  box.innerHTML = '<div class="glass" style="padding:28px;display:flex;justify-content:center"><div class="spinner"></div></div>';
+  try {
+    const meta = await getDoc(doc(db, 'datos', 'cost', 'fuente', 'meta'));
+    if (!meta.exists()) throw new Error('El aplicativo Costos todavía no tiene datos cargados.');
+    let cat = JSON.parse(meta.data().cat || '[]');
+    const est = await getDoc(doc(db, 'datos', 'cost', 'estado', 'principal'));
+    if (est.exists() && est.data().json) {
+      const st = JSON.parse(est.data().json);
+      cat = cat.concat(st.catNew || []).map(c => ({ ...c, ...((st.catEdit || {})[c.id] || {}) }));
+    }
+    const AREA = { 'congelado': 5, 'planta de hielo': 4, 'planta de osmosis': 3, 'calderos': 2, 'resto de planta': 0 };
+    const usados = new Set(EQ.map(e => norm(e.codigo)));
+    const sec = {};
+    const sig = (s) => {
+      const p = sistemaPorId(s).corto;
+      let n = sec[p] || 0, c;
+      do { n++; c = `${p}-${String(n).padStart(3, '0')}`; } while (usados.has(norm(c)));
+      sec[p] = n; usados.add(norm(c)); return c;
+    };
+    const items = cat.filter(c => c.n && norm(c.a) !== 'sin asignar').map((c, i) => {
+      const sistema = AREA[norm(c.a)] ?? 0;
+      const ex = EQ.find(e => e.origenCosto === c.id) || EQ.find(e => Number(e.sistema) === sistema && norm(e.descripcion) === norm(c.n));
+      const d = { codigo: ex ? ex.codigo : '', descripcion: c.n, sistema, sistemaTxt: sisNom(sistema), ubicacion: '', tipo: c.tp && norm(c.tp) !== 'equipo' ? c.tp : '', marca: '', modelo: '', serie: '', potencia: '', criticidad: '', estado: 'operativo', notas: '', origenCosto: c.id };
+      return { fila: i + 1, d, ex, errs: [], omitir: !!ex };
+    });
+    items.filter(x => !x.omitir).forEach(x => x.d.codigo = sig(x.d.sistema));
+    if (!items.length) throw new Error('El catálogo de Costos no tiene equipos.');
+    previa(box, items, 'costos');
+  } catch (e) { box.innerHTML = `<div class="alert err">${esc(e.code === 'permission-denied' ? 'Su usuario no tiene acceso de lectura al aplicativo Costos.' : e.message)}</div>`; }
+}
+
+function previa(box, items, origen) {
+  const ok = items.filter(x => !x.errs.length && !x.omitir);
+  const nuevos = ok.filter(x => !x.ex).length, act = ok.length - nuevos;
+  const errs = items.filter(x => x.errs.length).length, omit = items.filter(x => x.omitir).length;
+  box.innerHTML = `<div class="panel rise">
+    <h3>${origen === 'costos' ? 'Catálogo de Costos' : 'Revisión del archivo'}</h3>
+    <div class="resumen">
+      <span><span class="st n">${nuevos}</span> nuevos</span>
+      ${origen === 'excel' ? `<span><span class="st u">${act}</span> se actualizan</span>` : ''}
+      ${omit ? `<span><span class="st o">${omit}</span> ya importados</span>` : ''}
+      ${errs ? `<span><span class="st e">${errs}</span> con error (no se importan)</span>` : ''}
+    </div>
+    <div class="prev"><table>
+      <thead><tr><th>${origen === 'costos' ? 'N°' : 'Fila'}</th><th>Resultado</th><th>Código</th><th>Descripción</th><th>Sistema</th><th>Ubicación</th><th>Tipo</th></tr></thead>
+      <tbody>${items.map(x => `<tr>
+        <td class="mono" style="color:var(--tx-3)">${x.fila}</td>
+        <td>${x.errs.length ? `<span class="st e">Error</span><div style="font-size:12px;color:#FFB3B3;margin-top:4px">${esc(x.errs.join('; '))}</div>` : x.omitir ? '<span class="st o">Ya existe</span>' : x.ex ? '<span class="st u">Actualiza</span>' : '<span class="st n">Nuevo</span>'}</td>
+        <td class="mono">${esc(x.d.codigo)}</td><td>${esc(x.d.descripcion || x.ex?.descripcion || '')}</td><td>${esc(x.d.sistema != null ? sisNom(x.d.sistema) : x.d.sistemaTxt)}</td><td>${esc(x.d.ubicacion)}</td><td>${esc(x.d.tipo)}</td>
+      </tr>`).join('')}</tbody></table></div>
+    <div class="acciones" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn" id="pCan">Cancelar</button>
+      <button class="btn btn-primary" id="pOk" ${ok.length ? '' : 'disabled'}>Importar ${ok.length} equipo${ok.length === 1 ? '' : 's'}</button>
+    </div>
+  </div>`;
+  box.querySelector('#pCan').onclick = () => { box.innerHTML = ''; };
+  box.querySelector('#pOk').onclick = async (ev) => {
+    const b = ev.currentTarget; b.disabled = true; b.textContent = 'Importando…';
+    // misma forma escrita para ubicación, tipo y marca (sin duplicar por tildes o mayúsculas)
+    const canon = {};
+    ['ubicacion', 'tipo', 'marca'].forEach(k => { canon[k] = new Map(valoresDe(EQ, k).map(v => [norm(v), v])); });
+    const forma = (k, v) => { if (!v) return v; const n = norm(v); if (!canon[k].has(n)) canon[k].set(n, v); return canon[k].get(n); };
+    try {
+      for (let i = 0; i < ok.length; i += 400) {
+        const batch = writeBatch(db);
+        ok.slice(i, i + 400).forEach(x => {
+          const d = {};
+          ['codigo', 'descripcion', 'sistema', 'ubicacion', 'tipo', 'marca', 'modelo', 'serie', 'potencia', 'criticidad', 'notas', 'origenCosto'].forEach(k => { if (x.d[k] !== '' && x.d[k] != null) d[k] = x.d[k]; });
+          if (x.d.estadoTxt || !x.ex) d.estado = x.d.estado || 'operativo';
+          ['ubicacion', 'tipo', 'marca'].forEach(k => { if (d[k]) d[k] = forma(k, d[k]); });
+          const ref = x.ex ? doc(colEquipos(), x.ex.id) : doc(colEquipos());
+          batch.set(ref, { ...d, ...(x.ex ? {} : { creado: serverTimestamp() }), actualizado: serverTimestamp(), actualizadoPor: nombreUsuario() }, { merge: true });
+        });
+        await batch.commit();
+      }
+      EQ = await listarEquipos();
+      toast(`${ok.length} equipos importados.`);
+      box.innerHTML = `<div class="alert ok">Importación completada: ${nuevos} nuevos${act ? `, ${act} actualizados` : ''}. <a href="#equipos">Ver la base de equipos</a></div>`;
+      const exp = document.querySelector('#cExp'); if (exp) { exp.disabled = false; exp.innerHTML = `${IC.xls}Exportar ${EQ.length} equipos`; }
+    } catch (e) { toast('No se pudo importar: ' + (e.code || e.message), 'err'); b.disabled = false; b.textContent = `Importar ${ok.length} equipos`; }
+  };
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// =====================================================================
+function render() {
+  if (!CTX) return;
+  CTX.main.innerHTML = '';
+  if (CTX.modulo === 'carga') vistaCarga(CTX.main);
+  else vistaBase(CTX.main);
+}
+
+let listo = false;
+CTX = await iniciarApp({
+  appId: 'eq',
+  alCambiarModulo: (mod, ctx) => {
+    CTX = ctx;
+    if (!listo) { ctx.main.innerHTML = '<div style="display:flex;justify-content:center;padding:80px 0"><div class="spinner"></div></div>'; return; }
+    render();
+  }
+});
+try { EQ = await listarEquipos(); } catch (e) { toast('No se pudo leer la base de equipos: ' + (e.code || e.message), 'err'); }
+listo = true;
+render();
+</script>
+</body>
+</html>

@@ -80,6 +80,9 @@
   .addsec button:hover{background:rgba(111,227,207,.08);border-color:var(--mint)}
   .addsec b{display:block;font-size:14px;font-weight:600}
   .addsec span{display:block;font-size:12px;color:var(--tx-3);margin-top:3px}
+  .eqprev{padding:10px 12px;border-radius:10px;background:rgba(111,227,207,.08);border:1px solid rgba(111,227,207,.25);font-size:13px;color:var(--tx-2);line-height:1.5}
+  .eqprev b{color:var(--mint-2);font-weight:500}
+  .eqprev.warn{background:rgba(245,185,74,.08);border-color:rgba(245,185,74,.3);color:#FFE3AE}
   .val{font-size:13.5px;line-height:1.55}
   .val li{margin-bottom:4px}
   .prev{position:sticky;top:16px}
@@ -125,31 +128,27 @@
 <body>
 <script type="module">
 import { iniciarApp, toast } from '../../core/core.js';
+import { listarEquipos, valoresDe } from '../../core/equipos.js';
 import * as D from './datos.js';
 import { renderHoja, HOJA_CSS } from './hoja.js';
+import { IC, imprimir, modal, confirmar, cargarXlsx, reducirImagen } from './ui.js';
+import { vistaLlenar, salirLlenado } from './llenado.js';
+import { vistaRegistros } from './registros.js';
 import {
-  SISTEMAS, FRECUENCIAS, TIPOS_CAMPO, TIPOS_FILA, TIPOS_SECCION, CONFIG_BASE,
+  SISTEMAS, FRECUENCIAS, TIPOS_CAMPO, TIPOS_FILA, TIPOS_SECCION, CONFIG_BASE, MODOS_FIRMA,
   uid, clonar, esc, mesClave, mesAbrev, revTxt, numCodigo, formatoCodigo, sistemaDeCodigo,
-  codigoCompleto, siguienteCodigo, defVacia, seccionNueva, campoNuevo, filaNueva, rangoTxt, validarDef, pilotos
+  codigoCompleto, siguienteCodigo, defVacia, seccionNueva, campoNuevo, filaNueva, rangoTxt, validarDef, pilotos,
+  firmasDe, turnosDe, tablaDeEquipos, filtroTxt
 } from './modelo.js';
+import { columnasTabla } from './logica.js';
 
 document.head.insertAdjacentHTML('beforeend', `<style>${HOJA_CSS}</style>`);
-
-// ---------------- iconos ----------------
-const I = (d, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
-const IC = {
-  mas: I('M12 5v14M5 12h14'), up: I('M12 19V5M6 11l6-6 6 6', 16), down: I('M12 5v14M6 13l6 6 6-6', 16),
-  x: I('M6 6l12 12M18 6L6 18', 16), del: I('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3', 16),
-  edit: I('M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4', 16), back: I('M19 12H5M11 6l-6 6 6 6'),
-  print: I('M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z'), send: I('M5 12l14-7-5 15-3-6zM11 14l3-3'),
-  more: I('M5 12h.01M12 12h.01M19 12h.01', 20), xls: I('M4 4h16v16H4zM4 10h16M10 4v16'),
-  hist: I('M12 8v4l3 2M3 12a9 9 0 1 0 3-6.7M3 4v4h4'), copy: I('M9 9h11v11H9zM5 15H4V4h11v1')
-};
 
 // ---------------- estado ----------------
 let CTX = null;
 let CFG = clonar(CONFIG_BASE);
 let PLANT = [];
+let EQ = [];             // base de equipos (aplicativo Equipos)
 let ED = null;           // editor abierto: { id, trabajo, vista, timer, guardando, sucio }
 let FIL = { sistema: 'all', estado: 'activos', q: '' };
 let FIL_M = { estado: 'vigentes' };
@@ -168,53 +167,6 @@ const ESTADO_UI = {
 };
 const estadoDe = (p) => p.estado === 'vigente' && p.trabajo ? 'cambios' : p.estado;
 const pillEstado = (p) => { const e = ESTADO_UI[estadoDe(p)]; return `<span class="pill" style="background:${e.bg};color:${e.fg}">${e.label}</span>`; };
-
-// ---------------- impresión ----------------
-// Se imprime desde un iframe aislado: solo la hoja, con su tamaño de página.
-function imprimir(html, horizontal, titulo = 'Formato') {
-  document.getElementById('printFrame')?.remove();
-  const f = document.createElement('iframe');
-  f.id = 'printFrame';
-  f.setAttribute('aria-hidden', 'true');
-  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-  f.srcdoc = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(titulo)}</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400&display=swap">
-    <style>@page{size:A4 ${horizontal ? 'landscape' : 'portrait'};margin:0}html,body{margin:0;background:#fff}${HOJA_CSS}.hoja{min-height:0}.hoja+.hoja{break-before:page}</style>
-    </head><body>${html}</body></html>`;
-  f.onload = async () => {
-    try { await Promise.race([f.contentDocument.fonts.ready, new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
-    const t0 = document.title;
-    document.title = titulo;
-    setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => { document.title = t0; }, 1000); }, 120);
-  };
-  document.body.appendChild(f);
-}
-
-// ---------------- modales ----------------
-function modal({ titulo, cuerpo, pie, ancho = 640 }) {
-  const bg = document.createElement('div');
-  bg.className = 'modal-bg';
-  bg.innerHTML = `<form class="modal" novalidate style="max-width:${ancho}px">
-    <div class="modal-h"><div style="font-family:var(--f-display);font-weight:600;font-size:20px">${titulo}</div>
-      <button type="button" class="btn btn-icon" data-x aria-label="Cerrar">${IC.x}</button></div>
-    <div class="modal-b">${cuerpo}<div class="alert err" data-err style="margin-top:16px" hidden></div></div>
-    <div class="modal-f">${pie}</div></form>`;
-  document.body.appendChild(bg);
-  const cerrar = () => bg.remove();
-  bg.querySelectorAll('[data-x]').forEach(b => b.onclick = cerrar);
-  bg.addEventListener('mousedown', (e) => { if (e.target === bg) cerrar(); });
-  const $ = (s) => bg.querySelector(s);
-  const err = (t) => { const e = $('[data-err]'); e.hidden = !t; e.textContent = t || ''; };
-  return { bg, $, cerrar, err, form: bg.querySelector('form') };
-}
-
-function confirmar(titulo, texto, { boton = 'Confirmar', peligro = false } = {}) {
-  return new Promise((res) => {
-    const m = modal({ titulo, cuerpo: `<p class="muted" style="margin:0;line-height:1.6">${texto}</p>`, pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn ${peligro ? 'btn-danger' : 'btn-primary'}">${boton}</button>`, ancho: 480 });
-    m.bg.querySelectorAll('[data-x]').forEach(b => b.addEventListener('click', () => res(false)));
-    m.form.onsubmit = (e) => { e.preventDefault(); m.cerrar(); res(true); };
-  });
-}
 
 // =====================================================================
 // MÓDULO PLANTILLAS — lista
@@ -252,7 +204,7 @@ function vistaPlantillas(main) {
   main.innerHTML = `
     <div class="pagehead">
       <div><div class="eyebrow rise">Registro de formatos</div><h1 class="h-display rise d1">Plantillas</h1></div>
-      <div class="acciones rise d2">${esAdminApp() && PLANT.length ? `<button class="btn btn-primary" id="bNuevo">${IC.mas}Nuevo formato</button>` : ''}</div>
+      <div class="acciones rise d2">${esAdminApp() && PLANT.length && faltanPilotos() ? `<button class="btn" id="bPilotos">Cargar pilotos faltantes</button>` : ''}${esAdminApp() && PLANT.length ? `<button class="btn btn-primary" id="bNuevo">${IC.mas}Nuevo formato</button>` : ''}</div>
     </div>
     ${PLANT.length ? `
     <div class="kpis rise d2">
@@ -292,6 +244,7 @@ function vistaPlantillas(main) {
   pintarCards(main);
 }
 
+const faltanPilotos = () => pilotos().some(pl => !PLANT.some(p => p.codigo === pl.codigo));
 async function cargarPilotos() {
   const btn = document.getElementById('bPilotos');
   btn.disabled = true; btn.textContent = 'Cargando…';
@@ -501,7 +454,7 @@ function pintarCabecera() {
   acc.querySelector('#bPrint').onclick = () => {
     const h = encabezado(p, ED.vista);
     const cod = ED.codigoNuevo?.codigo || p.codigo;
-    imprimir(renderHoja({ cfg: CFG, codigo: cod, ...h }), h.def.orientacion === 'horizontal', `${cod} ${h.def.nombre || ''}`.trim());
+    imprimir(renderHoja({ cfg: CFG, codigo: cod, equipos: EQ, ...h }), h.def.orientacion === 'horizontal', `${cod} ${h.def.nombre || ''}`.trim());
   };
   if (acc.querySelector('#bEmitir')) acc.querySelector('#bEmitir').onclick = modalEmitir;
   acc.querySelector('#bMas').onclick = (e) => {
@@ -589,11 +542,15 @@ function pintarDiseno() {
         <label class="check"><input type="checkbox" id="dObs" ${d.observaciones ? 'checked' : ''} ${dis}>Observaciones / acción correctiva</label>
       </div>
     </div>
+    <datalist id="dlTipos">${valoresDe(EQ, 'tipo').map(t => `<option value="${esc(t)}">`).join('')}</datalist>
     <div id="secs" style="display:flex;flex-direction:column;gap:14px">${d.secciones.map((s, i) => seccionEd(s, i, d.secciones.length, ro)).join('')}</div>
     ${ro ? '' : `<div class="panel"><div class="panel-h"><h3>Agregar sección</h3></div><div class="addsec">${TIPOS_SECCION.map(t => `<button type="button" data-addsec="${t.id}"><b>${IC.mas} ${t.nombre}</b><span>${t.desc}</span></button>`).join('')}</div></div>`}
     <div class="panel">
       <div class="panel-h"><h3>Firmas</h3>${ro || d.firmas.length >= 4 ? '' : `<button type="button" class="btn sm" id="addFir">${IC.mas}Firma</button>`}</div>
-      ${d.firmas.map((f, i) => `<div class="irow"><span class="num">${i + 1}</span><input class="field sm" data-fir="${i}" value="${esc(f)}" placeholder="Ejecutado por" ${dis}>${ro ? '' : `<button type="button" class="ib del" data-delfir="${i}" aria-label="Quitar firma" ${d.firmas.length <= 1 ? 'disabled' : ''}>${IC.x}</button>`}</div>`).join('')}
+      ${firmasDe(d).map((f, i) => `<div class="irow"><span class="num">${i + 1}</span><input class="field sm" data-fir="${i}" value="${esc(f.nombre)}" placeholder="Ejecutado por" ${dis}>
+        <select class="field sm" data-firm="${i}" style="width:190px;flex-shrink:0" title="Cómo se firma" ${dis}>${MODOS_FIRMA.map(m => `<option value="${m.id}" ${m.id === f.modo ? 'selected' : ''}>${m.nombre}</option>`).join('')}</select>
+        ${ro ? '' : `<button type="button" class="ib del" data-delfir="${i}" aria-label="Quitar firma" ${d.firmas.length <= 1 ? 'disabled' : ''}>${IC.x}</button>`}</div>`).join('')}
+      <div class="muted" style="font-size:12.5px;margin-top:8px;line-height:1.5">Usuario que envía: firma electrónica del técnico. Firma en pantalla: nombre y firma con el dedo (por ejemplo, quien recibe el equipo). Supervisor al aprobar: se registra al aprobar el registro.</div>
     </div>
     ${ro ? '' : '<div class="panel"><div class="panel-h"><h3>Revisión antes de emitir</h3></div><div id="edVal" class="val"></div></div>'}`;
   if (!ro) enlazarDiseno(cont);
@@ -607,7 +564,8 @@ function seccionEd(s, i, n, ro) {
   if (s.tipo === 'campos') {
     cuerpo = s.campos.map((c, j) => {
       const t = TIPOS_CAMPO.find(x => x.id === c.tipo);
-      const extra = c.tipo === 'numero' ? [c.unidad, rangoTxt(c)].filter(Boolean).join(' · ') : c.tipo === 'seleccion' ? `${c.opciones.length} opciones` : '';
+      const extra = c.tipo === 'numero' ? [c.unidad, rangoTxt(c)].filter(Boolean).join(' · ') : c.tipo === 'seleccion' ? `${c.opciones.length} opciones`
+        : c.tipo === 'siNo' && c.genera ? `Sí → ${c.genera} pendiente` : c.tipo === 'equipo' ? filtroTxt(c.filtro) : '';
       return `<div class="fila" data-campo="${s.id}:${c.id}">
         <span class="et">${esc(c.etiqueta || 'Campo sin nombre')}${c.requerido ? '<sup> *</sup>' : ''}</span>
         <span class="tp">${esc(t?.nombre || c.tipo)}${extra ? ' · ' + esc(extra) : ''}${c.ancho === 2 ? ' · ancho completo' : ''}</span>
@@ -615,9 +573,20 @@ function seccionEd(s, i, n, ro) {
       </div>`;
     }).join('') + (ro ? '' : `<div class="addrow"><button type="button" class="btn sm" data-addcampo="${s.id}">${IC.mas}Campo</button></div>`);
   } else if (s.tipo === 'tabla') {
-    cuerpo = `<div class="label">Columnas (equipos o puntos de lectura)</div>
-      <div class="chips" style="margin-bottom:16px">${s.columnas.map((c, j) => `<span class="chipx">${esc(c)}${ro ? '' : `<button type="button" data-delcol="${s.id}:${j}" aria-label="Quitar ${esc(c)}">${IC.x}</button>`}</span>`).join('')}
-        ${ro ? '' : `<input class="field sm" data-addcol="${s.id}" placeholder="Agregar columna y Enter" style="width:210px">`}</div>
+    const deEq = tablaDeEquipos(s);
+    const fl = s.filtro || { sistema: '', tipo: '', ubicacion: '' };
+    const cols = deEq ? columnasTabla(s, EQ, '') : [];
+    cuerpo = `<div class="label">Columnas</div>
+      <div class="seg" style="margin-bottom:12px"><button type="button" data-fuente="${s.id}:equipos" class="${deEq ? 'on' : ''}" ${dis}>Equipos de la base</button><button type="button" data-fuente="${s.id}:fija" class="${deEq ? '' : 'on'}" ${dis}>Lista fija</button></div>
+      ${deEq ? `<div class="g3" style="margin-bottom:10px">
+          <div><label class="label" for="fs_${s.id}">Sistema</label><select class="field sm" id="fs_${s.id}" data-filt="${s.id}:sistema" ${dis}><option value="">Cualquiera</option>${SISTEMAS.map(x => `<option value="${x.id}" ${String(fl.sistema) === String(x.id) ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></div>
+          <div><label class="label" for="ft_${s.id}">Tipo de equipo</label><input class="field sm" id="ft_${s.id}" list="dlTipos" data-filt="${s.id}:tipo" value="${esc(fl.tipo)}" placeholder="Compresor" ${dis}></div>
+          <div><label class="label" for="fu_${s.id}">Ubicación</label><select class="field sm" id="fu_${s.id}" data-filt="${s.id}:ubicacion" ${dis}><option value="">Todas</option><option value="*" ${fl.ubicacion === '*' ? 'selected' : ''}>Se elige al llenar</option>${valoresDe(EQ, 'ubicacion').map(u => `<option ${u === fl.ubicacion ? 'selected' : ''}>${esc(u)}</option>`).join('')}${fl.ubicacion && fl.ubicacion !== '*' && !valoresDe(EQ, 'ubicacion').includes(fl.ubicacion) ? `<option selected>${esc(fl.ubicacion)}</option>` : ''}</select></div>
+        </div>
+        <div class="eqprev ${cols.length ? '' : 'warn'}">${cols.length ? `<b>${cols.length} equipo${cols.length > 1 ? 's' : ''}${fl.ubicacion === '*' ? ' en total' : ''}:</b> ${cols.slice(0, 12).map(c => esc(c.codigo)).join(', ')}${cols.length > 12 ? '…' : ''}` : EQ.length ? 'Ningún equipo de la base coincide con este filtro.' : 'La base de equipos está vacía. Cárguela en el aplicativo Equipos.'}</div>
+        <label class="check" style="margin:12px 0 16px"><input type="checkbox" data-esteq="${s.id}" ${s.estadoEquipo ? 'checked' : ''} ${dis}>Registrar el estado de cada equipo (operando, parado, en mantenimiento). Solo se exigen lecturas a los que operan.</label>`
+      : `<div class="chips" style="margin-bottom:16px">${s.columnas.map((c, j) => `<span class="chipx">${esc(c)}${ro ? '' : `<button type="button" data-delcol="${s.id}:${j}" aria-label="Quitar ${esc(c)}">${IC.x}</button>`}</span>`).join('')}
+        ${ro ? '' : `<input class="field sm" data-addcol="${s.id}" placeholder="Agregar columna y Enter" style="width:210px">`}</div>`}
       <div class="label">Parámetros</div>
       ${s.filas.map((f, j) => `<div class="prow">
         <input class="field sm p-nom" data-fl="${s.id}:${j}:etiqueta" value="${esc(f.etiqueta)}" placeholder="Nombre del parámetro" aria-label="Parámetro ${j + 1}" ${dis}>
@@ -714,6 +683,26 @@ function enlazarDiseno(cont) {
     s.columnas.push(v); cambio();
     setTimeout(() => cont.querySelector(`[data-addcol="${s.id}"]`)?.focus(), 30);
   });
+  on('[data-fuente]', 'click', (e) => {
+    const [sid, fu] = e.currentTarget.dataset.fuente.split(':');
+    const s = secPor(sid);
+    if (s.fuente === fu || (fu === 'fija' && !tablaDeEquipos(s))) return;
+    s.fuente = fu;
+    if (!s.filtro) s.filtro = { sistema: plant(ED.id)?.sistema ?? '', tipo: '', ubicacion: '' };
+    if (s.estadoEquipo == null) s.estadoEquipo = true;
+    if (!s.columnas) s.columnas = [];
+    cambio();
+  });
+  on('[data-filt]', 'change', (e) => {
+    const [sid, k] = e.target.dataset.filt.split(':');
+    const s = secPor(sid);
+    let v = e.target.value.trim();
+    if (k === 'sistema') v = v === '' ? '' : Number(v);
+    if (k === 'tipo' && v) { const ya = valoresDe(EQ, 'tipo').find(t => t.toLowerCase() === v.toLowerCase()); if (ya) v = ya; }
+    s.filtro = { ...(s.filtro || {}), [k]: v };
+    cambio();
+  });
+  on('[data-esteq]', 'change', (e) => { secPor(e.target.dataset.esteq).estadoEquipo = e.target.checked; cambio(false); });
   on('[data-delcol]', 'click', (e) => { const [sid, j] = e.currentTarget.dataset.delcol.split(':'); secPor(sid).columnas.splice(Number(j), 1); cambio(); });
   on('[data-fl]', 'input', (e) => {
     const [sid, j, k] = e.target.dataset.fl.split(':');
@@ -751,9 +740,11 @@ function enlazarDiseno(cont) {
   on('[data-filimp]', 'change', (e) => { const n = Math.max(1, Math.min(20, Number(e.target.value) || 5)); e.target.value = n; secPor(e.target.dataset.filimp).filasImpresas = n; cambio(false); });
 
   // firmas
-  on('[data-fir]', 'input', (e) => { d.firmas[Number(e.target.dataset.fir)] = e.target.value; cambio(false); });
-  on('[data-delfir]', 'click', (e) => { d.firmas.splice(Number(e.currentTarget.dataset.delfir), 1); cambio(); });
-  if (q('#addFir')) q('#addFir').onclick = () => { d.firmas.push(''); cambio(); setTimeout(() => cont.querySelector(`[data-fir="${d.firmas.length - 1}"]`)?.focus(), 30); };
+  const normFir = () => { d.firmas = firmasDe(d); };
+  on('[data-fir]', 'input', (e) => { normFir(); d.firmas[Number(e.target.dataset.fir)].nombre = e.target.value; cambio(false); });
+  on('[data-firm]', 'change', (e) => { normFir(); d.firmas[Number(e.target.dataset.firm)].modo = e.target.value; cambio(false); });
+  on('[data-delfir]', 'click', (e) => { normFir(); d.firmas.splice(Number(e.currentTarget.dataset.delfir), 1); cambio(); });
+  if (q('#addFir')) q('#addFir').onclick = () => { normFir(); d.firmas.push({ nombre: '', modo: 'manuscrita' }); cambio(); setTimeout(() => cont.querySelector(`[data-fir="${d.firmas.length - 1}"]`)?.focus(), 30); };
 }
 
 function pintarValidacion() {
@@ -774,7 +765,7 @@ function pintarPrev() {
     if (!box || !ED) return;
     const p = plant(ED.id);
     const h = encabezado(p, ED.vista);
-    box.innerHTML = renderHoja({ cfg: CFG, codigo: ED.codigoNuevo?.codigo || p.codigo, ...h });
+    box.innerHTML = renderHoja({ cfg: CFG, codigo: ED.codigoNuevo?.codigo || p.codigo, equipos: EQ, ...h });
     ajustarPrev();
   }, 120);
 }
@@ -823,7 +814,20 @@ function modalCampo(sid, cid) {
       : `<div class="g2"><div><label class="label" for="cDe">Desde</label><select class="field" id="cDe"><option value="">Seleccione</option>${fechas.map(f => `<option value="${f.id}" ${f.id === c.desde ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select></div>
          <div><label class="label" for="cHa">Hasta</label><select class="field" id="cHa"><option value="">Seleccione</option>${fechas.map(f => `<option value="${f.id}" ${f.id === c.hasta ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select></div></div>
          <div class="muted" style="font-size:12.5px;margin-top:8px">Se calcula automáticamente al llenar el formato.</div>`;
-    else if (t === 'equipo') box.innerHTML = `<div class="muted" style="font-size:13px">El técnico elige el equipo de la lista registrada en Configuración${CFG.equipos.length ? ` (${CFG.equipos.length} equipos)` : ''}.</div>`;
+    else if (t === 'equipo') {
+      const fl = c.filtro || {};
+      box.innerHTML = `<div class="g2">
+        <div><label class="label" for="cFs">Limitar a un sistema</label><select class="field" id="cFs"><option value="">Todos los sistemas</option>${SISTEMAS.map(x => `<option value="${x.id}" ${String(fl.sistema) === String(x.id) ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></div>
+        <div><label class="label" for="cFt">Limitar a un tipo</label><input class="field" id="cFt" list="dlTiposM" value="${esc(fl.tipo || '')}" placeholder="Todos los tipos"><datalist id="dlTiposM">${valoresDe(EQ, 'tipo').map(x => `<option value="${esc(x)}">`).join('')}</datalist></div></div>
+        <div class="muted" style="font-size:12.5px;margin-top:8px">El técnico busca el equipo en la base del aplicativo Equipos (${EQ.length} registrados).</div>`;
+    }
+    else if (t === 'siNo') {
+      const otros = ordenar(PLANT.filter(x => x.id !== ED.id && x.estado !== 'obsoleto'));
+      box.innerHTML = `<label class="label" for="cGen">Si la respuesta es Sí, dejar pendiente</label>
+        <select class="field" id="cGen"><option value="">Nada</option>${otros.map(x => `<option value="${esc(x.codigo)}" ${x.codigo === c.genera ? 'selected' : ''}>${esc(x.codigo)} · ${esc((x.def || x.trabajo || {}).nombre || '')}</option>`).join('')}</select>
+        <div class="muted" style="font-size:12.5px;margin-top:8px;line-height:1.5">Al enviar el registro se crea ese formato como pendiente, con el mismo equipo y el número de este registro como referencia.</div>`;
+    }
+    else if (t === 'referencia') box.innerHTML = '<div class="muted" style="font-size:13px;line-height:1.5">N° de otro registro. Se completa solo cuando este formato se genera como pendiente desde otro (por ejemplo, el R-002 desde un R-001).</div>';
     else box.innerHTML = '';
   };
   m.$('#cTp').onchange = () => { if (m.$('#cTp').value === 'textoLargo') m.$('#cAn').value = '2'; extra(); };
@@ -844,7 +848,9 @@ function modalCampo(sid, cid) {
     c.ayuda = m.$('#cAy').value.trim();
     c.requerido = m.$('#cReq').checked;
     if (!c.etiqueta) return m.err('Ingrese el nombre del campo.');
-    c.unidad = ''; c.min = ''; c.max = ''; c.opciones = []; c.desde = ''; c.hasta = '';
+    c.unidad = ''; c.min = ''; c.max = ''; c.opciones = []; c.desde = ''; c.hasta = ''; c.filtro = { sistema: '', tipo: '' }; c.genera = '';
+    if (c.tipo === 'equipo') c.filtro = { sistema: m.$('#cFs').value === '' ? '' : Number(m.$('#cFs').value), tipo: m.$('#cFt').value.trim() };
+    if (c.tipo === 'siNo') c.genera = m.$('#cGen').value;
     if (c.tipo === 'numero') {
       c.unidad = m.$('#cUn').value.trim();
       c.min = m.$('#cMi').value.replace(',', '.').trim();
@@ -966,7 +972,7 @@ function modalHistorial(p) {
       const snap = await D.leerRevision(p.id, v, Number(r));
       if (!snap) return toast('No se encontró la copia de esa revisión.', 'err');
       const vigente = p.versionManual === v && p.revision === Number(r) && p.estado === 'vigente';
-      imprimir(renderHoja({ cfg: { ...CFG, prefijo: snap.prefijo || CFG.prefijo }, codigo: snap.codigo, def: snap.def, version: snap.version, revision: snap.revision, fecha: snap.fecha, marca: vigente ? '' : 'NO VIGENTE' }), snap.def.orientacion === 'horizontal', `${snap.codigo} Rev ${revTxt(snap.revision)}`);
+      imprimir(renderHoja({ cfg: { ...CFG, prefijo: snap.prefijo || CFG.prefijo }, equipos: EQ, codigo: snap.codigo, def: snap.def, version: snap.version, revision: snap.revision, fecha: snap.fecha, marca: vigente ? '' : 'NO VIGENTE' }), snap.def.orientacion === 'horizontal', `${snap.codigo} Rev ${revTxt(snap.revision)}`);
     } catch (e) { toast('No se pudo leer: ' + (e.code || e.message), 'err'); }
   });
 }
@@ -1032,18 +1038,6 @@ function hojaMaestra(filas) {
   </div>`;
 }
 
-let xlsxCarga = null;
-function cargarXlsx() {
-  if (window.XLSX) return Promise.resolve(window.XLSX);
-  if (!xlsxCarga) xlsxCarga = new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    s.onload = () => res(window.XLSX); s.onerror = () => { xlsxCarga = null; rej(new Error('No se pudo cargar el generador de Excel.')); };
-    document.head.appendChild(s);
-  });
-  return xlsxCarga;
-}
-
 async function exportarExcel(filas) {
   try {
     const X = await cargarXlsx();
@@ -1103,27 +1097,30 @@ function vistaConfig(main) {
       </div>
       <div class="panel rise d3">
         <div class="panel-h"><h3>Turnos</h3></div>
-        <div class="chips" id="kTur"></div>
-        ${ro ? '' : '<input class="field sm" id="kTurIn" placeholder="Agregar turno y Enter" style="width:220px;margin-top:12px">'}
+        <div id="kTur"></div>
+        ${ro ? '' : `<button type="button" class="btn sm" id="kTurAdd" style="margin-top:6px">${IC.mas}Turno</button>`}
+        <div class="muted" style="font-size:12.5px;margin-top:10px;line-height:1.5">Con la hora de inicio, el sistema propone el turno en curso y la fecha del registro: lo llenado antes del inicio del primer turno corresponde al último turno del día anterior.</div>
       </div>
       <div class="panel rise d4">
-        <div class="panel-h"><h3>Equipos</h3><span class="muted" style="font-size:12.5px" id="kEqN"></span></div>
-        <label class="label" for="kEq">Un equipo por línea: código | descripción</label>
-        <textarea class="field mono" id="kEq" rows="8" style="height:auto;padding:12px 16px;line-height:1.6;font-size:13px" placeholder="CP-01 | Compresor tornillo N° 1" ${dis}>${esc(c.equipos.map(e => e.descripcion ? `${e.codigo} | ${e.descripcion}` : e.codigo).join('\n'))}</textarea>
-        <div class="muted" style="font-size:12.5px;margin-top:8px">Lista para los campos de tipo Equipo, hasta integrar la base maestra de Equipos.</div>
+        <div class="panel-h"><h3>Equipos</h3></div>
+        <p class="muted" style="margin:0 0 14px;font-size:13.5px;line-height:1.55">Los formatos toman los equipos de la base maestra del aplicativo Equipos: las tablas de parámetros y los campos de tipo Equipo.</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 16px;border-radius:14px;background:rgba(14,22,30,.3)">
+          <div><div style="font-size:12.5px;color:var(--tx-3)">Equipos en la base</div><div class="mono" style="font-size:26px;margin-top:2px">${EQ.filter(e => e.estado !== 'baja').length}</div></div>
+          <a class="btn" href="../eq/">Abrir Equipos</a>
+        </div>
       </div>
     </div>`;
   const $ = (s) => main.querySelector(s);
+  c.turnos = turnosDe(c);
   const pintarTur = () => {
-    $('#kTur').innerHTML = c.turnos.map((t, i) => `<span class="chipx">${esc(t)}${ro ? '' : `<button type="button" data-dt="${i}" aria-label="Quitar ${esc(t)}">${IC.x}</button>`}</span>`).join('') || '<span class="muted" style="font-size:13px">Sin turnos</span>';
+    $('#kTur').innerHTML = c.turnos.map((t, i) => `<div class="irow"><input class="field sm" data-tn="${i}" value="${esc(t.nombre)}" placeholder="Día" ${dis}><input class="field sm mono" type="time" data-ti="${i}" value="${esc(t.inicio)}" style="width:130px;flex-shrink:0" aria-label="Hora de inicio" ${dis}>${ro ? '' : `<button type="button" class="ib del" data-dt="${i}" aria-label="Quitar turno">${IC.x}</button>`}</div>`).join('') || '<span class="muted" style="font-size:13px">Sin turnos</span>';
     main.querySelectorAll('[data-dt]').forEach(b => b.onclick = () => { c.turnos.splice(Number(b.dataset.dt), 1); pintarTur(); });
+    main.querySelectorAll('[data-tn]').forEach(x => x.oninput = () => { c.turnos[Number(x.dataset.tn)].nombre = x.value; });
+    main.querySelectorAll('[data-ti]').forEach(x => x.onchange = () => { c.turnos[Number(x.dataset.ti)].inicio = x.value; });
   };
-  const leerEq = () => $('#kEq').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [cod, ...r] = l.split('|'); return { codigo: cod.trim(), descripcion: r.join('|').trim() }; }).filter(e => e.codigo);
-  const contarEq = () => { const n = leerEq().length; $('#kEqN').textContent = `${n} equipo${n === 1 ? '' : 's'}`; };
-  pintarTur(); contarEq();
-  $('#kEq').oninput = contarEq;
+  pintarTur();
   if (ro) return;
-  $('#kTurIn').onkeydown = (e) => { if (e.key !== 'Enter') return; e.preventDefault(); const v = e.target.value.trim(); if (v && !c.turnos.includes(v)) c.turnos.push(v); e.target.value = ''; pintarTur(); };
+  $('#kTurAdd').onclick = () => { c.turnos.push({ nombre: '', inicio: '' }); pintarTur(); main.querySelector(`[data-tn="${c.turnos.length - 1}"]`)?.focus(); };
   $('#kLogo').onchange = async (e) => {
     const f = e.target.files[0]; if (!f) return;
     try { c.logo = await reducirImagen(f); $('#kLogoPrev').innerHTML = `<img src="${c.logo}" alt="Logo">`; $('#kLogoX').hidden = false; }
@@ -1135,32 +1132,16 @@ function vistaConfig(main) {
     const prefijo = $('#kPre').value.trim().replace(/\/+$/, '');
     if (!prefijo) return toast('Ingrese el prefijo de codificación.', 'err');
     if (prefijo !== CFG.prefijo && PLANT.some(p => p.def) && !await confirmar('Cambiar prefijo', `Todos los formatos pasarán a codificarse como <b class="mono">${esc(prefijo)}/R-XXX</b>. Las revisiones ya emitidas conservan su prefijo en el historial.`, { boton: 'Cambiar prefijo' })) return;
-    Object.assign(c, { prefijo, empresa: $('#kEmp').value.trim(), planta: $('#kPla').value.trim(), departamento: $('#kDep').value.trim(), equipos: leerEq() });
+    const turnos = c.turnos.map(t => ({ nombre: t.nombre.trim(), inicio: t.inicio })).filter(t => t.nombre);
+    if (turnos.some(t => !/^\d{2}:\d{2}$/.test(t.inicio || ''))) return toast('Indique la hora de inicio de cada turno.', 'err');
+    if (new Set(turnos.map(t => t.nombre.toLowerCase())).size !== turnos.length) return toast('Hay turnos con el mismo nombre.', 'err');
+    Object.assign(c, { prefijo, empresa: $('#kEmp').value.trim(), planta: $('#kPla').value.trim(), departamento: $('#kDep').value.trim(), turnos });
+    delete c.equipos;
     const b = $('#kSave'); b.disabled = true; b.textContent = 'Guardando…';
     try { await D.guardarConfig({ ...c, versionManual: CFG.versionManual }); CFG = { ...c, versionManual: CFG.versionManual, existe: true }; toast('Configuración guardada.'); }
     catch (er) { toast('No se pudo guardar: ' + (er.code || er.message), 'err'); }
     b.disabled = false; b.textContent = 'Guardar cambios';
   };
-}
-
-function reducirImagen(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onerror = rej;
-    r.onload = () => {
-      const img = new Image();
-      img.onerror = rej;
-      img.onload = () => {
-        const k = Math.min(1, 480 / img.width, 200 / img.height);
-        const cv = document.createElement('canvas');
-        cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
-        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-        res(cv.toDataURL('image/png'));
-      };
-      img.src = r.result;
-    };
-    r.readAsDataURL(file);
-  });
 }
 
 function modalVersion() {
@@ -1197,12 +1178,19 @@ function modalVersion() {
 }
 
 // =====================================================================
+const APP = {
+  get ctx() { return CTX; }, get cfg() { return CFG; }, get plantillas() { return PLANT; }, get equipos() { return EQ; }
+};
+
 function render() {
   if (!CTX) return;
   const mod = CTX.modulo;
   if (mod !== 'plantillas' && ED) { guardarAhora(); ED = null; }
+  if (mod !== 'llenar') salirLlenado();
   CTX.main.innerHTML = '';
-  if (mod === 'maestra') vistaMaestra(CTX.main);
+  if (mod === 'llenar') vistaLlenar(CTX.main, APP);
+  else if (mod === 'registros') vistaRegistros(CTX.main, APP);
+  else if (mod === 'maestra') vistaMaestra(CTX.main);
   else if (mod === 'config') vistaConfig(CTX.main);
   else vistaPlantillas(CTX.main);
 }
@@ -1220,7 +1208,7 @@ CTX = await iniciarApp({
   }
 });
 try {
-  [CFG, PLANT] = await Promise.all([D.cargarConfig(), D.listarPlantillas()]);
+  [CFG, PLANT, EQ] = await Promise.all([D.cargarConfig(), D.listarPlantillas(), listarEquipos().catch(() => [])]);
 } catch (e) { toast('No se pudieron leer los datos: ' + (e.code || e.message), 'err'); }
 listo = true;
 render();
