@@ -1,7 +1,9 @@
-// Parada inicial: Planta de Hielo 2026 (programa vigente y línea base)
-export const PARADA_HIELO = {
+// Programa inicial: Parada de Planta de Hielo 2026 (programa vigente, línea base y costo cotizado)
+export const PROGRAMA_HIELO = {
   nombre: 'Parada de Planta de Hielo 2026',
+  tipo: 'parada',
   planta: 'Planta de hielo',
+  ref: '',
   desde: '2026-08-24',
   hasta: '2026-11-30',
   estado: 'activa'
@@ -38,4 +40,10 @@ export const ACTIVIDADES_HIELO = [
   A(24, 'Instalación de llenadores de cubetas', 'Montaje', '', '', '', 0),
   A(25, 'Instalación de bombas de llenadores', 'Montaje', '', '', '', 0),
   A(26, 'Instalación de molinos de hielo', 'Montaje', '', '', '', 0)
+];
+
+// Costos conocidos (montos en soles sin IGV), referidos por número de actividad
+export const COSTOS_HIELO = [
+  { n: 17, tipo: 'Servicio externo', desc: 'Mantenimiento preventivo de 09 motores eléctricos (a todo costo)', prov: 'Servicio Eléctrico Yarlequé',
+    doc: 'Cotización 15/10/2026', fecha: '2026-10-15', monto: 4700, estado: 'presupuestado' }
 ];

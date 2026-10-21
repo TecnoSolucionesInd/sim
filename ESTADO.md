@@ -36,7 +36,7 @@ apps/cong/migrar.html   Copia de datos desde el Firebase actual (solo lectura de
 apps/cost/              Costos integrado (generado por tools/integrar_costos.py) — sin datos en el código
 apps/cost/cargar.html   Carga de órdenes Nisira al SIM desde el HTML generado
 apps/eq/                Equipos: base maestra, carga masiva Excel, importación desde Costos
-apps/plan/              Plan de mantenimiento: index.html (estilos y arranque), paradas.js (módulo Paradas de planta), datos.js (Firestore),
+apps/plan/              Plan de mantenimiento: index.html (estilos y arranque), preventivo.js (Plan preventivo), programas.js (Programas de trabajo), datos.js (Firestore),
                         pdf.js (informes de evidencias A4 horizontal), semilla.js (Parada de Planta de Hielo 2026), logo.png
 apps/fmt/               Registro de formatos: index.html (plantillas, lista maestra, configuración), llenado.js (Llenar), registros.js (Registros),
                         modelo.js (catálogos y pilotos), logica.js (turnos, periodos, validación), hoja.js (formato impreso), datos.js (Firestore), ui.js
@@ -67,7 +67,7 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 | F3 | Equipos (maestro) | Construido (pruebas) |
 | F5 | Materiales e inventario (maestro) | Planificado |
 | F6 | Conformidades · Reporte de mantenimiento | Planificado |
-| F7 | Plan de mantenimiento y OT (desde cero) | Módulo Paradas de planta en pruebas · pendiente: plan preventivo, programación quincenal, OT |
+| F7 | Plan de mantenimiento y OT (desde cero) | Programas de trabajo (paradas, auditorías, proyectos) con costos en pruebas · pendiente: plan preventivo, programación quincenal, OT |
 | F8 | Registro de formatos | Plantillas, llenado en celular, registros y revisión en pruebas · pendiente: indicadores |
 
 ## Congelamiento (F1)
@@ -126,18 +126,23 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - Siguiente: indicadores (cumplimiento de formatos, horas de parada, MTTR por equipo, tendencias de parámetros).
 
 ## Plan de mantenimiento (F7)
-- Módulos previstos: Paradas de planta (construido), Plan preventivo, Programación quincenal, OT. Hoy el catálogo registra solo `paradas`.
-- Parada de planta = evento con alcance cerrado: actividades con fase, responsable, fechas, avance, línea base y evidencias fotográficas.
-- Datos: `datos/plan/paradas/{pid}` (nombre, planta, desde, hasta, estado activa|cerrada, cierre, lineaBase {fecha, por}),
+- Módulos: `preventivo` Plan preventivo (estructura inicial, por construir) y `programas` Programas de trabajo (construido).
+- Programa de trabajo = conjunto de actividades con fechas, avance y cierre. Tipos: Parada de planta, Mantenimiento programado, Auditoría,
+  Proyecto de mejora, Otro. Todos usan el mismo formato: Resumen (KPI + curva S), Línea de tiempo, Actividades, Evidencias y Costos.
+- Datos: `datos/plan/programas/{pid}` (nombre, tipo, planta, ref, desde, hasta, estado activa|cerrada, cierre, lineaBase {fecha, por}),
   `.../actividades/{aid}` (n, nom, fase, resp, ini, fin, ini_b, fin_b, av, obs), `.../evidencias/{eid}` (aid, etapa Antes|Durante|Después,
-  fecha, desc, w, h, thumb 360 px, ord, por) y `.../fotos/{eid}` (data: JPEG 1280 px). La foto completa se lee solo al ampliar o generar el PDF.
+  fecha, desc, w, h, thumb 360 px, ord, por), `.../fotos/{eid}` (data: JPEG 1280 px; se lee solo al ampliar o generar el PDF) y
+  `.../costos/{cid}` (aid, tipo, desc, prov, doc, fecha, monto en S/ sin IGV, estado presupuestado|comprometido|ejecutado).
+- La primera versión guardaba en `datos/plan/paradas`; al abrir la lista, un Admin/Supervisor copia esos datos a `programas` (mismos IDs) y marca el original `migrado`.
 - Estado de actividad calculado: Finalizado (100 %), Atrasado (fin vencido), En curso, Programado, Por definir (sin fecha).
 - Línea base: "Fijar línea base" copia ini/fin a ini_b/fin_b. Si cambian las fechas, la actividad se marca "Reprog." y la curva S programada usa la línea base.
-- Permisos: Admin/Supervisor crean paradas, editan todo, fijan línea base y cierran; Operador actualiza avance, observación y evidencias; Lectura consulta.
-  Parada cerrada = solo lectura. Las reglas usan la regla general de `datos/{app}`.
-- Informes PDF (jsPDF): por actividad y completo (portada con KPI y tabla + fotos 6 por página).
-- Nueva parada: vacía o desde el .json exportado por el plan de parada autónomo (actividades y fotos).
-- Siguiente: programación quincenal alimentada por las actividades de las paradas; vínculo con Conformidades (actividades externas) y Equipos.
+- Costos: cada partida va ligada a una actividad. Presupuestado (cotización) → Comprometido (OC/OS emitida) → Ejecutado (conforme/recibido).
+  Pestaña visible para Admin, Supervisor y Lectura (no para Operador); solo Admin/Supervisor registran. El campo documento permite cruzar con Costos (Nisira).
+- Permisos: Admin/Supervisor crean programas, editan todo, fijan línea base, registran costos y cierran; Operador actualiza avance, observación y evidencias;
+  Lectura consulta. Programa cerrado = solo lectura. Las reglas usan la regla general de `datos/{app}`.
+- Informes PDF (jsPDF): evidencias por actividad y completo (portada con KPI y tabla + fotos 6 por página).
+- Siguiente: Plan preventivo (rutinas por equipo, calendario, cumplimiento), programación quincenal alimentada por preventivo y programas,
+  vínculo de costos con OC/OS de Nisira y de actividades externas con Conformidades.
 
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
@@ -152,3 +157,4 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - 2026-10-07 — Equipos (F3): base maestra con carga Excel e importación desde Costos. Registro de formatos: llenado en celular, registros, revisión, impresión con QR. Reglas actualizadas (volver a publicar `firestore.rules`).
 - 2026-10-20 — Plan de mantenimiento (F7): módulo Paradas de planta con resumen, curva S, línea de tiempo, línea base, actividades y evidencias con PDF. Parada de Planta de Hielo 2026 disponible para carga inicial.
 - 2026-10-20 — Se retiró del catálogo "Registro de parámetros" (F4): las lecturas de parámetros se cubren con Registro de formatos (F8).
+- 2026-10-20 — Plan de mantenimiento: Paradas de planta pasa a Programas de trabajo (tipos: parada, mantenimiento programado, auditoría, proyecto) con pestaña Costos. Plan preventivo como primer módulo (estructura inicial).

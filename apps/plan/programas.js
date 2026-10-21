@@ -1,12 +1,28 @@
-// Plan de mantenimiento — módulo Paradas de planta
-// Lista de paradas → detalle con Resumen (KPI + curva S), Línea de tiempo, Actividades y Evidencias.
-import { PARADA_HIELO, ACTIVIDADES_HIELO } from './semilla.js';
+// Plan de mantenimiento — módulo Programas de trabajo
+// Un programa agrupa actividades con fechas y avance: parada de planta, mantenimiento programado, levantamiento de auditoría, proyecto…
+// Lista de programas → detalle con Resumen (KPI + curva S), Línea de tiempo, Actividades, Evidencias y Costos.
+import { PROGRAMA_HIELO, ACTIVIDADES_HIELO, COSTOS_HIELO } from './semilla.js';
 import { pdfActividad, pdfCompleto } from './pdf.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const FASES = ['Obra civil', 'Desmontaje', 'Mantenimiento', 'Pintado', 'Montaje', 'Otros'];
 const PLANTAS = ['Planta de hielo', 'Congelado', 'Refrigeración', 'Calderos', 'Ósmosis', 'Eléctrico', 'Infraestructura', 'General de Mantenimiento'];
 const ETAPAS = ['Antes', 'Durante', 'Después'];
+export const TIPOS = [
+  { id: 'parada', label: 'Parada de planta', c: '#3bb4e5' },
+  { id: 'mprog', label: 'Mantenimiento programado', c: '#2ec4a6' },
+  { id: 'auditoria', label: 'Auditoría', c: '#f5b54a' },
+  { id: 'proyecto', label: 'Proyecto de mejora', c: '#a9b4ff' },
+  { id: 'otro', label: 'Otro', c: '#8b9bb0' }
+];
+const tipoDe = (id) => TIPOS.find(t => t.id === id) || TIPOS[TIPOS.length - 1];
+const TIPOS_COSTO = ['Servicio externo', 'Materiales y repuestos', 'Mano de obra propia', 'Alquiler de equipos', 'Otros'];
+const EST_COSTO = {
+  presupuestado: { label: 'Presupuestado', hex: '#8b9bb0' },
+  comprometido: { label: 'Comprometido', hex: '#f5b54a' },
+  ejecutado: { label: 'Ejecutado', hex: '#2ec4a6' }
+};
+const sol = (n) => 'S/ ' + (+n || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const ETC = { 'Antes': 'var(--pp-pro)', 'Durante': 'var(--pp-cur)', 'Después': 'var(--pp-fin)' };
 const ST = {
   fin: { label: 'Finalizado', c: 'var(--pp-fin)', hex: '#2ec4a6' },
@@ -40,10 +56,11 @@ export function est(t) {
 const reprog = (t) => (t.fin_b !== undefined && (t.fin_b || '') !== (t.fin || '') && t.fin_b) || (t.ini_b !== undefined && (t.ini_b || '') !== (t.ini || '') && t.ini_b);
 const stTag = (k) => `<span class="pp-st" style="color:${ST[k].c};background:color-mix(in srgb,${ST[k].hex} 16%,transparent)">${ST[k].label}</span>`;
 
-let CTX = null, API = null, PAR = [], P = null, A = [], E = [], subs = [], TAB = 'dash', F = { est: 'all', resp: 'all' }, selA = null, evQ = '', chS = null, chB = null, lbI = 0, vivo = false;
+let CTX = null, API = null, PAR = [], P = null, A = [], E = [], C = [], FT = 'all', subs = [], TAB = 'dash', F = { est: 'all', resp: 'all' }, selA = null, evQ = '', chS = null, chB = null, lbI = 0, vivo = false;
 const $ = (id) => document.getElementById(id);
 const gestor = () => CTX && ['admin', 'supervisor'].includes(CTX.rol);
 const escribe = () => CTX && CTX.puedeEscribir && P && P.estado !== 'cerrada';
+const verCostos = () => CTX && CTX.rol !== 'operador';
 const nEv = (aid) => E.filter(e => e.aid === aid).length;
 const evDe = (aid) => E.filter(e => e.aid === aid).sort((a, b) => ETAPAS.indexOf(a.etapa) - ETAPAS.indexOf(b.etapa) || (a.fecha > b.fecha ? 1 : a.fecha < b.fecha ? -1 : (a.ord || 0) - (b.ord || 0)));
 const toast = (m, t) => CTX.toast(m, t);
@@ -74,76 +91,98 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight') { lbI++; lbShow(); }
 });
 function busy(on, m) { const b = $('ppBusy'); if (!b) return; b.querySelector('span').textContent = m || ''; b.classList.toggle('on', on); }
-function url(pid) { history.replaceState(null, '', location.pathname + (pid ? '?p=' + encodeURIComponent(pid) : '') + '#paradas'); }
+function url(pid) { history.replaceState(null, '', location.pathname + (pid ? '?p=' + encodeURIComponent(pid) : '') + '#programas'); }
 
-/* ================= LISTA DE PARADAS ================= */
+/* ================= LISTA DE PROGRAMAS ================= */
 async function lista() {
   subs.forEach(u => u()); subs = []; P = null; url(null);
-  CTX.main.innerHTML = `<div class="pp"><div class="pp-top"><div><div class="eyebrow">Plan de mantenimiento</div><h1 class="h-display">Paradas de planta</h1></div>
-    <div id="ppTopAcc"></div></div><div id="ppLista"><div class="skel" style="height:140px"></div></div></div>`;
-  try { PAR = await API.listarParadas(); } catch (e) { $('ppLista').innerHTML = `<div class="alert err">No se pudo leer la información: ${esc(e.message)}</div>`; return; }
+  CTX.main.innerHTML = `<div class="pp"><div class="pp-top"><div><div class="eyebrow">Plan de mantenimiento</div><h1 class="h-display">Programas de trabajo</h1>
+    <p class="muted" style="margin:10px 0 0;font-size:14px">Paradas de planta, mantenimientos programados, levantamiento de auditorías y proyectos con un mismo formato de seguimiento.</p></div>
+    <div id="ppTopAcc"></div></div><div class="pp-tools" id="ppTipos"></div><div id="ppLista"><div class="skel" style="height:140px"></div></div></div>`;
+  if (gestor() && API.migrarAnterior) {
+    try { const m = await API.migrarAnterior(); for (const pid of m) await costosSemilla(pid); } catch (e) { console.warn(e); }
+  }
+  try { PAR = await API.listarProgramas(); } catch (e) { $('ppLista').innerHTML = `<div class="alert err">No se pudo leer la información: ${esc(e.message)}</div>`; return; }
   const res = await Promise.all(PAR.map(async p => { try { return await API.actividades(p.id); } catch { return []; } }));
   if (!vivo) return;
-  if (gestor()) $('ppTopAcc').innerHTML = `<button class="btn pp-grad" id="ppNueva">+ Nueva parada</button>`;
-  if ($('ppNueva')) $('ppNueva').onclick = () => modalParada();
+  if (gestor()) $('ppTopAcc').innerHTML = `<button class="btn pp-grad" id="ppNueva">+ Nuevo programa</button>`;
+  if ($('ppNueva')) $('ppNueva').onclick = () => modalPrograma();
   if (!PAR.length) {
-    $('ppLista').innerHTML = `<div class="glass pp-vacio"><h2>Aún no hay paradas registradas</h2>
-      <p class="muted" style="margin:0 0 22px">Cada parada de planta reúne sus actividades, avance, curva S y evidencias fotográficas.</p>
-      ${gestor() ? `<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn pp-grad" id="ppSem">Cargar Parada de Planta de Hielo 2026</button><button class="btn" id="ppNueva2">Nueva parada</button></div>` : ''}</div>`;
+    $('ppTipos').innerHTML = '';
+    $('ppLista').innerHTML = `<div class="glass pp-vacio"><h2>Aún no hay programas registrados</h2>
+      <p class="muted" style="margin:0 0 22px">Cada programa reúne sus actividades, avance, curva S, evidencias fotográficas y costos.</p>
+      ${gestor() ? `<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn pp-grad" id="ppSem">Cargar Parada de Planta de Hielo 2026</button><button class="btn" id="ppNueva2">Nuevo programa</button></div>` : ''}</div>`;
     if ($('ppSem')) $('ppSem').onclick = cargarSemilla;
-    if ($('ppNueva2')) $('ppNueva2').onclick = () => modalParada();
+    if ($('ppNueva2')) $('ppNueva2').onclick = () => modalPrograma();
     return;
   }
-  const orden = PAR.map((p, i) => ({ p, a: res[i] })).sort((x, y) => (x.p.estado === 'cerrada') - (y.p.estado === 'cerrada') || String(y.p.desde || '').localeCompare(String(x.p.desde || '')));
-  $('ppLista').innerHTML = `<div class="pp-paradas">${orden.map(({ p, a }, i) => {
-    const n = a.length, av = n ? a.reduce((s, t) => s + (+t.av || 0), 0) / n : 0, fin = a.filter(t => est(t) === 'fin').length;
-    const cer = p.estado === 'cerrada';
-    return `<button class="pp-card pp-pc rise d${Math.min(i + 1, 5)}" data-p="${esc(p.id)}">
-      <svg class="pp-ring" viewBox="0 0 100 100" style="width:72px;height:72px"><circle class="bgc" cx="50" cy="50" r="42"/><circle class="fgc" cx="50" cy="50" r="42" transform="rotate(-90 50 50)" stroke-dasharray="263.9" stroke-dashoffset="${263.9 * (1 - av / 100)}"/><text x="50" y="50">${av.toFixed(0)}%</text></svg>
-      <div style="min-width:0;flex:1"><div class="tag">${esc(p.planta || 'Parada')}</div><h2>${esc(p.nombre)}</h2>
-        <div class="meta">${esc(mesA(p.desde))} – ${esc(mesA(p.hasta))} ${p.hasta ? D(p.hasta).getFullYear() : ''} · ${fin}/${n} actividades finalizadas</div>
-        <div style="margin-top:8px">${cer ? '<span class="pill" style="background:rgba(255,255,255,.09);color:#DDE4EB">Cerrada</span>' : '<span class="pill" style="background:rgba(74,163,255,.16);color:#9fcbff">En ejecución</span>'}</div></div></button>`;
-  }).join('')}</div>`;
-  document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => abrir(b.dataset.p));
+  const pintar = () => {
+    const usados = TIPOS.filter(t => PAR.some(p => (p.tipo || 'parada') === t.id));
+    $('ppTipos').innerHTML = [{ id: 'all', label: 'Todos' }, ...usados].map(t => `<button class="pp-chip ${FT === t.id ? 'on' : ''}" data-t="${t.id}">${t.label} <span style="opacity:.6">${t.id === 'all' ? PAR.length : PAR.filter(p => (p.tipo || 'parada') === t.id).length}</span></button>`).join('');
+    document.querySelectorAll('#ppTipos [data-t]').forEach(b => b.onclick = () => { FT = b.dataset.t; pintar(); });
+    const orden = PAR.map((p, i) => ({ p, a: res[i] })).filter(({ p }) => FT === 'all' || (p.tipo || 'parada') === FT)
+      .sort((x, y) => (x.p.estado === 'cerrada') - (y.p.estado === 'cerrada') || String(y.p.desde || '').localeCompare(String(x.p.desde || '')));
+    $('ppLista').innerHTML = orden.length ? `<div class="pp-paradas">${orden.map(({ p, a }, i) => {
+      const n = a.length, av = n ? a.reduce((s, t) => s + (+t.av || 0), 0) / n : 0, fin = a.filter(t => est(t) === 'fin').length;
+      const cer = p.estado === 'cerrada', tp = tipoDe(p.tipo || 'parada');
+      return `<button class="pp-card pp-pc rise d${Math.min(i + 1, 5)}" data-p="${esc(p.id)}" style="--tc:${tp.c}">
+        <svg class="pp-ring" viewBox="0 0 100 100" style="width:72px;height:72px"><circle class="bgc" cx="50" cy="50" r="42"/><circle class="fgc" cx="50" cy="50" r="42" transform="rotate(-90 50 50)" stroke-dasharray="263.9" stroke-dashoffset="${263.9 * (1 - av / 100)}"/><text x="50" y="50">${av.toFixed(0)}%</text></svg>
+        <div style="min-width:0;flex:1"><div class="tag" style="color:${tp.c}">${esc(tp.label)}${p.planta ? ' · ' + esc(p.planta) : ''}</div><h2>${esc(p.nombre)}</h2>
+          <div class="meta">${p.desde || p.hasta ? `${esc(mesA(p.desde))} – ${esc(mesA(p.hasta))} ${p.hasta ? D(p.hasta).getFullYear() : ''} · ` : ''}${fin}/${n} actividades finalizadas</div>
+          <div style="margin-top:8px">${cer ? '<span class="pill" style="background:rgba(255,255,255,.09);color:#DDE4EB">Cerrado</span>' : '<span class="pill" style="background:rgba(74,163,255,.16);color:#9fcbff">En ejecución</span>'}</div></div></button>`;
+    }).join('')}</div>` : '<div class="pp-empty">Sin programas de este tipo.</div>';
+    document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => abrir(b.dataset.p));
+  };
+  pintar();
 }
 
 async function cargarSemilla() {
-  busy(true, 'Cargando parada…');
+  busy(true, 'Cargando programa…');
   try {
-    const pid = await API.crearParada({ ...PARADA_HIELO });
-    await API.cargarActividades(pid, ACTIVIDADES_HIELO);
-    await API.actualizarParada(pid, { lineaBase: { fecha: iso(HOY), por: CTX.perfil?.nombre || CTX.user?.email || '' } });
-    busy(false); toast('Parada cargada'); abrir(pid);
+    const pid = await API.crearPrograma({ ...PROGRAMA_HIELO });
+    const ids = await API.cargarActividades(pid, ACTIVIDADES_HIELO);
+    for (const c of COSTOS_HIELO) { const k = ACTIVIDADES_HIELO.findIndex(a => a.n === c.n); if (k >= 0) { const { n, ...x } = c; await API.guardarCosto(pid, { ...x, aid: ids[k] }); } }
+    await API.actualizarPrograma(pid, { lineaBase: { fecha: iso(HOY), por: CTX.perfil?.nombre || CTX.user?.email || '' } });
+    busy(false); toast('Programa cargado'); abrir(pid);
   } catch (e) { busy(false); toast('No se pudo cargar: ' + e.message, 'err'); }
 }
+// Programa migrado de la versión anterior: agrega el costo cotizado si aún no tiene costos
+async function costosSemilla(pid) {
+  const [acts, cs] = await Promise.all([API.actividades(pid), API.costos(pid)]);
+  if (cs.length || !acts.some(a => a.nom === ACTIVIDADES_HIELO[0].nom)) return;
+  for (const c of COSTOS_HIELO) { const a = acts.find(x => +x.n === c.n); if (a) { const { n, ...x } = c; await API.guardarCosto(pid, { ...x, aid: a.id }); } }
+}
 
-function modalParada(p = null) {
+function modalPrograma(p = null) {
   const bg = document.createElement('div'); bg.className = 'modal-bg';
-  bg.innerHTML = `<div class="modal" style="max-width:620px"><div class="modal-h"><div class="h-display" style="font-size:20px">${p ? 'Editar parada' : 'Nueva parada'}</div><button class="btn btn-icon" data-x>×</button></div>
+  bg.innerHTML = `<div class="modal" style="max-width:640px"><div class="modal-h"><div class="h-display" style="font-size:20px">${p ? 'Editar programa' : 'Nuevo programa de trabajo'}</div><button class="btn btn-icon" data-x>×</button></div>
     <div class="modal-b"><div class="pp-fg">
-      <div class="full"><label class="label">Nombre de la parada</label><input class="field" id="mpNom" value="${esc(p?.nombre || '')}" placeholder="Ej.: Parada de Congelado 2027"></div>
-      <div class="full"><label class="label">Planta / área</label><select class="field" id="mpPla">${PLANTAS.map(x => `<option ${x === (p?.planta || '') ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+      <div class="full"><label class="label">Nombre del programa</label><input class="field" id="mpNom" value="${esc(p?.nombre || '')}" placeholder="Ej.: Levantamiento de observaciones – Auditoría BRC 2026"></div>
+      <div><label class="label">Tipo</label><select class="field" id="mpTip">${TIPOS.map(t => `<option value="${t.id}" ${t.id === (p?.tipo || 'parada') ? 'selected' : ''}>${t.label}</option>`).join('')}</select></div>
+      <div><label class="label">Planta / área</label><select class="field" id="mpPla">${PLANTAS.map(x => `<option ${x === (p?.planta || '') ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+      <div class="full"><label class="label">Referencia (opcional)</label><input class="field" id="mpRef" value="${esc(p?.ref || '')}" placeholder="Informe de auditoría, acta, código de proyecto…"></div>
       <div><label class="label">Periodo desde</label><input type="date" class="field" id="mpDes" value="${esc(p?.desde || '')}"></div>
       <div><label class="label">Periodo hasta</label><input type="date" class="field" id="mpHas" value="${esc(p?.hasta || '')}"></div>
       ${p ? '' : `<div class="full"><label class="label">Actividades desde archivo (opcional)</label><input type="file" class="field" id="mpArc" accept=".json" style="padding-top:10px">
-        <div class="pp-nota">Archivo .json exportado del plan de parada (incluye actividades y fotos).</div></div>`}
+        <div class="pp-nota">Archivo .json exportado de un plan de trabajos (incluye actividades y fotos).</div></div>`}
     </div></div>
-    <div class="modal-f"><button class="btn" data-x>Cancelar</button><button class="btn pp-grad" id="mpOk">${p ? 'Guardar' : 'Crear parada'}</button></div></div>`;
+    <div class="modal-f"><button class="btn" data-x>Cancelar</button><button class="btn pp-grad" id="mpOk">${p ? 'Guardar' : 'Crear programa'}</button></div></div>`;
   document.body.appendChild(bg);
   bg.querySelectorAll('[data-x]').forEach(b => b.onclick = () => bg.remove());
   bg.querySelector('#mpOk').onclick = async () => {
-    const v = { nombre: bg.querySelector('#mpNom').value.trim(), planta: bg.querySelector('#mpPla').value, desde: bg.querySelector('#mpDes').value, hasta: bg.querySelector('#mpHas').value };
-    if (!v.nombre) { toast('Ingrese el nombre de la parada', 'err'); return; }
+    const v = { nombre: bg.querySelector('#mpNom').value.trim(), tipo: bg.querySelector('#mpTip').value, planta: bg.querySelector('#mpPla').value, ref: bg.querySelector('#mpRef').value.trim(),
+      desde: bg.querySelector('#mpDes').value, hasta: bg.querySelector('#mpHas').value };
+    if (!v.nombre) { toast('Ingrese el nombre del programa', 'err'); return; }
     if (v.desde && v.hasta && v.hasta < v.desde) { toast('El periodo termina antes de iniciar', 'err'); return; }
-    if (p) { await API.actualizarParada(p.id, v); bg.remove(); toast('Parada actualizada'); return; }
+    if (p) { await API.actualizarPrograma(p.id, v); bg.remove(); toast('Programa actualizado'); return; }
     const arc = bg.querySelector('#mpArc').files[0];
     let imp = null;
     if (arc) { try { imp = JSON.parse(await arc.text()); } catch { toast('Archivo no válido', 'err'); return; } }
-    bg.remove(); busy(true, 'Creando parada…');
+    bg.remove(); busy(true, 'Creando programa…');
     try {
-      const pid = await API.crearParada({ ...v, estado: 'activa' });
+      const pid = await API.crearPrograma({ ...v, estado: 'activa' });
       if (imp) await importar(pid, imp);
-      busy(false); toast('Parada creada'); abrir(pid);
+      busy(false); toast('Programa creado'); abrir(pid);
     } catch (e) { busy(false); toast('No se pudo crear: ' + e.message, 'err'); }
   };
 }
@@ -165,15 +204,15 @@ async function importar(pid, d) {
   }
 }
 
-/* ================= DETALLE DE PARADA ================= */
+/* ================= DETALLE DEL PROGRAMA ================= */
 async function abrir(pid) {
   subs.forEach(u => u()); subs = [];
-  url(pid); TAB = TAB || 'dash'; A = []; E = []; selA = null; P = null;
+  url(pid); TAB = TAB || 'dash'; A = []; E = []; C = []; selA = null; P = null;
   CTX.main.innerHTML = `<div class="pp"><div class="skel" style="height:96px"></div></div>`;
   let primera = true;
-  subs.push(API.escucharParada(pid, (p) => {
+  subs.push(API.escucharPrograma(pid, (p) => {
     if (!vivo) return;
-    if (!p) { toast('La parada no existe', 'err'); lista(); return; }
+    if (!p) { toast('El programa no existe', 'err'); lista(); return; }
     P = p;
     if (primera) { primera = false; marco(); suscribir(pid); } else { cabecera(); todo(); }
   }));
@@ -181,19 +220,21 @@ async function abrir(pid) {
 function suscribir(pid) {
   subs.push(API.escucharActividades(pid, (l) => { A = l; todo(); }));
   subs.push(API.escucharEvidencias(pid, (l) => { E = l; renderList(); renderEv(); }));
+  if (verCostos()) subs.push(API.escucharCostos(pid, (l) => { C = l; renderCostos(); }));
 }
 
 function marco() {
   CTX.main.innerHTML = `<div class="pp">
-    <button class="pp-back" id="ppVolver">${BACK} Paradas de planta</button>
+    <button class="pp-back" id="ppVolver">${BACK} Programas de trabajo</button>
     <header class="pp-hdr" id="ppHdr"></header>
     <div id="ppAviso"></div>
     <nav class="pp-tabsbar">
       <button class="pp-tab" data-v="dash">Resumen</button><button class="pp-tab" data-v="gantt">Línea de tiempo</button>
-      <button class="pp-tab" data-v="list">Actividades</button><button class="pp-tab" data-v="ev">Evidencias</button>
+      <button class="pp-tab" data-v="list">Actividades</button><button class="pp-tab" data-v="ev">Evidencias</button>${verCostos() ? '<button class="pp-tab" data-v="costos">Costos</button>' : ''}
       <span class="pp-sp"></span><span id="ppAcc" style="display:flex;gap:8px;flex-wrap:wrap"></span>
     </nav>
     <section class="pp-view" id="v-dash">
+      <div id="ppVacio"></div>
       <div class="pp-kpis">
         <div class="pp-kpi main"><svg class="pp-ring" viewBox="0 0 100 100"><circle class="bgc" cx="50" cy="50" r="42"/><circle class="fgc" id="ppRing" cx="50" cy="50" r="42" transform="rotate(-90 50 50)" stroke-dasharray="263.9" stroke-dashoffset="263.9"/><text x="50" y="50" id="ppRingTx">0%</text></svg>
           <div><div class="l">Avance general</div><div class="s" id="kAvS"></div><div class="s" id="kSpi" style="margin-top:6px"></div></div></div>
@@ -201,7 +242,7 @@ function marco() {
         <div class="pp-kpi" style="--c:var(--pp-cur)"><div class="l">En curso</div><div class="v" id="kCur">0</div><div class="s">Actividades activas</div></div>
         <div class="pp-kpi" style="--c:var(--pp-pro)"><div class="l">Programadas</div><div class="v" id="kPro">0</div><div class="s">Con fecha por iniciar</div></div>
         <div class="pp-kpi" style="--c:var(--pp-def)"><div class="l">Por definir</div><div class="v" id="kDef">0</div><div class="s">Fecha por programar</div></div>
-        <div class="pp-kpi" style="--c:#a9b4ff"><div class="l">Días de parada</div><div class="v" id="kDias">0</div><div class="s" id="kDiasS"></div></div>
+        <div class="pp-kpi" style="--c:#a9b4ff"><div class="l">Días transcurridos</div><div class="v" id="kDias">0</div><div class="s" id="kDiasS"></div></div>
       </div>
       <div class="pp-g2">
         <div class="pp-card"><div class="pp-ch"><h3>Curva S — Avance programado vs. real</h3>
@@ -216,7 +257,7 @@ function marco() {
         <div class="pp-card"><div class="pp-ch"><h3>Próximas actividades</h3><span class="sub">Siguientes 15 días</span></div><div class="pp-next" id="ppNext"></div></div>
       </div>
     </section>
-    <section class="pp-view" id="v-gantt"><div class="pp-card"><div class="pp-ch"><h3>Línea de tiempo de la parada</h3>
+    <section class="pp-view" id="v-gantt"><div class="pp-card"><div class="pp-ch"><h3>Línea de tiempo del programa</h3>
       <div class="pp-legend"><span><i style="background:var(--pp-fin)"></i>Finalizado</span><span><i style="background:var(--pp-cur)"></i>En curso</span><span><i style="background:var(--pp-pro)"></i>Programado</span><span><i style="background:transparent;border:1.5px dashed var(--pp-def)"></i>Por definir</span><span><i style="background:rgba(255,255,255,.55);height:3px;vertical-align:3px"></i>Línea base</span><span><i style="background:var(--pp-atr)"></i>Atrasado / Hoy</span></div></div>
       <div class="pp-gwrap"><div class="pp-gantt" id="ppGantt"></div></div></div></section>
     <section class="pp-view" id="v-list"><div class="pp-card"><div class="pp-tools" id="ppFil"></div><div class="pp-tblw"><table class="pp-tbl">
@@ -231,6 +272,23 @@ function marco() {
             <input type="file" id="ppFile" accept="image/*" multiple hidden>
             <div id="ppDropW"></div><div class="pp-gal" id="ppGal"></div></div></div>
       </div>
+    </section>
+    <section class="pp-view" id="v-costos">
+      <div class="pp-kpis pp-kc">
+        <div class="pp-kpi" style="--c:#8b9bb0"><div class="l">Presupuesto</div><div class="v pp-money" id="cPre">S/ 0</div><div class="s" id="cPreS"></div></div>
+        <div class="pp-kpi" style="--c:var(--pp-pro)"><div class="l">Comprometido</div><div class="v pp-money" id="cCom">S/ 0</div><div class="s" id="cComS"></div></div>
+        <div class="pp-kpi" style="--c:var(--pp-fin)"><div class="l">Ejecutado</div><div class="v pp-money" id="cEje">S/ 0</div><div class="s" id="cEjeS"></div></div>
+        <div class="pp-kpi" style="--c:var(--pp-acc)"><div class="l">Por comprometer</div><div class="v pp-money" id="cSal">S/ 0</div><div class="s">Presupuesto sin orden emitida</div></div>
+      </div>
+      <div class="pp-g2">
+        <div class="pp-card"><div class="pp-ch"><h3>Costo por actividad</h3><span class="sub">Soles sin IGV</span></div><div id="cAct"></div></div>
+        <div class="pp-card"><div class="pp-ch"><h3>Costo por tipo</h3></div><div id="cTipo"></div>
+          <div class="pp-ch" style="margin-top:16px"><h3>Por estado</h3></div><div id="cEst"></div></div>
+      </div>
+      <div class="pp-card" style="margin-top:12px"><div class="pp-ch"><h3>Detalle de costos</h3><span id="cAcc"></span></div>
+        <div class="pp-tblw"><table class="pp-tbl"><thead><tr><th>#</th><th>Actividad</th><th>Concepto</th><th>Tipo</th><th>Proveedor</th><th>Documento</th><th>Estado</th><th style="text-align:right">Monto</th></tr></thead>
+        <tbody id="cTb"></tbody><tfoot id="cTf"></tfoot></table></div>
+        <div class="pp-foot">Montos en soles sin IGV. Presupuestado: cotización aprobada · Comprometido: orden de compra o servicio emitida · Ejecutado: trabajo conforme o material recibido.</div></div>
     </section></div>`;
   $('ppVolver').onclick = lista;
   document.querySelectorAll('.pp-tab').forEach(b => b.onclick = () => { TAB = b.dataset.v; pestaña(); });
@@ -248,29 +306,30 @@ function pestaña() {
   document.querySelectorAll('.pp-view').forEach(v => v.classList.toggle('on', v.id === 'v-' + TAB));
   if (TAB === 'dash') renderDash();
   if (TAB === 'gantt') renderGantt();
+  if (TAB === 'costos') renderCostos();
 }
-function todo() { if (!$('ppHdr')) return; renderDash(); renderGantt(); renderList(); renderEv(); }
+function todo() { if (!$('ppHdr')) return; renderDash(); renderGantt(); renderList(); renderEv(); renderCostos(); }
 
 function cabecera() {
   const starts = A.map(t => D(t.ini)).filter(Boolean), d0 = starts.length ? new Date(Math.min(...starts)) : null;
   const per = P.desde || P.hasta ? `${mesA(P.desde)} – ${mesA(P.hasta)} ${P.hasta ? D(P.hasta).getFullYear() : ''}` : 'Por definir';
   $('ppHdr').innerHTML = `<div class="pp-logo"><img src="./logo.png" alt="Santa Mónica Fishing"></div>
-    <div class="pp-ttl"><div class="tag">Plan de trabajos por parada de planta</div><h1>${esc(P.nombre)}</h1><p>${esc(P.planta || '')} · Departamento de Mantenimiento · Planta Paita</p></div>
-    <div class="pp-meta"><div class="pp-pill">Periodo del plan<b>${esc(per)}</b></div><div class="pp-pill">Inicio de parada<b>${d0 ? fmt(d0) : '—'}</b></div>
+    <div class="pp-ttl"><div class="tag" style="color:${tipoDe(P.tipo || 'parada').c}">Programa de trabajo · ${esc(tipoDe(P.tipo || 'parada').label)}</div><h1>${esc(P.nombre)}</h1><p>${esc(P.planta || '')}${P.ref ? ' · ' + esc(P.ref) : ''} · Departamento de Mantenimiento · Planta Paita</p></div>
+    <div class="pp-meta"><div class="pp-pill">Periodo del plan<b>${esc(per)}</b></div><div class="pp-pill">Inicio<b>${d0 ? fmt(d0) : '—'}</b></div>
       <div class="pp-pill">Fecha de corte<b>${fmt(HOY)}</b></div><div class="pp-pill">Línea base<b>${P.lineaBase?.fecha ? fmt(D(P.lineaBase.fecha)) : 'Sin fijar'}</b></div></div>`;
-  $('ppAviso').innerHTML = P.estado === 'cerrada' ? `<div class="alert warn pp-cerrada">Parada cerrada el ${P.cierre ? fmt(D(P.cierre)) : ''}. La información queda en solo lectura.</div>` : '';
+  $('ppAviso').innerHTML = P.estado === 'cerrada' ? `<div class="alert warn pp-cerrada">Programa cerrado el ${P.cierre ? fmt(D(P.cierre)) : ''}. La información queda en solo lectura.</div>` : '';
   const acc = [];
-  if (gestor() && P.estado !== 'cerrada') acc.push(`<button class="btn pp-btn" id="ppLB">Fijar línea base</button>`, `<button class="btn pp-btn" id="ppEdit">Editar parada</button>`, `<button class="btn pp-btn" id="ppCerrar">Cerrar parada</button>`);
-  if (gestor() && P.estado === 'cerrada') acc.push(`<button class="btn pp-btn" id="ppReab">Reabrir parada</button>`);
+  if (gestor() && P.estado !== 'cerrada') acc.push(`<button class="btn pp-btn" id="ppLB">Fijar línea base</button>`, `<button class="btn pp-btn" id="ppEdit">Editar programa</button>`, `<button class="btn pp-btn" id="ppCerrar">Cerrar programa</button>`);
+  if (gestor() && P.estado === 'cerrada') acc.push(`<button class="btn pp-btn" id="ppReab">Reabrir programa</button>`);
   $('ppAcc').innerHTML = acc.join('');
   if ($('ppLB')) $('ppLB').onclick = () => confirmar('Fijar línea base', 'Se guardará el programa actual (fechas de inicio y fin de cada actividad) como línea base. Los cambios de fecha posteriores se mostrarán como reprogramaciones.', 'Fijar línea base', async () => {
     await API.fijarLineaBase(P.id, A, iso(HOY)); toast('Línea base fijada');
   });
-  if ($('ppEdit')) $('ppEdit').onclick = () => modalParada(P);
-  if ($('ppCerrar')) $('ppCerrar').onclick = () => confirmar('Cerrar parada', 'La parada quedará archivada en solo lectura. Podrá reabrirse si es necesario.', 'Cerrar parada', async () => {
-    await API.actualizarParada(P.id, { estado: 'cerrada', cierre: iso(HOY) }); toast('Parada cerrada');
+  if ($('ppEdit')) $('ppEdit').onclick = () => modalPrograma(P);
+  if ($('ppCerrar')) $('ppCerrar').onclick = () => confirmar('Cerrar programa', 'El programa quedará archivado en solo lectura. Podrá reabrirse si es necesario.', 'Cerrar programa', async () => {
+    await API.actualizarPrograma(P.id, { estado: 'cerrada', cierre: iso(HOY) }); toast('Programa cerrado');
   });
-  if ($('ppReab')) $('ppReab').onclick = async () => { await API.actualizarParada(P.id, { estado: 'activa' }); toast('Parada reabierta'); };
+  if ($('ppReab')) $('ppReab').onclick = async () => { await API.actualizarPrograma(P.id, { estado: 'activa' }); toast('Programa reabierto'); };
 }
 function confirmar(tit, txt, ok, fn) {
   const bg = document.createElement('div'); bg.className = 'modal-bg';
@@ -288,6 +347,8 @@ function renderDash() {
   cabecera();
   const n = A.length, c = { fin: 0, cur: 0, pro: 0, def: 0, atr: 0 };
   A.forEach(t => c[est(t)]++);
+  $('ppVacio').innerHTML = n ? '' : `<div class="alert ok" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="flex:1">El programa aún no tiene actividades. Regístrelas en la pestaña Actividades para ver el avance, la curva S y los costos.</span>${gestor() && escribe() ? '<button class="btn pp-btn pp-grad" id="ppIrAct">Registrar actividades</button>' : ''}</div>`;
+  if ($('ppIrAct')) $('ppIrAct').onclick = () => { TAB = 'list'; pestaña(); modalAct(null); };
   const av = n ? A.reduce((s, t) => s + (+t.av || 0), 0) / n : 0;
   requestAnimationFrame(() => { if ($('ppRing')) $('ppRing').style.strokeDashoffset = 263.9 * (1 - av / 100); });
   $('ppRingTx').textContent = av.toFixed(0) + '%';
@@ -435,6 +496,7 @@ function modalAct(aid) {
       <div><label class="label">Avance (%)</label><input type="number" class="field" id="maAv" min="0" max="100" step="5" value="${t.av || 0}" ${dis(ed)}></div>
       <div><label class="label">Estado</label><div style="padding-top:10px">${k ? stTag(k) : '—'}</div></div>
       ${aid && (t.ini_b || t.fin_b) ? `<div class="full pp-nota">Línea base: ${t.ini_b ? fmt(D(t.ini_b)) : 'por definir'} – ${t.fin_b ? fmt(D(t.fin_b)) : 'por definir'}${reprog(t) ? ' · <b style="color:var(--pp-pro)">Reprogramada</b>' : ''}</div>` : ''}
+      ${aid && verCostos() ? `<div class="full pp-nota">Costo registrado: <b style="color:var(--tx)">${sol(C.filter(c => c.aid === aid).reduce((s, c) => s + (+c.monto || 0), 0))}</b> (${C.filter(c => c.aid === aid).length} partida(s))</div>` : ''}
       <div class="full"><label class="label">Observación</label><textarea class="field" id="maObs" rows="2" ${dis(ed)}>${esc(t.obs || '')}</textarea></div>
     </div></div>
     <div class="modal-f">${aid && full ? '<button class="btn btn-danger" id="maDel" style="margin-right:auto">Eliminar</button>' : ''}${aid ? `<button class="btn" id="maEv">${CAM} Evidencias (${nEv(aid)})</button>` : ''}
@@ -544,3 +606,68 @@ async function subir(files) {
   toast(ok ? `${ok} foto(s) agregada(s)` : 'No se pudo cargar la imagen', ok ? 'ok' : 'err');
 }
 function ctxPdf() { return { parada: P, A, E, est, ST, hoy: HOY, foto: (eid) => API.foto(P.id, eid) }; }
+
+/* ---------- Costos ---------- */
+function barras(items, total, color) {
+  if (!items.length) return '<div class="pp-foot">Sin costos registrados.</div>';
+  const mx = Math.max(...items.map(x => x.v), 1);
+  return items.map(x => `<div class="pp-phase"><div class="top"><b style="font-weight:500">${esc(x.k)}</b><span>${sol(x.v)}${total ? ` · ${(x.v / total * 100).toFixed(0)}%` : ''}</span></div><div class="pp-bar"><div data-w="${x.v / mx * 100}" style="${x.c || color ? `background:${x.c || color}` : ''}"></div></div></div>`).join('');
+}
+function renderCostos() {
+  if (!$('cTb') || !verCostos()) return;
+  const tot = C.reduce((s, c) => s + (+c.monto || 0), 0);
+  const com = C.filter(c => c.estado !== 'presupuestado').reduce((s, c) => s + (+c.monto || 0), 0);
+  const eje = C.filter(c => c.estado === 'ejecutado').reduce((s, c) => s + (+c.monto || 0), 0);
+  $('cPre').textContent = sol(tot); $('cPreS').textContent = `${C.length} partida(s) en ${new Set(C.map(c => c.aid)).size} actividad(es)`;
+  $('cCom').textContent = sol(com); $('cComS').textContent = tot ? `${(com / tot * 100).toFixed(0)} % del presupuesto` : '—';
+  $('cEje').textContent = sol(eje); $('cEjeS').textContent = tot ? `${(eje / tot * 100).toFixed(0)} % del presupuesto` : '—';
+  $('cSal').textContent = sol(tot - com);
+  const actN = (aid) => A.find(a => a.id === aid);
+  const porAct = {}; C.forEach(c => { porAct[c.aid] = (porAct[c.aid] || 0) + (+c.monto || 0); });
+  $('cAct').innerHTML = barras(Object.entries(porAct).map(([aid, v]) => { const a = actN(aid); return { k: a ? `${a.n}. ${a.nom}` : 'Actividad eliminada', v }; }).sort((a, b) => b.v - a.v).slice(0, 10), tot);
+  const porTipo = {}; C.forEach(c => { porTipo[c.tipo || 'Otros'] = (porTipo[c.tipo || 'Otros'] || 0) + (+c.monto || 0); });
+  $('cTipo').innerHTML = barras(Object.entries(porTipo).map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v), tot);
+  $('cEst').innerHTML = barras(Object.entries(EST_COSTO).map(([k, e]) => ({ k: e.label, v: C.filter(c => c.estado === k).reduce((s, c) => s + (+c.monto || 0), 0), c: e.hex })), tot);
+  requestAnimationFrame(() => document.querySelectorAll('#v-costos .pp-bar>div').forEach(b => b.style.width = b.dataset.w + '%'));
+  const ed = escribe() && gestor();
+  $('cAcc').innerHTML = ed ? '<button class="btn pp-btn pp-grad" id="cAdd">+ Costo</button>' : '';
+  if ($('cAdd')) $('cAdd').onclick = () => modalCosto(null);
+  const filas = [...C].sort((a, b) => ((actN(a.aid)?.n || 999) - (actN(b.aid)?.n || 999)) || String(a.fecha || '').localeCompare(String(b.fecha || '')));
+  $('cTb').innerHTML = filas.map(c => { const a = actN(c.aid), e = EST_COSTO[c.estado] || EST_COSTO.presupuestado;
+    return `<tr data-c="${esc(c.id)}"><td class="num">${a ? a.n : '—'}</td><td>${a ? esc(a.nom) : '<span style="color:var(--tx-3)">Actividad eliminada</span>'}</td><td>${esc(c.desc || '')}</td><td>${esc(c.tipo || '')}</td>
+      <td>${esc(c.prov || '—')}</td><td>${esc(c.doc || '—')}${c.fecha ? `<div style="color:var(--tx-3);font-size:11.5px">${fmt(D(c.fecha))}</div>` : ''}</td>
+      <td><span class="pp-st" style="color:${e.hex};background:color-mix(in srgb,${e.hex} 16%,transparent)">${e.label}</span></td><td class="num" style="text-align:right;font-weight:600">${sol(c.monto)}</td></tr>`; }).join('')
+    || `<tr><td colspan="8" class="pp-empty">Sin costos registrados.${ed ? ' Registre cotizaciones, órdenes y consumos con "+ Costo".' : ''}</td></tr>`;
+  $('cTf').innerHTML = C.length ? `<tr><td colspan="7" style="text-align:right;font-weight:700;padding:11px 10px">Total</td><td class="num" style="text-align:right;font-weight:700;padding:11px 10px">${sol(tot)}</td></tr>` : '';
+  document.querySelectorAll('#cTb tr[data-c]').forEach(r => r.onclick = () => modalCosto(r.dataset.c));
+}
+function modalCosto(cid) {
+  const c = cid ? C.find(x => x.id === cid) : { aid: '', tipo: 'Servicio externo', desc: '', prov: '', doc: '', fecha: iso(HOY), monto: '', estado: 'presupuestado' };
+  if (!c) return;
+  const ed = escribe() && gestor(), dis = ed ? '' : 'disabled';
+  const acts = [...A].sort((a, b) => a.n - b.n);
+  const bg = document.createElement('div'); bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal" style="max-width:640px"><div class="modal-h"><div class="h-display" style="font-size:20px">${cid ? 'Partida de costo' : 'Registrar costo'}</div><button class="btn btn-icon" data-x>×</button></div>
+    <div class="modal-b"><div class="pp-fg">
+      <div class="full"><label class="label">Actividad</label><select class="field" id="mcAct" ${dis}>${acts.map(a => `<option value="${esc(a.id)}" ${a.id === c.aid ? 'selected' : ''}>${a.n}. ${esc(a.nom)}</option>`).join('')}</select></div>
+      <div class="full"><label class="label">Concepto</label><input class="field" id="mcDesc" value="${esc(c.desc || '')}" placeholder="Ej.: Servicio de rebobinado, rodamientos 6309-2Z…" ${dis}></div>
+      <div><label class="label">Tipo</label><select class="field" id="mcTipo" ${dis}>${TIPOS_COSTO.map(t => `<option ${t === c.tipo ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div><label class="label">Estado</label><select class="field" id="mcEst" ${dis}>${Object.entries(EST_COSTO).map(([k, e]) => `<option value="${k}" ${k === c.estado ? 'selected' : ''}>${e.label}</option>`).join('')}</select></div>
+      <div><label class="label">Proveedor</label><input class="field" id="mcProv" value="${esc(c.prov || '')}" ${dis}></div>
+      <div><label class="label">Documento</label><input class="field" id="mcDoc" value="${esc(c.doc || '')}" placeholder="Cotización, OC u OS N.°" ${dis}></div>
+      <div><label class="label">Fecha</label><input type="date" class="field" id="mcFec" value="${esc(c.fecha || '')}" ${dis}></div>
+      <div><label class="label">Monto (S/ sin IGV)</label><input type="number" class="field" id="mcMon" min="0" step="0.01" value="${c.monto ?? ''}" ${dis}></div>
+    </div></div>
+    <div class="modal-f">${cid && ed ? '<button class="btn btn-danger" id="mcDel" style="margin-right:auto">Eliminar</button>' : ''}<button class="btn" data-x>${ed ? 'Cancelar' : 'Cerrar'}</button>${ed ? '<button class="btn pp-grad" id="mcOk">Guardar</button>' : ''}</div></div>`;
+  document.body.appendChild(bg);
+  const q = (s) => bg.querySelector(s);
+  bg.querySelectorAll('[data-x]').forEach(b => b.onclick = () => bg.remove());
+  if (q('#mcDel')) q('#mcDel').onclick = async () => { await API.eliminarCosto(P.id, cid); bg.remove(); toast('Partida eliminada'); };
+  if (q('#mcOk')) q('#mcOk').onclick = async () => {
+    const v = { aid: q('#mcAct').value, desc: q('#mcDesc').value.trim(), tipo: q('#mcTipo').value, estado: q('#mcEst').value, prov: q('#mcProv').value.trim(),
+      doc: q('#mcDoc').value.trim(), fecha: q('#mcFec').value, monto: Math.max(0, +(+q('#mcMon').value || 0).toFixed(2)) };
+    if (!v.aid) { toast('Seleccione la actividad', 'err'); return; }
+    if (!v.monto) { toast('Ingrese el monto', 'err'); return; }
+    try { await API.guardarCosto(P.id, cid ? { id: cid, ...v } : v); bg.remove(); toast('Costo guardado'); } catch (e) { toast('No se pudo guardar: ' + e.message, 'err'); }
+  };
+}

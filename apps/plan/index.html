@@ -206,6 +206,16 @@
 .pp-busy{position:fixed;inset:0;background:rgba(10,18,30,.55);display:none;align-items:center;justify-content:center;z-index:80;color:#fff;font-weight:600;gap:12px}
 .pp-busy.on{display:flex}
 
+/* Costos */
+.pp-kc{grid-template-columns:repeat(4,1fr)}
+.pp-money{font-size:24px!important}
+/* Plan preventivo */
+.pp-prev{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:14px}
+.pp-prev .pp-card{padding:20px}
+.pp-prev .ic{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.pp-prev h3{margin:0 0 8px;font-family:var(--f-display);font-weight:600;font-size:16px}
+.pp-prev p{margin:0;color:var(--tx-2);font-size:13.5px;line-height:1.55}
+
 /* Formularios */
 .pp-fg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .pp-fg .full{grid-column:1/-1}
@@ -215,7 +225,7 @@
 
 @media (max-width:1200px){.pp-kpis{grid-template-columns:repeat(3,1fr)}.pp-kpi.main{grid-column:1/-1}.pp-g2{grid-template-columns:1fr}}
 @media (max-width:900px){.pp-evgrid{grid-template-columns:1fr}.pp-evitems{max-height:240px}}
-@media (max-width:640px){.pp-kpis{grid-template-columns:1fr 1fr}.pp-ttl h1{font-size:18px}.pp-fg{grid-template-columns:1fr}.pp-chart{height:240px}.pp-top h1{font-size:28px}}
+@media (max-width:640px){.pp-kpis,.pp-kc{grid-template-columns:1fr 1fr}.pp-money{font-size:19px!important}.pp-ttl h1{font-size:18px}.pp-fg{grid-template-columns:1fr}.pp-chart{height:240px}.pp-top h1{font-size:28px}}
 </style>
 </head>
 <body>
@@ -223,16 +233,14 @@
 <script type="module">
 import { iniciarApp } from '../../core/core.js';
 import { crearApi } from './datos.js';
-import { montar, desmontar } from './paradas.js';
+import * as programas from './programas.js';
+import * as preventivo from './preventivo.js';
 
 function render(modulo, ctx) {
-  desmontar();
-  if (modulo === 'paradas') {
-    const api = crearApi(ctx.perfil?.nombre || ctx.user?.email || '');
-    montar(ctx, api);
-  } else {
-    ctx.main.innerHTML = `<div class="eyebrow rise">${ctx.app.nombre}</div><h1 class="h-display rise d1" style="font-size:34px;margin-top:12px">Módulo en preparación</h1>`;
-  }
+  programas.desmontar();
+  if (modulo === 'programas') programas.montar(ctx, crearApi(ctx.perfil?.nombre || ctx.user?.email || ''));
+  else if (modulo === 'preventivo') preventivo.montar(ctx);
+  else ctx.main.innerHTML = `<div class="eyebrow rise">${ctx.app.nombre}</div><h1 class="h-display rise d1" style="font-size:34px;margin-top:12px">Módulo en preparación</h1>`;
 }
 await iniciarApp({ appId: 'plan', alCambiarModulo: render });
 </script>

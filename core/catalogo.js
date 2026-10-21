@@ -114,11 +114,12 @@ export const APPS = [
     modulos: []
   },
   {
-    id: 'plan', nombre: 'Plan de mantenimiento y OT', sub: 'Paradas de planta, programación y órdenes de trabajo',
+    id: 'plan', nombre: 'Plan de mantenimiento y OT', sub: 'Plan preventivo, programas de trabajo y órdenes de trabajo',
     grupo: 'gest', estado: 'dev', fase: 'F7', color: '#FF8FA3', url: 'apps/plan/',
     icon: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M9 15l2 2 4-4',
     modulos: [
-      { id: 'paradas', nombre: 'Paradas de planta' }
+      { id: 'preventivo', nombre: 'Plan preventivo' },
+      { id: 'programas', nombre: 'Programas de trabajo' }
     ]
   }
 ];
