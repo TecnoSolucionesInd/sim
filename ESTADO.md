@@ -36,6 +36,8 @@ apps/cong/migrar.html   Copia de datos desde el Firebase actual (solo lectura de
 apps/cost/              Costos integrado (generado por tools/integrar_costos.py) — sin datos en el código
 apps/cost/cargar.html   Carga de órdenes Nisira al SIM desde el HTML generado
 apps/eq/                Equipos: base maestra, carga masiva Excel, importación desde Costos
+apps/plan/              Plan de mantenimiento: index.html (estilos y arranque), paradas.js (módulo Paradas de planta), datos.js (Firestore),
+                        pdf.js (informes de evidencias A4 horizontal), semilla.js (Parada de Planta de Hielo 2026), logo.png
 apps/fmt/               Registro de formatos: index.html (plantillas, lista maestra, configuración), llenado.js (Llenar), registros.js (Registros),
                         modelo.js (catálogos y pilotos), logica.js (turnos, periodos, validación), hoja.js (formato impreso), datos.js (Firestore), ui.js
 tools/                  Scripts de integración
@@ -66,7 +68,7 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 | F4 | Registro de parámetros (Ósmosis, Salas de máquinas, Calderos) | Planificado |
 | F5 | Materiales e inventario (maestro) | Planificado |
 | F6 | Conformidades · Reporte de mantenimiento | Planificado |
-| F7 | Plan de mantenimiento y OT (desde cero) | Planificado |
+| F7 | Plan de mantenimiento y OT (desde cero) | Módulo Paradas de planta en pruebas · pendiente: plan preventivo, programación quincenal, OT |
 | F8 | Registro de formatos | Plantillas, llenado en celular, registros y revisión en pruebas · pendiente: indicadores |
 
 ## Congelamiento (F1)
@@ -124,6 +126,20 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - Impresión del registro lleno: hoja oficial con valores, fotos, firmas y QR al original (`apps/fmt/?r=<id>#registros`), ajustada a una página A4.
 - Siguiente: indicadores (cumplimiento de formatos, horas de parada, MTTR por equipo, tendencias de parámetros).
 
+## Plan de mantenimiento (F7)
+- Módulos previstos: Paradas de planta (construido), Plan preventivo, Programación quincenal, OT. Hoy el catálogo registra solo `paradas`.
+- Parada de planta = evento con alcance cerrado: actividades con fase, responsable, fechas, avance, línea base y evidencias fotográficas.
+- Datos: `datos/plan/paradas/{pid}` (nombre, planta, desde, hasta, estado activa|cerrada, cierre, lineaBase {fecha, por}),
+  `.../actividades/{aid}` (n, nom, fase, resp, ini, fin, ini_b, fin_b, av, obs), `.../evidencias/{eid}` (aid, etapa Antes|Durante|Después,
+  fecha, desc, w, h, thumb 360 px, ord, por) y `.../fotos/{eid}` (data: JPEG 1280 px). La foto completa se lee solo al ampliar o generar el PDF.
+- Estado de actividad calculado: Finalizado (100 %), Atrasado (fin vencido), En curso, Programado, Por definir (sin fecha).
+- Línea base: "Fijar línea base" copia ini/fin a ini_b/fin_b. Si cambian las fechas, la actividad se marca "Reprog." y la curva S programada usa la línea base.
+- Permisos: Admin/Supervisor crean paradas, editan todo, fijan línea base y cierran; Operador actualiza avance, observación y evidencias; Lectura consulta.
+  Parada cerrada = solo lectura. Las reglas usan la regla general de `datos/{app}`.
+- Informes PDF (jsPDF): por actividad y completo (portada con KPI y tabla + fotos 6 por página).
+- Nueva parada: vacía o desde el .json exportado por el plan de parada autónomo (actividades y fotos).
+- Siguiente: programación quincenal alimentada por las actividades de las paradas; vínculo con Conformidades (actividades externas) y Equipos.
+
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
 2. Authentication → Configuración → Dominios autorizados: agregar `tecnosolucionesind.github.io`.
@@ -135,3 +151,4 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - 2026-10-02 — Copia de datos de Congelamiento completada por el administrador. Costos integrado sin datos en el código + herramienta de carga (F2).
 - 2026-10-06 — Registro de formatos (F8): constructor de plantillas con revisiones, lista maestra y configuración. Reglas actualizadas (volver a publicar `firestore.rules`).
 - 2026-10-07 — Equipos (F3): base maestra con carga Excel e importación desde Costos. Registro de formatos: llenado en celular, registros, revisión, impresión con QR. Reglas actualizadas (volver a publicar `firestore.rules`).
+- 2026-10-20 — Plan de mantenimiento (F7): módulo Paradas de planta con resumen, curva S, línea de tiempo, línea base, actividades y evidencias con PDF. Parada de Planta de Hielo 2026 disponible para carga inicial.
