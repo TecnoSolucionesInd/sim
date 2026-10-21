@@ -2,11 +2,12 @@
 import { collection, query, where, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { db } from './firebase.js';
 
-// Cuota sin costo de Cloud Storage en el plan Blaze (buckets en us-central1 / us-east1 / us-west1)
-export const LIMITE_STORAGE = 5 * 1024 ** 3;   // 5 GB
+// Espacio reservado para archivos de informes. Hoy se guardan en Firestore (core/archivos.js), cuyo plan gratuito
+// da 1 GB para TODOS los aplicativos; se reserva la mitad para archivos. Si se pasa a Cloud Storage (Blaze), subir a 5 GB.
+export const LIMITE_STORAGE = 500 * 1024 ** 2; // 500 MB
 export const UMBRAL_AVISO = 0.80;              // aviso: empezar a retirar archivos antiguos
 export const UMBRAL_CRITICO = 0.95;            // crítico: retirar antes de seguir cargando
-export const MAX_ARCHIVO = 25 * 1024 ** 2;     // 25 MB por archivo (igual que storage.rules)
+export const MAX_ARCHIVO = 15 * 1024 ** 2;     // 15 MB por archivo
 
 export const ESTADOS_INF = {
   borrador:   { label: 'Borrador',   bg: 'rgba(255,255,255,.09)', fg: '#DDE4EB' },

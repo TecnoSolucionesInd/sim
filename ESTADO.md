@@ -43,7 +43,8 @@ apps/fmt/               Registro de formatos: index.html (plantillas, lista maes
 tools/                  Scripts de integración
 apps/_plantilla/        Plantilla para crear un aplicativo nuevo
 firestore.rules         Reglas de seguridad de Firestore (se pegan en la consola de Firebase)
-storage.rules           Reglas de Cloud Storage (archivos de Informes técnicos)
+storage.rules           Reglas de Cloud Storage (preparadas para cuando se active Blaze; hoy sin uso)
+core/archivos.js        archivos guardados en Firestore por partes de 900 KB (guardar, leer, borrar, descargar)
 core/informes.js        límites de almacenamiento, estados/tipos de informe y consulta de informes vinculados
 apps/inf/               Informes técnicos: registro, estados, versiones, relaciones y almacenamiento
 ```
@@ -71,7 +72,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 | F5 | Materiales e inventario (maestro) | Planificado |
 | F6 | Conformidades · Reporte de mantenimiento | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Programas de trabajo (paradas, auditorías, proyectos) con costos en pruebas · pendiente: plan preventivo, programación quincenal, OT |
-| F9 | Informes técnicos | Construido (pruebas) · requiere plan Blaze + Storage |
+| F9 | Informes técnicos | Construido (pruebas) · archivos en Firestore por partes (sin Blaze) |
 | F8 | Registro de formatos | Plantillas, llenado en celular, registros y revisión en pruebas · pendiente: indicadores |
 
 ## Congelamiento (F1)
@@ -157,10 +158,12 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Estados: borrador → presentado → aprobado | observado | rechazado; observado → presentado (con nueva versión).
   La aprobación la registra Admin/Supervisor con la evidencia (correo o acta); Gerencia no entra al SIM.
 - Al cargar un HTML, se autollenan título, tipo, fecha, dirigido, proveedor, monto y cotización.
-- Archivos en Cloud Storage `inf/{id}/...` (HTML, PDF, imágenes, Office; máx. 25 MB). Requiere plan Blaze.
-  Cuota sin costo: 5 GB (bucket en us-central1/us-east1/us-west1). Uso acumulado en `datos/inf/config/uso.bytes`.
-  Avisos al 80 % y 95 % en el aplicativo y en el portal (administrador). Almacenamiento: descargar (metadato attachment) y retirar
-  los más antiguos; la ficha conserva el historial. Alerta de presupuesto de Google Cloud como respaldo.
+- Archivos (decisión 21-oct-2026): dentro de Firestore, sin plan Blaze, con `core/archivos.js`:
+  `datos/inf/archivos/{fid}` (nombre, tipo, bytes, partes, informe, uso) + `.../partes/p{n}` (Bytes ≤ 900 KB). Máx. 15 MB por archivo.
+  Firestore gratis = 1 GB para TODOS los aplicativos → se reservan 500 MB para archivos de informes (`LIMITE_STORAGE` en core/informes.js).
+  En Spark no hay cobro: al llenarse se bloquean escrituras. Uso acumulado en `datos/inf/config/uso.bytes`; avisos al 80 % y 95 %
+  en el aplicativo y en el portal. Almacenamiento: descargar y retirar los más antiguos; la ficha conserva el historial.
+- Pendiente de evaluar: Cloud Storage con Blaze (storage.rules ya escrito) o Google Drive. Para migrar, se reemplaza core/archivos.js.
 
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
@@ -177,3 +180,4 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-20 — Se retiró del catálogo "Registro de parámetros" (F4): las lecturas de parámetros se cubren con Registro de formatos (F8).
 - 2026-10-20 — Plan de mantenimiento: Paradas de planta pasa a Programas de trabajo (tipos: parada, mantenimiento programado, auditoría, proyecto) con pestaña Costos. Plan preventivo como primer módulo (estructura inicial).
 - 2026-10-21 — Informes técnicos (F9): registro con código, estados, versiones, relaciones con Plan y Equipos, Storage con medidor y retiro. Nuevo `storage.rules`.
+- 2026-10-21 — Informes: archivos pasan a Firestore por partes (sin Blaze), 500 MB reservados.

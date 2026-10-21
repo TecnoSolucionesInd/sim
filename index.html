@@ -310,7 +310,7 @@ function renderPortal() {
     if (frac < UMBRAL_AVISO) { $('usoBox').hidden = true; return; }
     const crit = frac >= UMBRAL_CRITICO;
     $('usoBox').className = 'alert rise ' + (crit ? 'err' : 'warn');
-    $('usoBox').innerHTML = `Almacenamiento de archivos al ${(frac * 100).toFixed(0)} % del espacio sin costo (${fmtBytes(bytes)} de ${fmtBytes(LIMITE_STORAGE)}). ${crit ? 'Retire archivos antiguos antes de seguir cargando: pasado el límite se generan cobros.' : 'Conviene descargar y retirar los archivos más antiguos.'} <a href="apps/inf/#almacenamiento">Ir a Almacenamiento</a>`;
+    $('usoBox').innerHTML = `Archivos de informes al ${(frac * 100).toFixed(0)} % del espacio reservado (${fmtBytes(bytes)} de ${fmtBytes(LIMITE_STORAGE)}). ${crit ? 'Retire archivos antiguos antes de seguir cargando: al llegar al límite no se podrán cargar más.' : 'Conviene descargar y retirar los archivos más antiguos.'} <a href="apps/inf/#almacenamiento">Ir a Almacenamiento</a>`;
     $('usoBox').hidden = false;
   }).catch(() => {});
 

@@ -48,15 +48,13 @@
 <body>
 <script type="module">
 import { iniciarApp, toast, db, RAIZ } from '../../core/core.js';
-import { app } from '../../core/firebase.js';
 import { listarEquipos, etiquetaEquipo } from '../../core/equipos.js';
 import { LIMITE_STORAGE, UMBRAL_AVISO, UMBRAL_CRITICO, MAX_ARCHIVO, ESTADOS_INF, TIPOS_INF, fmtBytes } from '../../core/informes.js';
 import {
   collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, runTransaction, serverTimestamp, increment, arrayUnion
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getStorage, ref as sref, uploadBytesResumable, getDownloadURL, deleteObject, updateMetadata } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+import { guardarArchivo, leerArchivo, borrarArchivo, descargarBlob } from '../../core/archivos.js';
 
-const storage = getStorage(app);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const PREFIJO = 'IPSMSA/MMTO/INF';
 const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -95,36 +93,38 @@ function avisoUso() {
   const f = fracUso();
   if (f < UMBRAL_AVISO || !gestor()) return '';
   const crit = f >= UMBRAL_CRITICO;
-  return `<div class="alert ${crit ? 'err' : 'warn'} rise" style="margin-bottom:18px">Almacenamiento al ${(f * 100).toFixed(0)} % del espacio sin costo (${fmtBytes(USO.bytes)} de ${fmtBytes(LIMITE_STORAGE)}).
-    ${crit ? 'Retire archivos antiguos antes de seguir cargando: pasado el límite se generan cobros.' : 'Conviene empezar a descargar y retirar los archivos más antiguos.'}
+  return `<div class="alert ${crit ? 'err' : 'warn'} rise" style="margin-bottom:18px">Almacenamiento al ${(f * 100).toFixed(0)} % del espacio reservado para archivos (${fmtBytes(USO.bytes)} de ${fmtBytes(LIMITE_STORAGE)}).
+    ${crit ? 'Retire archivos antiguos antes de seguir cargando: al llegar al límite no se podrán cargar más.' : 'Conviene empezar a descargar y retirar los archivos más antiguos.'}
     <a href="#almacenamiento" style="margin-left:6px">Ir a Almacenamiento</a></div>`;
 }
 const nombreSeguro = (n) => n.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.\-]+/g, '_').slice(-80);
 
 async function subirArchivo(id, prefijo, file, onProg) {
   if (file.size > MAX_ARCHIVO) throw new Error(`El archivo supera ${fmtBytes(MAX_ARCHIVO)}.`);
-  if (fracUso() >= 1) throw new Error('Se alcanzó el límite de almacenamiento sin costo. Retire archivos antiguos en Almacenamiento.');
-  const path = `inf/${id}/${prefijo}-${Date.now()}-${nombreSeguro(file.name)}`;
-  const tipo = file.type || (/\.html?$/i.test(file.name) ? 'text/html' : /\.pdf$/i.test(file.name) ? 'application/pdf' : 'application/octet-stream');
-  const task = uploadBytesResumable(sref(storage, path), file, { contentType: tipo });
-  await new Promise((res, rej) => task.on('state_changed', s => onProg && onProg(s.bytesTransferred / s.totalBytes), rej, res));
+  if ((+USO.bytes || 0) + file.size > LIMITE_STORAGE) throw new Error('Se alcanzó el espacio reservado para archivos. Retire archivos antiguos en Almacenamiento.');
+  const a = await guardarArchivo('inf', file, { informe: id, uso: prefijo }, onProg);
   await setDoc(docUso(), { bytes: increment(file.size), archivos: increment(1), actualizado: serverTimestamp() }, { merge: true });
-  return { path, nombre: file.name, tipo, bytes: file.size, fecha: ahora(), por: quien() };
+  return { ...a, fecha: ahora(), por: quien() };
 }
 
 async function verArchivo(a, titulo) {
   if (!a || a.retirado) { toast('El archivo fue retirado del SIM.', 'err'); return; }
+  const v = document.createElement('div'); v.className = 'viewer';
+  v.innerHTML = `<header><div style="flex:1;min-width:0"><div style="font-family:var(--f-display);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(titulo || a.nombre)}</div>
+    <div class="sub">${esc(a.nombre)} · ${fmtBytes(a.bytes)}</div></div>
+    <button class="btn" id="vDl" style="height:40px" disabled>Descargar</button>
+    <button class="btn btn-icon" data-x aria-label="Cerrar">✕</button></header>
+    <div id="vCuerpo" style="flex:1;display:flex;align-items:center;justify-content:center"><div class="spinner"></div></div>`;
+  document.body.appendChild(v);
+  let url = null;
+  v.querySelector('[data-x]').onclick = () => { v.remove(); if (url) URL.revokeObjectURL(url); };
   try {
-    const url = await getDownloadURL(sref(storage, a.path));
-    const v = document.createElement('div'); v.className = 'viewer';
-    v.innerHTML = `<header><div style="flex:1;min-width:0"><div style="font-family:var(--f-display);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(titulo || a.nombre)}</div>
-      <div class="sub">${esc(a.nombre)} · ${fmtBytes(a.bytes)}</div></div>
-      <a class="btn" href="${url}" target="_blank" rel="noopener" style="height:40px">Abrir en pestaña nueva</a>
-      <button class="btn btn-icon" data-x aria-label="Cerrar">✕</button></header>
-      <iframe ${/html/.test(a.tipo) ? 'sandbox="allow-scripts allow-popups allow-modals allow-downloads"' : ''} src="${url}" title="${esc(a.nombre)}"></iframe>`;
-    document.body.appendChild(v);
-    v.querySelector('[data-x]').onclick = () => v.remove();
-  } catch (e) { toast('No se pudo abrir el archivo: ' + (e.code || e.message), 'err'); }
+    const blob = await leerArchivo('inf', a);
+    url = URL.createObjectURL(blob);
+    // HTML en iframe aislado (sin acceso a la sesión del SIM)
+    v.querySelector('#vCuerpo').outerHTML = `<iframe ${/html/.test(a.tipo) ? 'sandbox="allow-scripts allow-popups allow-modals allow-downloads"' : ''} src="${url}" title="${esc(a.nombre)}"></iframe>`;
+    const dl = v.querySelector('#vDl'); dl.disabled = false; dl.onclick = () => descargarBlob(blob, a.nombre);
+  } catch (e) { v.querySelector('#vCuerpo').innerHTML = `<div class="alert err">No se pudo abrir el archivo: ${esc(e.code || e.message)}</div>`; }
 }
 
 // ---------------- código correlativo ----------------
@@ -433,9 +433,9 @@ function vistaAlmacen(main) {
     <div class="glass rise d2" style="padding:24px 26px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
         <div style="font-family:var(--f-display);font-size:30px;font-weight:600;color:${col}">${pct.toFixed(pct < 1 ? 2 : 1)} %</div>
-        <div class="muted">${fmtBytes(USO.bytes)} usados de ${fmtBytes(LIMITE_STORAGE)} sin costo · ${activos.length} archivos</div></div>
+        <div class="muted">${fmtBytes(USO.bytes)} usados de ${fmtBytes(LIMITE_STORAGE)} reservados · ${activos.length} archivos</div></div>
       <div class="meter"><div style="width:${Math.max(pct, .4)}%;background:${col}"></div></div>
-      <div class="sub" style="line-height:1.6">Aviso al ${UMBRAL_AVISO * 100} % y alerta crítica al ${UMBRAL_CRITICO * 100} %. Para liberar espacio, descargue los archivos más antiguos y retírelos del SIM: la ficha del informe se conserva con su historial.</div>
+      <div class="sub" style="line-height:1.6">Aviso al ${UMBRAL_AVISO * 100} % y alerta crítica al ${UMBRAL_CRITICO * 100} %. Los archivos se guardan en la base de datos del SIM (sin costo), que comparten todos los aplicativos; por eso se reserva un espacio fijo para informes. Para liberar espacio, descargue los archivos más antiguos y retírelos: la ficha del informe se conserva con su historial.</div>
     </div>
     ${avisoUso()}
     <div class="glass rise d3 tbl-wrap" style="margin-top:18px"><table class="table" style="min-width:820px">
@@ -454,11 +454,9 @@ function vistaAlmacen(main) {
 }
 async function descargar(z) {
   try {
-    const r = sref(storage, z.a.path);
-    await updateMetadata(r, { contentDisposition: `attachment; filename="${nombreSeguro(z.inf.codigo.replace(/\//g, '-') + '_' + z.a.nombre)}"` });
-    const url = await getDownloadURL(r);
-    const a = document.createElement('a'); a.href = url; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
-    toast('Descarga iniciada. Verifique el archivo antes de retirarlo.');
+    toast('Preparando descarga…');
+    const blob = await leerArchivo('inf', z.a);
+    descargarBlob(blob, nombreSeguro(z.inf.codigo.replace(/\//g, '-') + '_' + z.a.nombre));
   } catch (e) { toast('No se pudo descargar: ' + (e.code || e.message), 'err'); }
 }
 function retirar(z) {
@@ -471,15 +469,15 @@ function retirar(z) {
     if (!m.$('#rOk').checked) return m.err('Confirme que guardó una copia del archivo.');
     m.$('#rBtn').disabled = true;
     try {
-      await deleteObject(sref(storage, z.a.path)).catch(e => { if (e.code !== 'storage/object-not-found') throw e; });
+      await borrarArchivo('inf', z.a);
       const fecha = ahora();
       const r = doc(colInf(), z.inf.id);
       const s = await getDoc(r); const d = s.data();
       const upd = { actualizado: serverTimestamp(), historial: arrayUnion({ fecha, estado: d.estado, nota: `Archivo retirado del SIM: ${z.a.nombre}`, por: quien() }) };
       if (z.clave === 'aprobacion') upd['aprobacion.evidencia.retirado'] = fecha;
       else {
-        upd.versiones = (d.versiones || []).map(v => v.path === z.a.path ? { ...v, retirado: fecha } : v);
-        if (d.archivo?.path === z.a.path) upd['archivo.retirado'] = fecha;
+        upd.versiones = (d.versiones || []).map(v => v.fid === z.a.fid ? { ...v, retirado: fecha } : v);
+        if (d.archivo?.fid === z.a.fid) upd['archivo.retirado'] = fecha;
       }
       await updateDoc(r, upd);
       await setDoc(docUso(), { bytes: increment(-(+z.a.bytes || 0)), archivos: increment(-1), actualizado: serverTimestamp() }, { merge: true });
