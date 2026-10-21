@@ -3,6 +3,7 @@
 // Lista de programas → detalle con Resumen (KPI + curva S), Línea de tiempo, Actividades, Evidencias y Costos.
 import { PROGRAMA_HIELO, ACTIVIDADES_HIELO, COSTOS_HIELO } from './semilla.js';
 import { pdfActividad, pdfCompleto } from './pdf.js';
+import { informesVinculados, ESTADOS_INF } from '../../core/informes.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const FASES = ['Obra civil', 'Desmontaje', 'Mantenimiento', 'Pintado', 'Montaje', 'Otros'];
@@ -321,7 +322,14 @@ function cabecera() {
   const acc = [];
   if (gestor() && P.estado !== 'cerrada') acc.push(`<button class="btn pp-btn" id="ppLB">Fijar línea base</button>`, `<button class="btn pp-btn" id="ppEdit">Editar programa</button>`, `<button class="btn pp-btn" id="ppCerrar">Cerrar programa</button>`);
   if (gestor() && P.estado === 'cerrada') acc.push(`<button class="btn pp-btn" id="ppReab">Reabrir programa</button>`);
+  acc.unshift(`<button class="btn pp-btn" id="ppInf" hidden>Informes</button>`);
   $('ppAcc').innerHTML = acc.join('');
+  const pid = P.id;
+  informesVinculados({ programa: pid }).then(l => {
+    const b = $('ppInf'); if (!b || !P || P.id !== pid || l === null) return;
+    b.hidden = false; b.textContent = `Informes (${l.length})`;
+    b.onclick = () => modalInformes(l);
+  });
   if ($('ppLB')) $('ppLB').onclick = () => confirmar('Fijar línea base', 'Se guardará el programa actual (fechas de inicio y fin de cada actividad) como línea base. Los cambios de fecha posteriores se mostrarán como reprogramaciones.', 'Fijar línea base', async () => {
     await API.fijarLineaBase(P.id, A, iso(HOY)); toast('Línea base fijada');
   });
@@ -330,6 +338,18 @@ function cabecera() {
     await API.actualizarPrograma(P.id, { estado: 'cerrada', cierre: iso(HOY) }); toast('Programa cerrado');
   });
   if ($('ppReab')) $('ppReab').onclick = async () => { await API.actualizarPrograma(P.id, { estado: 'activa' }); toast('Programa reabierto'); };
+}
+function modalInformes(l) {
+  const bg = document.createElement('div'); bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal" style="max-width:640px"><div class="modal-h"><div class="h-display" style="font-size:20px">Informes vinculados</div><button class="btn btn-icon" data-x>×</button></div>
+    <div class="modal-b">${l.length ? l.map(x => { const st = ESTADOS_INF[x.estado] || ESTADOS_INF.borrador; return `<a href="../inf/?i=${encodeURIComponent(x.id)}#informes" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);color:inherit;text-decoration:none">
+      <div style="min-width:0"><div class="mono" style="font-size:12px;color:var(--tx-3)">${esc(x.codigo)}</div><div style="font-weight:500">${esc(x.titulo)}</div></div>
+      <span class="pill" style="background:${st.bg};color:${st.fg}">${st.label}</span></a>`; }).join('')
+      : '<p class="muted" style="margin:0;line-height:1.6">Ningún informe técnico está vinculado a este programa. Se vinculan desde la ficha del informe, en el aplicativo Informes técnicos.</p>'}</div>
+    <div class="modal-f"><a class="btn" href="../inf/#informes">Ir a Informes técnicos</a><button class="btn" data-x>Cerrar</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.querySelectorAll('[data-x]').forEach(b => b.onclick = () => bg.remove());
+  bg.addEventListener('mousedown', (e) => { if (e.target === bg) bg.remove(); });
 }
 function confirmar(tit, txt, ok, fn) {
   const bg = document.createElement('div'); bg.className = 'modal-bg';

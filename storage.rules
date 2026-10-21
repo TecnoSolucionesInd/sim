@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// Reglas de Cloud Storage del SIM.
+// Se pegan en: Firebase Console → Storage → Reglas → Publicar.
+// Los permisos se leen del perfil del usuario en Firestore (usuarios/{uid}), igual que en firestore.rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function autenticado() { return request.auth != null; }
+    function esAdmin() {
+      return autenticado()
+        && request.auth.token.email == 'emiranda@santamonicafishing.com'
+        && request.auth.token.email_verified == true;
+    }
+    function perfilPath() { return /databases/(default)/documents/usuarios/$(request.auth.uid); }
+    function activo() { return autenticado() && firestore.exists(perfilPath()) && firestore.get(perfilPath()).data.activo == true; }
+    function rol(app) { return firestore.get(perfilPath()).data.get('apps', {}).get(app, {}).get('rol', ''); }
+
+    function lee(app) { return esAdmin() || (activo() && rol(app) in ['admin', 'supervisor', 'operador', 'lectura']); }
+    function escribe(app) { return esAdmin() || (activo() && rol(app) in ['admin', 'supervisor', 'operador']); }
+    function gestiona(app) { return esAdmin() || (activo() && rol(app) in ['admin', 'supervisor']); }
+
+    // Informes técnicos: inf/{informe}/{archivo}
+    match /inf/{informe}/{archivo} {
+      allow read: if lee('inf');
+      allow create: if escribe('inf')
+                    && request.resource.size < 25 * 1024 * 1024
+                    && request.resource.contentType.matches('application/pdf|text/html|image/.*|application/msword|application/vnd[.]openxmlformats.*|application/vnd[.]ms-excel');
+      // solo cambio de metadatos (descarga como archivo) y retiro: Admin / Supervisor
+      allow update: if gestiona('inf') && request.resource.size == resource.size;
+      allow delete: if gestiona('inf');
+    }
+
+    // Todo lo demás queda bloqueado
+  }
+}

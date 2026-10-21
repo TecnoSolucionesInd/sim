@@ -68,6 +68,7 @@
 import { iniciarApp, toast, db } from '../../core/core.js';
 import { SISTEMAS, sistemaPorId, ESTADOS_EQUIPO, CRITICIDAD, norm } from '../../core/maestros.js';
 import { colEquipos, listarEquipos, ordenEquipos, valoresDe } from '../../core/equipos.js';
+import { informesVinculados, ESTADOS_INF } from '../../core/informes.js';
 import { doc, getDoc, getDocs, collection, query, where, writeBatch, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -211,6 +212,7 @@ function ficha(e) {
       ${nuevo ? '' : `<div class="lado">
         <h4>Formatos que le aplican</h4><div id="lFmt"><div class="skel" style="height:40px"></div></div>
         <h4 style="margin-top:20px">Últimos registros</h4><div id="lReg"><div class="skel" style="height:40px"></div></div>
+        <h4 style="margin-top:20px">Informes técnicos</h4><div id="lInf"><div class="skel" style="height:40px"></div></div>
       </div>`}
     </div>`,
     pie: ro ? '<button type="button" class="btn" data-x>Cerrar</button>'
@@ -254,7 +256,13 @@ function ficha(e) {
 
 // formatos vigentes que usan este equipo y últimos registros (requiere acceso de lectura a Registro de formatos)
 async function relacionados(e, m) {
-  const fBox = m.$('#lFmt'), rBox = m.$('#lReg');
+  const fBox = m.$('#lFmt'), rBox = m.$('#lReg'), iBox = m.$('#lInf');
+  informesVinculados({ equipo: e.id }).then(l => {
+    if (!iBox) return;
+    if (l === null) { iBox.innerHTML = '<div class="muted" style="font-size:13px">Sin acceso a Informes técnicos.</div>'; return; }
+    iBox.innerHTML = l.slice(0, 8).map(x => `<a class="it" style="display:block;text-decoration:none;color:inherit" href="../inf/?i=${encodeURIComponent(x.id)}#informes"><b>${esc(x.codigo)}</b> ${esc(x.titulo)}<div style="color:var(--tx-3);font-size:12px;margin-top:2px">${esc(x.fecha || '')} · ${esc((ESTADOS_INF[x.estado] || {}).label || x.estado)}</div></a>`).join('')
+      || '<div class="muted" style="font-size:13px">Sin informes vinculados.</div>';
+  });
   try {
     const s = await getDocs(collection(db, 'datos', 'fmt', 'plantillas'));
     const out = [];

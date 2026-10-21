@@ -114,6 +114,15 @@ export const APPS = [
     modulos: []
   },
   {
+    id: 'inf', nombre: 'Informes técnicos', sub: 'Solicitudes de aprobación, fallas y evaluaciones',
+    grupo: 'gest', estado: 'dev', fase: 'F9', color: '#C9A7FF', url: 'apps/inf/',
+    icon: 'M6 3h9l4 4v14H6zM15 3v4h4M9 11h7M9 15h4M14 17l1.6 1.6L19 15.2',
+    modulos: [
+      { id: 'informes', nombre: 'Informes' },
+      { id: 'almacenamiento', nombre: 'Almacenamiento' }
+    ]
+  },
+  {
     id: 'plan', nombre: 'Plan de mantenimiento y OT', sub: 'Plan preventivo, programas de trabajo y órdenes de trabajo',
     grupo: 'gest', estado: 'dev', fase: 'F7', color: '#FF8FA3', url: 'apps/plan/',
     icon: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M9 15l2 2 4-4',

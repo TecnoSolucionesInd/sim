@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informes técnicos · SIM</title>
+<link rel="stylesheet" href="../../core/sim.css">
+<style>
+  .pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+  .pagehead h1{font-size:38px;margin-top:12px}
+  .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}
+  .kpi{padding:16px 18px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);animation:rise .7s var(--ease) both}
+  .kpi b{display:block;font-family:var(--f-display);font-size:28px;font-weight:600}
+  .kpi span{font-size:12.5px;color:var(--tx-3)}
+  .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .tools .field{height:42px;font-size:14px;width:auto}
+  .tbl-wrap{overflow-x:auto}
+  .rowbtn{cursor:pointer}
+  .cod{font-family:var(--f-mono);font-size:12.5px;color:var(--tx-2);white-space:nowrap}
+  .ttl{font-weight:500}
+  .sub{font-size:12.5px;color:var(--tx-3);margin-top:2px}
+  .num{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .fic{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:22px}
+  .side h4{font-family:var(--f-display);font-size:14px;font-weight:600;margin:0 0 10px;color:var(--tx)}
+  .box{padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);margin-bottom:14px}
+  .it{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13.5px}
+  .it:last-child{border-bottom:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip2{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12.5px}
+  .chip2 button{background:none;border:0;color:var(--tx-3);padding:0;font-size:14px;line-height:1}
+  .tl{position:relative;padding-left:18px}
+  .tl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:rgba(255,255,255,.1)}
+  .tl .e{position:relative;padding:4px 0 12px;font-size:13px}
+  .tl .e::before{content:"";position:absolute;left:-17px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--c,#8b9bb0)}
+  .drop{display:block;padding:26px 18px;border-radius:16px;border:1.5px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.04);text-align:center;cursor:pointer;transition:border-color .25s,background .25s}
+  .drop:hover,.drop.over{border-color:var(--mint);background:rgba(111,227,207,.06)}
+  .meter{height:14px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;margin:14px 0 8px}
+  .meter div{height:100%;border-radius:999px;transition:width .6s var(--ease)}
+  .viewer{position:fixed;inset:0;z-index:70;background:rgba(20,26,34,.92);display:flex;flex-direction:column;animation:fadein .25s ease both}
+  .viewer header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .viewer iframe{flex:1;border:0;background:#fff;width:100%}
+  .bar{height:6px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:10px}
+  .bar div{height:100%;width:0;background:var(--mint);transition:width .2s}
+  @media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.fic,.g2{grid-template-columns:minmax(0,1fr)}.pagehead h1{font-size:30px}}
+</style>
+</head>
+<body>
+<script type="module">
+import { iniciarApp, toast, db, RAIZ } from '../../core/core.js';
+import { app } from '../../core/firebase.js';
+import { listarEquipos, etiquetaEquipo } from '../../core/equipos.js';
+import { LIMITE_STORAGE, UMBRAL_AVISO, UMBRAL_CRITICO, MAX_ARCHIVO, ESTADOS_INF, TIPOS_INF, fmtBytes } from '../../core/informes.js';
+import {
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, runTransaction, serverTimestamp, increment, arrayUnion
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getStorage, ref as sref, uploadBytesResumable, getDownloadURL, deleteObject, updateMetadata } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+
+const storage = getStorage(app);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const PREFIJO = 'IPSMSA/MMTO/INF';
+const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+const colInf = () => collection(db, 'datos', 'inf', 'informes');
+const docUso = () => doc(db, 'datos', 'inf', 'config', 'uso');
+const hoyISO = () => new Date().toISOString().slice(0, 10);
+const ahora = () => new Date().toISOString();
+const fmtF = (iso) => iso ? new Date(iso.length <= 10 ? iso + 'T12:00:00' : iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const money = (m, mon) => m || m === 0 ? `${mon || 'S/'} ${(+m).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
+const tipoLbl = (id) => (TIPOS_INF.find(t => t.id === id) || TIPOS_INF[TIPOS_INF.length - 1]).label;
+const pill = (e) => { const s = ESTADOS_INF[e] || ESTADOS_INF.borrador; return `<span class="pill" style="background:${s.bg};color:${s.fg}">${s.label}</span>`; };
+
+let CTX = null, L = [], USO = { bytes: 0 }, EQ = null, PROGS = null, FIL = { estado: 'all', tipo: 'all', q: '' };
+const escribe = () => CTX.puedeEscribir;
+const gestor = () => ['admin', 'supervisor'].includes(CTX.rol);
+const quien = () => CTX.perfil?.nombre || CTX.user.email;
+
+// ---------------- modal genérico ----------------
+function modal({ titulo, cuerpo, pie, ancho = 760 }) {
+  const bg = document.createElement('div'); bg.className = 'modal-bg';
+  bg.innerHTML = `<form class="modal" novalidate style="max-width:${ancho}px"><div class="modal-h"><div style="font-family:var(--f-display);font-weight:600;font-size:20px;min-width:0">${titulo}</div>
+    <button type="button" class="btn btn-icon" data-x aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="modal-b">${cuerpo}<div class="alert err" data-err style="margin-top:16px" hidden></div></div><div class="modal-f">${pie || ''}</div></form>`;
+  document.body.appendChild(bg);
+  const m = { bg, form: bg.querySelector('form'), $: (s) => bg.querySelector(s),
+    cerrar: () => { bg.remove(); if (!document.querySelector('.modal-bg')) render(CTX.modulo); },
+    err: (t) => { const e = bg.querySelector('[data-err]'); e.hidden = !t; e.textContent = t || ''; } };
+  bg.querySelectorAll('[data-x]').forEach(b => b.onclick = m.cerrar);
+  bg.addEventListener('mousedown', (e) => { if (e.target === bg) m.cerrar(); });
+  return m;
+}
+
+// ---------------- almacenamiento ----------------
+const fracUso = () => (+USO.bytes || 0) / LIMITE_STORAGE;
+function avisoUso() {
+  const f = fracUso();
+  if (f < UMBRAL_AVISO || !gestor()) return '';
+  const crit = f >= UMBRAL_CRITICO;
+  return `<div class="alert ${crit ? 'err' : 'warn'} rise" style="margin-bottom:18px">Almacenamiento al ${(f * 100).toFixed(0)} % del espacio sin costo (${fmtBytes(USO.bytes)} de ${fmtBytes(LIMITE_STORAGE)}).
+    ${crit ? 'Retire archivos antiguos antes de seguir cargando: pasado el límite se generan cobros.' : 'Conviene empezar a descargar y retirar los archivos más antiguos.'}
+    <a href="#almacenamiento" style="margin-left:6px">Ir a Almacenamiento</a></div>`;
+}
+const nombreSeguro = (n) => n.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.\-]+/g, '_').slice(-80);
+
+async function subirArchivo(id, prefijo, file, onProg) {
+  if (file.size > MAX_ARCHIVO) throw new Error(`El archivo supera ${fmtBytes(MAX_ARCHIVO)}.`);
+  if (fracUso() >= 1) throw new Error('Se alcanzó el límite de almacenamiento sin costo. Retire archivos antiguos en Almacenamiento.');
+  const path = `inf/${id}/${prefijo}-${Date.now()}-${nombreSeguro(file.name)}`;
+  const tipo = file.type || (/\.html?$/i.test(file.name) ? 'text/html' : /\.pdf$/i.test(file.name) ? 'application/pdf' : 'application/octet-stream');
+  const task = uploadBytesResumable(sref(storage, path), file, { contentType: tipo });
+  await new Promise((res, rej) => task.on('state_changed', s => onProg && onProg(s.bytesTransferred / s.totalBytes), rej, res));
+  await setDoc(docUso(), { bytes: increment(file.size), archivos: increment(1), actualizado: serverTimestamp() }, { merge: true });
+  return { path, nombre: file.name, tipo, bytes: file.size, fecha: ahora(), por: quien() };
+}
+
+async function verArchivo(a, titulo) {
+  if (!a || a.retirado) { toast('El archivo fue retirado del SIM.', 'err'); return; }
+  try {
+    const url = await getDownloadURL(sref(storage, a.path));
+    const v = document.createElement('div'); v.className = 'viewer';
+    v.innerHTML = `<header><div style="flex:1;min-width:0"><div style="font-family:var(--f-display);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(titulo || a.nombre)}</div>
+      <div class="sub">${esc(a.nombre)} · ${fmtBytes(a.bytes)}</div></div>
+      <a class="btn" href="${url}" target="_blank" rel="noopener" style="height:40px">Abrir en pestaña nueva</a>
+      <button class="btn btn-icon" data-x aria-label="Cerrar">✕</button></header>
+      <iframe ${/html/.test(a.tipo) ? 'sandbox="allow-scripts allow-popups allow-modals allow-downloads"' : ''} src="${url}" title="${esc(a.nombre)}"></iframe>`;
+    document.body.appendChild(v);
+    v.querySelector('[data-x]').onclick = () => v.remove();
+  } catch (e) { toast('No se pudo abrir el archivo: ' + (e.code || e.message), 'err'); }
+}
+
+// ---------------- código correlativo ----------------
+async function nuevoCodigo() {
+  const aa = String(new Date().getFullYear()).slice(-2);
+  return runTransaction(db, async (tx) => {
+    const r = doc(db, 'datos', 'inf', 'config', 'contador');
+    const s = await tx.get(r);
+    const d = s.exists() ? s.data() : {};
+    const n = d.anio === aa ? (+d.n || 0) + 1 : 1;
+    tx.set(r, { anio: aa, n });
+    return { codigo: `${PREFIJO}-${aa}-${String(n).padStart(3, '0')}`, anio: aa, n };
+  });
+}
+
+// ---------------- autollenado desde el HTML del informe ----------------
+function leerHTML(texto) {
+  const d = new DOMParser().parseFromString(texto, 'text/html');
+  d.querySelectorAll('script,style,noscript').forEach(x => x.remove());
+  const textos = (el) => { const w = d.createTreeWalker(el, NodeFilter.SHOW_TEXT); const o = []; while (w.nextNode()) { const t = w.currentNode.nodeValue.replace(/\s+/g, ' ').trim(); if (t) o.push(t); } return o; };
+  const lineas = d.body ? textos(d.body) : [];
+  const tras = (et) => { const i = lineas.findIndex(l => l.toLowerCase() === et.toLowerCase()); return i >= 0 ? lineas[i + 1] : ''; };
+  const out = { titulo: (d.title || '').trim() };
+  const h1 = d.querySelector('h1'); if (h1) { const t = textos(h1).join(' ').replace(/\s+/g, ' ').trim(); if (t.length > 6) out.titulo = t; }
+  out.dirigido = tras('Dirigido a');
+  const prov = tras('Proveedor'); if (prov) out.proveedor = prov.split('·')[0].trim();
+  const cot = (prov.match(/Cotizaci[oó]n\s*N\.?\s*º?\s*([\w\-\/]+)/i) || [])[1]; if (cot) out.docs = ['Cot. ' + cot];
+  const todo = lineas.join(' ');
+  const iM = todo.search(/Monto solicitado/i);
+  const mm = (iM >= 0 ? todo.slice(iM) : todo).match(/(US\$|S\/\.?)\s?([\d.,]+)/);
+  if (mm) { out.moneda = mm[1].startsWith('US') ? 'US$' : 'S/'; out.monto = +mm[2].replace(/,/g, ''); }
+  const fd = todo.match(/(\d{1,2}) de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|se?tiembre|octubre|noviembre|diciembre) de (\d{4})/i);
+  if (fd) { const m = MES.findIndex(x => x.startsWith(fd[2].toLowerCase().slice(0, 3))); out.fecha = `${fd[3]}-${String(m + 1).padStart(2, '0')}-${fd[1].padStart(2, '0')}`; }
+  if (/solicitud de aprobaci[oó]n/i.test(todo)) out.tipo = 'solicitud';
+  else if (/falla/i.test(out.titulo)) out.tipo = 'falla';
+  return out;
+}
+
+// ---------------- vista Informes ----------------
+function vistaInformes(main) {
+  const n = (e) => L.filter(x => x.estado === e).length;
+  const pend = L.filter(x => x.estado === 'presentado');
+  main.innerHTML = `
+    <div class="pagehead"><div><div class="eyebrow rise">Informes técnicos</div><h1 class="h-display rise d1">Informes</h1></div>
+      ${escribe() ? `<button class="btn btn-primary rise d2" id="bNuevo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo informe</button>` : ''}</div>
+    ${avisoUso()}
+    <div class="kpis">
+      <div class="kpi"><b>${L.length}</b><span>Informes registrados</span></div>
+      <div class="kpi d1"><b style="color:#9ED6FA">${pend.length}</b><span>Presentados, en espera de respuesta</span></div>
+      <div class="kpi d2"><b style="color:#8FF0DE">${n('aprobado')}</b><span>Aprobados</span></div>
+      <div class="kpi d3"><b style="color:#FFCF73">${n('observado')}</b><span>Observados</span></div>
+    </div>
+    <div class="tools rise d2">
+      <label class="sr" for="fQ">Buscar</label><input class="field" id="fQ" placeholder="Buscar por código, título, proveedor…" style="flex:1;min-width:220px" value="${esc(FIL.q)}">
+      <label class="sr" for="fE">Estado</label><select class="field" id="fE"><option value="all">Todos los estados</option>${Object.entries(ESTADOS_INF).map(([k, v]) => `<option value="${k}" ${FIL.estado === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
+      <label class="sr" for="fT">Tipo</label><select class="field" id="fT"><option value="all">Todos los tipos</option>${TIPOS_INF.map(t => `<option value="${t.id}" ${FIL.tipo === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}</select>
+    </div>
+    <div class="glass rise d3 tbl-wrap"><table class="table" style="min-width:860px">
+      <thead><tr><th>Informe</th><th>Tipo</th><th>Dirigido a</th><th>Fecha</th><th style="text-align:right">Monto</th><th>Estado</th></tr></thead>
+      <tbody id="tb"></tbody></table></div>`;
+  if (main.querySelector('#bNuevo')) main.querySelector('#bNuevo').onclick = nuevoInforme;
+  const f = () => { FIL.q = main.querySelector('#fQ').value; FIL.estado = main.querySelector('#fE').value; FIL.tipo = main.querySelector('#fT').value; pintarTabla(main); };
+  main.querySelector('#fQ').oninput = f; main.querySelector('#fE').onchange = f; main.querySelector('#fT').onchange = f;
+  pintarTabla(main);
+}
+function pintarTabla(main) {
+  const tb = main.querySelector('#tb'); if (!tb) return;
+  const q = FIL.q.toLowerCase();
+  const lista = L.filter(x => (FIL.estado === 'all' || x.estado === FIL.estado) && (FIL.tipo === 'all' || x.tipo === FIL.tipo)
+    && (!q || [x.codigo, x.titulo, x.proveedor, x.dirigido, (x.docs || []).join(' '), (x.eqCods || []).join(' ')].join(' ').toLowerCase().includes(q)));
+  tb.innerHTML = lista.map((x, i) => `<tr class="rowbtn slide" data-id="${x.id}" style="animation-delay:${Math.min(i * 0.04, .6).toFixed(2)}s">
+    <td><div class="cod">${esc(x.codigo)}${x.version > 1 ? ` · v${x.version}` : ''}</div><div class="ttl">${esc(x.titulo)}</div>${x.proveedor ? `<div class="sub">${esc(x.proveedor)}</div>` : ''}</td>
+    <td style="font-size:13.5px">${esc(tipoLbl(x.tipo))}</td><td style="font-size:13.5px">${esc(x.dirigido || '—')}</td>
+    <td style="white-space:nowrap;font-size:13.5px">${fmtF(x.fecha)}</td><td class="num">${money(x.monto, x.moneda)}</td><td>${pill(x.estado)}</td></tr>`).join('')
+    || `<tr><td colspan="6" class="muted" style="padding:28px 20px">${L.length ? 'No hay informes que coincidan con el filtro.' : 'Aún no hay informes registrados.'}</td></tr>`;
+  tb.querySelectorAll('[data-id]').forEach(r => r.onclick = () => ficha(r.dataset.id));
+}
+
+// ---------------- formulario de datos ----------------
+function camposDatos(v, dis = '') {
+  return `<div class="g2">
+    <div style="grid-column:1/-1"><label class="label" for="iTit">Título</label><input class="field" id="iTit" value="${esc(v.titulo || '')}" ${dis}></div>
+    <div><label class="label" for="iTip">Tipo</label><select class="field" id="iTip" ${dis}>${TIPOS_INF.map(t => `<option value="${t.id}" ${t.id === (v.tipo || 'solicitud') ? 'selected' : ''}>${t.label}</option>`).join('')}</select></div>
+    <div><label class="label" for="iFec">Fecha del informe</label><input class="field" id="iFec" type="date" value="${esc(v.fecha || hoyISO())}" ${dis}></div>
+    <div style="grid-column:1/-1"><label class="label" for="iDir">Dirigido a</label><input class="field" id="iDir" value="${esc(v.dirigido || '')}" placeholder="Nombre — cargo" ${dis}></div>
+    <div><label class="label" for="iPro">Proveedor (si aplica)</label><input class="field" id="iPro" value="${esc(v.proveedor || '')}" ${dis}></div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px"><div><label class="label" for="iMon">Moneda</label><select class="field" id="iMon" ${dis}>${['S/', 'US$'].map(m => `<option ${m === (v.moneda || 'S/') ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+      <div><label class="label" for="iMto">Monto (sin IGV)</label><input class="field" id="iMto" type="number" step="0.01" min="0" value="${v.monto ?? ''}" ${dis}></div></div>
+    <div style="grid-column:1/-1"><label class="label" for="iRes">Resumen</label><textarea class="field" id="iRes" rows="2" style="height:auto;padding:12px 16px;line-height:1.5" ${dis}>${esc(v.resumen || '')}</textarea></div>
+  </div>`;
+}
+const leerDatos = (m) => ({
+  titulo: m.$('#iTit').value.trim(), tipo: m.$('#iTip').value, fecha: m.$('#iFec').value, dirigido: m.$('#iDir').value.trim(),
+  proveedor: m.$('#iPro').value.trim(), moneda: m.$('#iMon').value, monto: m.$('#iMto').value === '' ? null : +m.$('#iMto').value, resumen: m.$('#iRes').value.trim()
+});
+
+// ---------------- nuevo informe ----------------
+function nuevoInforme() {
+  if (fracUso() >= UMBRAL_CRITICO) toast('Almacenamiento casi lleno: retire archivos antiguos antes de cargar más.', 'err');
+  let archivo = null;
+  const m = modal({ titulo: 'Nuevo informe', ancho: 760,
+    cuerpo: `<label class="drop" id="dz" for="iFile"><div style="font-family:var(--f-display);font-weight:600;font-size:16px">Seleccionar el informe</div>
+      <div class="muted" style="font-size:13.5px;margin-top:6px" id="dzTx">HTML o PDF, hasta ${fmtBytes(MAX_ARCHIVO)}. Si es HTML, los datos se completan solos.</div>
+      <input type="file" id="iFile" accept=".html,.htm,.pdf" class="sr"></label>
+      <div id="frm" style="margin-top:18px">${camposDatos({})}</div>
+      <div class="bar" id="bar" hidden><div></div></div>`,
+    pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="button" class="btn" id="bBor">Guardar como borrador</button><button type="submit" class="btn btn-primary" id="bOk">Registrar como presentado</button>` });
+  const elegir = async (f) => {
+    archivo = f; m.$('#dzTx').textContent = `${f.name} · ${fmtBytes(f.size)}`;
+    if (/\.html?$/i.test(f.name)) {
+      try {
+        const d = leerHTML(await f.text());
+        const set = (id, v) => { if (v !== undefined && v !== null && v !== '') m.$(id).value = v; };
+        set('#iTit', d.titulo); set('#iTip', d.tipo); set('#iFec', d.fecha); set('#iDir', d.dirigido); set('#iPro', d.proveedor); set('#iMon', d.moneda); set('#iMto', d.monto);
+        m._docs = d.docs || [];
+        toast('Datos leídos del informe. Revíselos antes de registrar.');
+      } catch { /* sin autollenado */ }
+    }
+  };
+  m.$('#iFile').onchange = (e) => e.target.files[0] && elegir(e.target.files[0]);
+  const dz = m.$('#dz');
+  ['dragenter', 'dragover'].forEach(t => dz.addEventListener(t, (e) => { e.preventDefault(); dz.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, (e) => { e.preventDefault(); dz.classList.remove('over'); }));
+  dz.addEventListener('drop', (e) => e.dataTransfer.files[0] && elegir(e.dataTransfer.files[0]));
+  const guardar = async (estado) => {
+    m.err('');
+    const d = leerDatos(m);
+    if (!archivo) return m.err('Seleccione el archivo del informe.');
+    if (!d.titulo) return m.err('Ingrese el título.');
+    if (!d.fecha) return m.err('Ingrese la fecha.');
+    const btns = [m.$('#bOk'), m.$('#bBor')]; btns.forEach(b => b.disabled = true);
+    m.$('#bar').hidden = false;
+    try {
+      const ref = doc(colInf());
+      const c = await nuevoCodigo();
+      const a = await subirArchivo(ref.id, 'v1', archivo, (p) => m.$('#bar div').style.width = Math.round(p * 100) + '%');
+      a.ver = 1;
+      const hist = [{ fecha: ahora(), estado: 'borrador', nota: 'Informe registrado', por: quien() }];
+      if (estado === 'presentado') hist.push({ fecha: ahora(), estado: 'presentado', nota: d.dirigido ? 'Presentado a ' + d.dirigido : 'Presentado', por: quien() });
+      await setDoc(ref, { ...d, codigo: c.codigo, anio: c.anio, n: c.n, estado, version: 1, archivo: a, versiones: [a], historial: hist,
+        eqIds: [], eqCods: [], progId: null, progNombre: '', docs: m._docs || [], creado: serverTimestamp(), creadoPor: quien(), actualizado: serverTimestamp() });
+      m.cerrar(); toast(`${c.codigo} registrado.`); ficha(ref.id);
+    } catch (e) { console.error(e); m.err('No se pudo registrar: ' + (e.code || e.message)); btns.forEach(b => b.disabled = false); }
+  };
+  m.$('#bBor').onclick = () => guardar('borrador');
+  m.form.onsubmit = (ev) => { ev.preventDefault(); guardar('presentado'); };
+}
+
+// ---------------- ficha ----------------
+async function ficha(id) {
+  const x = L.find(i => i.id === id) || await getDoc(doc(colInf(), id)).then(s => s.exists() ? { id: s.id, ...s.data() } : null);
+  if (!x) { toast('Informe no encontrado.', 'err'); return; }
+  const cerrado = ['aprobado', 'rechazado'].includes(x.estado);
+  const editable = escribe() && (!cerrado || CTX.rol === 'admin');
+  const dis = editable ? '' : 'disabled';
+  const vers = (x.versiones || []).slice().sort((a, b) => b.ver - a.ver);
+  const ap = x.aprobacion;
+  const m = modal({ titulo: `<span class="cod" style="font-size:13px">${esc(x.codigo)}</span><div>${esc(x.titulo)}</div>`, ancho: 1040,
+    cuerpo: `<div class="fic"><div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">${pill(x.estado)}<span class="sub" style="margin:0">${esc(tipoLbl(x.tipo))} · versión ${x.version || 1}</span>
+          <span style="flex:1"></span><button type="button" class="btn" id="bVer" style="height:40px">Ver informe</button></div>
+        ${camposDatos(x, dis)}
+        <h4 style="font-family:var(--f-display);font-size:15px;margin:22px 0 4px">Relaciones</h4>
+        <div class="sub" style="margin-bottom:10px">Vincule el informe con los equipos, el programa de trabajo y las órdenes que correspondan.</div>
+        <div class="g2">
+          <div style="grid-column:1/-1"><label class="label" for="rEq">Equipos</label><input class="field" id="rEq" list="dlEq" placeholder="${EQ ? 'Buscar por código o descripción y pulsar Enter' : 'Cargando equipos…'}" ${dis}><datalist id="dlEq"></datalist><div class="chips" id="cEq"></div></div>
+          <div><label class="label" for="rPr">Programa de trabajo (Plan)</label><select class="field" id="rPr" ${dis}><option value="">Sin vincular</option></select></div>
+          <div><label class="label" for="rDoc">OC / OS / cotización</label><input class="field" id="rDoc" placeholder="Escriba y pulse Enter" ${dis}><div class="chips" id="cDoc"></div></div>
+        </div>
+      </div>
+      <div class="side">
+        <div class="box"><h4>Estado</h4><div id="acc" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+          ${ap ? `<div style="margin-top:12px;font-size:13.5px;line-height:1.6"><b>${x.estado === 'rechazado' ? 'Rechazado' : 'Aprobado'}</b> el ${fmtF(ap.fecha)}${ap.por ? ' por ' + esc(ap.por) : ''}${ap.medio ? ' · ' + esc(ap.medio) : ''}${ap.nota ? `<div class="sub">${esc(ap.nota)}</div>` : ''}
+            ${ap.evidencia ? `<button type="button" class="btn" id="bEvi" style="height:36px;margin-top:8px;font-size:13px">Ver evidencia de aprobación</button>` : ''}</div>` : ''}</div>
+        <div class="box"><h4>Versiones</h4>${vers.map(v => `<div class="it"><div><b>v${v.ver}</b> <span class="sub">${fmtF(v.fecha)} · ${fmtBytes(v.bytes)}${v.retirado ? ' · retirado' : ''}</span></div>
+          ${v.retirado ? '' : `<button type="button" class="btn" data-v="${v.ver}" style="height:34px;font-size:12.5px">Ver</button>`}</div>`).join('')}
+          ${escribe() && !cerrado ? `<button type="button" class="btn" id="bNV" style="height:38px;margin-top:10px;width:100%">Subir nueva versión</button><input type="file" id="fNV" accept=".html,.htm,.pdf" class="sr">` : ''}
+          <div class="bar" id="barNV" hidden><div></div></div></div>
+        <div class="box"><h4>Historial</h4><div class="tl">${(x.historial || []).slice().reverse().map(h => `<div class="e" style="--c:${(ESTADOS_INF[h.estado] || ESTADOS_INF.borrador).fg}"><b>${esc((ESTADOS_INF[h.estado] || {}).label || h.estado)}</b> · ${fmtF(h.fecha)}<div class="sub">${esc(h.nota || '')}${h.por ? ' — ' + esc(h.por) : ''}</div></div>`).join('')}</div></div>
+      </div></div>`,
+    pie: editable ? `<button type="button" class="btn" data-x>Cerrar</button><button type="submit" class="btn btn-primary" id="bG">Guardar cambios</button>` : `<button type="button" class="btn" data-x>Cerrar</button>` });
+
+  m.$('#bVer').onclick = () => verArchivo(x.archivo, x.titulo);
+  m.bg.querySelectorAll('[data-v]').forEach(b => b.onclick = () => verArchivo(vers.find(v => String(v.ver) === b.dataset.v), `${x.titulo} — v${b.dataset.v}`));
+  if (m.$('#bEvi')) m.$('#bEvi').onclick = () => verArchivo(ap.evidencia, 'Evidencia de aprobación');
+
+  // relaciones
+  let eqIds = [...(x.eqIds || [])], eqCods = [...(x.eqCods || [])], docs = [...(x.docs || [])];
+  const pintarChips = () => {
+    m.$('#cEq').innerHTML = eqCods.map((c, i) => `<span class="chip2">${esc(c)}${editable ? `<button type="button" data-qe="${i}" aria-label="Quitar">×</button>` : ''}</span>`).join('') || '<span class="sub">Sin equipos vinculados</span>';
+    m.$('#cDoc').innerHTML = docs.map((c, i) => `<span class="chip2">${esc(c)}${editable ? `<button type="button" data-qd="${i}" aria-label="Quitar">×</button>` : ''}</span>`).join('') || '<span class="sub">Sin documentos</span>';
+    m.bg.querySelectorAll('[data-qe]').forEach(b => b.onclick = () => { eqIds.splice(+b.dataset.qe, 1); eqCods.splice(+b.dataset.qe, 1); pintarChips(); });
+    m.bg.querySelectorAll('[data-qd]').forEach(b => b.onclick = () => { docs.splice(+b.dataset.qd, 1); pintarChips(); });
+  };
+  pintarChips();
+  (async () => {
+    try { EQ = EQ || await listarEquipos(); m.$('#dlEq').innerHTML = EQ.map(e => `<option value="${esc(etiquetaEquipo(e))}">`).join(''); m.$('#rEq').placeholder = 'Buscar por código o descripción y pulsar Enter'; }
+    catch { m.$('#rEq').placeholder = 'Sin acceso a la base de equipos'; }
+    try {
+      PROGS = PROGS || (await getDocs(collection(db, 'datos', 'plan', 'programas'))).docs.map(d => ({ id: d.id, ...d.data() })).filter(p => !p.migrado).sort((a, b) => String(b.desde || '').localeCompare(String(a.desde || '')));
+      m.$('#rPr').innerHTML = '<option value="">Sin vincular</option>' + PROGS.map(p => `<option value="${p.id}" ${p.id === x.progId ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('');
+    } catch { m.$('#rPr').innerHTML = x.progId ? `<option value="${x.progId}" selected>${esc(x.progNombre || 'Programa vinculado')}</option>` : '<option value="">Sin acceso al Plan de mantenimiento</option>'; }
+  })();
+  m.$('#rEq').onkeydown = (e) => {
+    if (e.key !== 'Enter') return; e.preventDefault();
+    const v = e.target.value.trim(); if (!v || !EQ) return;
+    const eq = EQ.find(q => etiquetaEquipo(q) === v) || EQ.find(q => String(q.codigo).toLowerCase() === v.toLowerCase());
+    if (!eq) { toast('Equipo no encontrado en la base.', 'err'); return; }
+    if (!eqIds.includes(eq.id)) { eqIds.push(eq.id); eqCods.push(eq.codigo); }
+    e.target.value = ''; pintarChips();
+  };
+  m.$('#rEq').onchange = (e) => { if (EQ && EQ.find(q => etiquetaEquipo(q) === e.target.value)) m.$('#rEq').onkeydown({ key: 'Enter', preventDefault() {}, target: e.target }); };
+  m.$('#rDoc').onkeydown = (e) => { if (e.key !== 'Enter') return; e.preventDefault(); const v = e.target.value.trim(); if (v && !docs.includes(v)) docs.push(v); e.target.value = ''; pintarChips(); };
+
+  // acciones de estado
+  const acc = [];
+  if (escribe() && x.estado === 'borrador') acc.push(['presentar', 'Marcar como presentado']);
+  if (gestor() && ['presentado', 'observado'].includes(x.estado)) acc.push(['aprobar', 'Registrar aprobación'], ['observar', 'Registrar observación'], ['rechazar', 'Registrar rechazo']);
+  if (escribe() && x.estado === 'observado') acc.push(['presentar', 'Volver a presentar']);
+  m.$('#acc').innerHTML = acc.map(([k, l]) => `<button type="button" class="btn ${k === 'aprobar' ? 'btn-primary' : ''}" data-a="${k}" style="height:38px;font-size:13px">${l}</button>`).join('') || '<span class="sub">Sin acciones disponibles.</span>';
+  m.bg.querySelectorAll('[data-a]').forEach(b => b.onclick = () => cambiarEstado(x, b.dataset.a, m));
+
+  // nueva versión
+  if (m.$('#bNV')) {
+    m.$('#bNV').onclick = () => m.$('#fNV').click();
+    m.$('#fNV').onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const ver = (x.version || 1) + 1;
+      m.$('#barNV').hidden = false;
+      try {
+        const a = await subirArchivo(x.id, 'v' + ver, f, (p) => m.$('#barNV div').style.width = Math.round(p * 100) + '%');
+        a.ver = ver;
+        await updateDoc(doc(colInf(), x.id), { version: ver, archivo: a, versiones: arrayUnion(a),
+          historial: arrayUnion({ fecha: ahora(), estado: x.estado, nota: `Nueva versión v${ver}`, por: quien() }), actualizado: serverTimestamp() });
+        toast(`Versión v${ver} cargada.`); m.cerrar(); setTimeout(() => ficha(x.id), 300);
+      } catch (er) { toast('No se pudo cargar: ' + (er.code || er.message), 'err'); m.$('#barNV').hidden = true; }
+    };
+  }
+
+  if (!editable) return;
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault(); m.err('');
+    const d = leerDatos(m);
+    if (!d.titulo) return m.err('Ingrese el título.');
+    const progId = m.$('#rPr').value || null;
+    const progNombre = progId ? (PROGS?.find(p => p.id === progId)?.nombre || x.progNombre || '') : '';
+    const b = m.$('#bG'); b.disabled = true; b.textContent = 'Guardando…';
+    try {
+      await updateDoc(doc(colInf(), x.id), { ...d, eqIds, eqCods, docs, progId, progNombre, actualizado: serverTimestamp() });
+      toast('Cambios guardados.'); m.cerrar();
+    } catch (er) { m.err('No se pudo guardar: ' + (er.code || er.message)); b.disabled = false; b.textContent = 'Guardar cambios'; }
+  };
+}
+
+function cambiarEstado(x, accion, mFicha) {
+  const T = { presentar: ['Presentar informe', 'presentado'], aprobar: ['Registrar aprobación', 'aprobado'], observar: ['Registrar observación', 'observado'], rechazar: ['Registrar rechazo', 'rechazado'] }[accion];
+  const conAprob = accion === 'aprobar' || accion === 'rechazar';
+  let evid = null;
+  const m = modal({ titulo: T[0], ancho: 560,
+    cuerpo: `<div class="g2">
+      <div><label class="label" for="eFec">Fecha</label><input class="field" id="eFec" type="date" value="${hoyISO()}"></div>
+      ${conAprob ? `<div><label class="label" for="eMed">Medio</label><select class="field" id="eMed"><option>Correo</option><option>Acta / documento firmado</option><option>Reunión</option><option>Verbal</option></select></div>
+        <div style="grid-column:1/-1"><label class="label" for="ePor">${accion === 'aprobar' ? 'Aprobado por' : 'Rechazado por'}</label><input class="field" id="ePor" value="${esc(x.dirigido || '')}"></div>` : ''}
+      <div style="grid-column:1/-1"><label class="label" for="eNot">${accion === 'observar' ? 'Observaciones recibidas' : 'Nota (opcional)'}</label><textarea class="field" id="eNot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5"></textarea></div>
+      ${conAprob ? `<div style="grid-column:1/-1"><label class="label" for="eEv">Evidencia (correo o acta en PDF/imagen, opcional)</label><input class="field" id="eEv" type="file" accept=".pdf,image/*,.html" style="padding-top:11px"></div>` : ''}
+    </div><div class="bar" id="bar" hidden><div></div></div>`,
+    pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="eOk">Confirmar</button>` });
+  if (m.$('#eEv')) m.$('#eEv').onchange = (e) => { evid = e.target.files[0] || null; };
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault(); m.err('');
+    const fecha = m.$('#eFec').value || hoyISO(), nota = m.$('#eNot').value.trim();
+    if (accion === 'observar' && !nota) return m.err('Registre las observaciones recibidas.');
+    const b = m.$('#eOk'); b.disabled = true;
+    try {
+      const upd = { estado: T[1], actualizado: serverTimestamp() };
+      if (conAprob) {
+        const ap = { fecha, por: m.$('#ePor').value.trim(), medio: m.$('#eMed').value, nota };
+        if (evid) { m.$('#bar').hidden = false; ap.evidencia = await subirArchivo(x.id, 'aprobacion', evid, (p) => m.$('#bar div').style.width = Math.round(p * 100) + '%'); }
+        upd.aprobacion = ap;
+      }
+      const notaH = accion === 'presentar' ? (x.dirigido ? 'Presentado a ' + x.dirigido : 'Presentado') : (nota || (conAprob ? `${m.$('#eMed').value}${m.$('#ePor').value ? ' · ' + m.$('#ePor').value : ''}` : ''));
+      upd.historial = arrayUnion({ fecha: fecha + 'T12:00:00', estado: T[1], nota: notaH, por: quien() });
+      await updateDoc(doc(colInf(), x.id), upd);
+      m.cerrar(); mFicha.cerrar(); toast(`${x.codigo}: ${ESTADOS_INF[T[1]].label.toLowerCase()}.`); setTimeout(() => ficha(x.id), 300);
+    } catch (er) { m.err('No se pudo registrar: ' + (er.code || er.message)); b.disabled = false; }
+  };
+}
+
+// ---------------- vista Almacenamiento ----------------
+function archivosDe(lista) {
+  const out = [];
+  lista.forEach(x => {
+    (x.versiones || []).forEach(v => out.push({ inf: x, a: v, tipo: `Versión v${v.ver}`, clave: 'v' + v.ver }));
+    if (x.aprobacion?.evidencia) out.push({ inf: x, a: x.aprobacion.evidencia, tipo: 'Evidencia de aprobación', clave: 'aprobacion' });
+  });
+  return out.sort((p, q) => String(p.a.fecha).localeCompare(String(q.a.fecha)));
+}
+function vistaAlmacen(main) {
+  const f = fracUso(), pct = Math.min(f * 100, 100);
+  const col = f >= UMBRAL_CRITICO ? '#FF8F8F' : f >= UMBRAL_AVISO ? '#F5B94A' : '#6FE3CF';
+  const files = archivosDe(L);
+  const activos = files.filter(z => !z.a.retirado);
+  main.innerHTML = `
+    <div class="pagehead"><div><div class="eyebrow rise">Informes técnicos</div><h1 class="h-display rise d1">Almacenamiento</h1></div>
+      ${gestor() ? '<button class="btn rise d2" id="bRec">Recalcular uso</button>' : ''}</div>
+    <div class="glass rise d2" style="padding:24px 26px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <div style="font-family:var(--f-display);font-size:30px;font-weight:600;color:${col}">${pct.toFixed(pct < 1 ? 2 : 1)} %</div>
+        <div class="muted">${fmtBytes(USO.bytes)} usados de ${fmtBytes(LIMITE_STORAGE)} sin costo · ${activos.length} archivos</div></div>
+      <div class="meter"><div style="width:${Math.max(pct, .4)}%;background:${col}"></div></div>
+      <div class="sub" style="line-height:1.6">Aviso al ${UMBRAL_AVISO * 100} % y alerta crítica al ${UMBRAL_CRITICO * 100} %. Para liberar espacio, descargue los archivos más antiguos y retírelos del SIM: la ficha del informe se conserva con su historial.</div>
+    </div>
+    ${avisoUso()}
+    <div class="glass rise d3 tbl-wrap" style="margin-top:18px"><table class="table" style="min-width:820px">
+      <thead><tr><th>Archivo (más antiguos primero)</th><th>Informe</th><th>Fecha</th><th style="text-align:right">Tamaño</th><th></th></tr></thead>
+      <tbody>${files.map((z, i) => `<tr style="${z.a.retirado ? 'opacity:.5' : ''}"><td><div style="font-size:13.5px">${esc(z.a.nombre)}</div><div class="sub">${esc(z.tipo)}${z.a.retirado ? ' · retirado el ' + fmtF(z.a.retirado) : ''}</div></td>
+        <td><div class="cod">${esc(z.inf.codigo)}</div><div class="sub">${esc(z.inf.titulo)}</div></td><td style="font-size:13.5px;white-space:nowrap">${fmtF(z.a.fecha)}</td><td class="num">${fmtBytes(z.a.bytes)}</td>
+        <td style="text-align:right;white-space:nowrap">${!z.a.retirado && gestor() ? `<button class="btn" data-dl="${i}" style="height:36px;font-size:12.5px">Descargar</button> <button class="btn btn-danger" data-rt="${i}" style="height:36px;font-size:12.5px">Retirar</button>` : ''}</td></tr>`).join('')
+        || '<tr><td colspan="5" class="muted" style="padding:28px 20px">Aún no hay archivos cargados.</td></tr>'}</tbody></table></div>`;
+  main.querySelectorAll('[data-dl]').forEach(b => b.onclick = () => descargar(files[+b.dataset.dl]));
+  main.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => retirar(files[+b.dataset.rt]));
+  if (main.querySelector('#bRec')) main.querySelector('#bRec').onclick = async () => {
+    const bytes = archivosDe(L).filter(z => !z.a.retirado).reduce((s, z) => s + (+z.a.bytes || 0), 0);
+    await setDoc(docUso(), { bytes, archivos: archivosDe(L).filter(z => !z.a.retirado).length, actualizado: serverTimestamp() });
+    toast('Uso recalculado.');
+  };
+}
+async function descargar(z) {
+  try {
+    const r = sref(storage, z.a.path);
+    await updateMetadata(r, { contentDisposition: `attachment; filename="${nombreSeguro(z.inf.codigo.replace(/\//g, '-') + '_' + z.a.nombre)}"` });
+    const url = await getDownloadURL(r);
+    const a = document.createElement('a'); a.href = url; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+    toast('Descarga iniciada. Verifique el archivo antes de retirarlo.');
+  } catch (e) { toast('No se pudo descargar: ' + (e.code || e.message), 'err'); }
+}
+function retirar(z) {
+  const m = modal({ titulo: 'Retirar archivo del SIM', ancho: 540,
+    cuerpo: `<p class="muted" style="margin:0;line-height:1.6">Se eliminará <b>${esc(z.a.nombre)}</b> (${fmtBytes(z.a.bytes)}) del almacenamiento. La ficha de <b>${esc(z.inf.codigo)}</b> y su historial se conservan, pero el archivo ya no podrá abrirse desde el SIM.</p>
+      <label class="check" style="margin-top:16px"><input type="checkbox" id="rOk">Ya descargué y guardé una copia de este archivo</label>`,
+    pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-danger" id="rBtn">Retirar archivo</button>` });
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault();
+    if (!m.$('#rOk').checked) return m.err('Confirme que guardó una copia del archivo.');
+    m.$('#rBtn').disabled = true;
+    try {
+      await deleteObject(sref(storage, z.a.path)).catch(e => { if (e.code !== 'storage/object-not-found') throw e; });
+      const fecha = ahora();
+      const r = doc(colInf(), z.inf.id);
+      const s = await getDoc(r); const d = s.data();
+      const upd = { actualizado: serverTimestamp(), historial: arrayUnion({ fecha, estado: d.estado, nota: `Archivo retirado del SIM: ${z.a.nombre}`, por: quien() }) };
+      if (z.clave === 'aprobacion') upd['aprobacion.evidencia.retirado'] = fecha;
+      else {
+        upd.versiones = (d.versiones || []).map(v => v.path === z.a.path ? { ...v, retirado: fecha } : v);
+        if (d.archivo?.path === z.a.path) upd['archivo.retirado'] = fecha;
+      }
+      await updateDoc(r, upd);
+      await setDoc(docUso(), { bytes: increment(-(+z.a.bytes || 0)), archivos: increment(-1), actualizado: serverTimestamp() }, { merge: true });
+      m.cerrar(); toast('Archivo retirado. Espacio liberado: ' + fmtBytes(z.a.bytes));
+    } catch (e) { m.err('No se pudo retirar: ' + (e.code || e.message)); m.$('#rBtn').disabled = false; }
+  };
+}
+
+// ---------------- arranque ----------------
+function render(mod) {
+  if (!CTX?.main) return;
+  if (mod === 'almacenamiento') vistaAlmacen(CTX.main); else vistaInformes(CTX.main);
+}
+CTX = await iniciarApp({ appId: 'inf', alCambiarModulo: (mod, ctx) => { CTX = ctx; render(mod); } });
+let primera = true;
+onSnapshot(colInf(), (s) => {
+  L = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.codigo || '').localeCompare(String(a.codigo || ''), 'es', { numeric: true }));
+  if (!document.querySelector('.modal-bg')) render(CTX.modulo);
+  if (primera) { primera = false; const id = new URLSearchParams(location.search).get('i'); if (id) ficha(id); }
+}, (e) => toast('No se pudieron leer los informes: ' + (e.code || e.message), 'err'));
+onSnapshot(docUso(), (s) => { USO = s.exists() ? s.data() : { bytes: 0 }; if (!document.querySelector('.modal-bg')) render(CTX.modulo); }, () => {});
+</script>
+</body>
+</html>

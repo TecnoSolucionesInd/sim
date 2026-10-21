@@ -42,7 +42,10 @@ apps/fmt/               Registro de formatos: index.html (plantillas, lista maes
                         modelo.js (catálogos y pilotos), logica.js (turnos, periodos, validación), hoja.js (formato impreso), datos.js (Firestore), ui.js
 tools/                  Scripts de integración
 apps/_plantilla/        Plantilla para crear un aplicativo nuevo
-firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
+firestore.rules         Reglas de seguridad de Firestore (se pegan en la consola de Firebase)
+storage.rules           Reglas de Cloud Storage (archivos de Informes técnicos)
+core/informes.js        límites de almacenamiento, estados/tipos de informe y consulta de informes vinculados
+apps/inf/               Informes técnicos: registro, estados, versiones, relaciones y almacenamiento
 ```
 
 ## Modelo de datos (Firestore)
@@ -68,6 +71,7 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 | F5 | Materiales e inventario (maestro) | Planificado |
 | F6 | Conformidades · Reporte de mantenimiento | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Programas de trabajo (paradas, auditorías, proyectos) con costos en pruebas · pendiente: plan preventivo, programación quincenal, OT |
+| F9 | Informes técnicos | Construido (pruebas) · requiere plan Blaze + Storage |
 | F8 | Registro de formatos | Plantillas, llenado en celular, registros y revisión en pruebas · pendiente: indicadores |
 
 ## Congelamiento (F1)
@@ -144,6 +148,20 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - Siguiente: Plan preventivo (rutinas por equipo, calendario, cumplimiento), programación quincenal alimentada por preventivo y programas,
   vínculo de costos con OC/OS de Nisira y de actividades externas con Conformidades.
 
+## Informes técnicos (F9)
+- Un informe vive en un solo lugar (`datos/inf/informes/{id}`) y los demás aplicativos lo referencian: el Plan muestra
+  "Informes (n)" en cada programa (campo `progId`) y la ficha de Equipos lista sus informes (campo `eqIds`).
+- Código `IPSMSA/MMTO/INF-AA-NNN`, correlativo anual en `datos/inf/config/contador` (transacción). Se asigna al registrar.
+- Campos: titulo, tipo (solicitud|falla|evaluacion|deslinde|otro), fecha, dirigido, proveedor, moneda, monto, resumen, estado,
+  version, archivo, versiones[], historial[], aprobacion {fecha, por, medio, nota, evidencia}, eqIds/eqCods, progId/progNombre, docs[].
+- Estados: borrador → presentado → aprobado | observado | rechazado; observado → presentado (con nueva versión).
+  La aprobación la registra Admin/Supervisor con la evidencia (correo o acta); Gerencia no entra al SIM.
+- Al cargar un HTML, se autollenan título, tipo, fecha, dirigido, proveedor, monto y cotización.
+- Archivos en Cloud Storage `inf/{id}/...` (HTML, PDF, imágenes, Office; máx. 25 MB). Requiere plan Blaze.
+  Cuota sin costo: 5 GB (bucket en us-central1/us-east1/us-west1). Uso acumulado en `datos/inf/config/uso.bytes`.
+  Avisos al 80 % y 95 % en el aplicativo y en el portal (administrador). Almacenamiento: descargar (metadato attachment) y retirar
+  los más antiguos; la ficha conserva el historial. Alerta de presupuesto de Google Cloud como respaldo.
+
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
 2. Authentication → Configuración → Dominios autorizados: agregar `tecnosolucionesind.github.io`.
@@ -158,3 +176,4 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - 2026-10-20 — Plan de mantenimiento (F7): módulo Paradas de planta con resumen, curva S, línea de tiempo, línea base, actividades y evidencias con PDF. Parada de Planta de Hielo 2026 disponible para carga inicial.
 - 2026-10-20 — Se retiró del catálogo "Registro de parámetros" (F4): las lecturas de parámetros se cubren con Registro de formatos (F8).
 - 2026-10-20 — Plan de mantenimiento: Paradas de planta pasa a Programas de trabajo (tipos: parada, mantenimiento programado, auditoría, proyecto) con pestaña Costos. Plan preventivo como primer módulo (estructura inicial).
+- 2026-10-21 — Informes técnicos (F9): registro con código, estados, versiones, relaciones con Plan y Equipos, Storage con medidor y retiro. Nuevo `storage.rules`.
