@@ -157,7 +157,8 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   version, archivo, versiones[], historial[], aprobacion {fecha, por, medio, nota, evidencia}, eqIds/eqCods, progId/progNombre, docs[].
 - Estados: borrador → presentado → aprobado | observado | rechazado; observado → presentado (con nueva versión).
   La aprobación la registra Admin/Supervisor con la evidencia (correo o acta); Gerencia no entra al SIM.
-- Al cargar un HTML, se autollenan título, tipo, fecha, dirigido, proveedor, monto y cotización.
+- Al cargar un HTML o PDF, se autollenan título, tipo, fecha, dirigido, proveedor, monto y cotización. PDF: pdf.js 3.11.174 (cdnjs, carga bajo demanda),
+  lectura por filas y columnas (etiqueta arriba / valor abajo o "Etiqueta: valor"). El visor dibuja los PDF en páginas (funciona en celular).
 - Archivos (decisión 21-oct-2026): dentro de Firestore, sin plan Blaze, con `core/archivos.js`:
   `datos/inf/archivos/{fid}` (nombre, tipo, bytes, partes, informe, uso) + `.../partes/p{n}` (Bytes ≤ 900 KB). Máx. 15 MB por archivo.
   Firestore gratis = 1 GB para TODOS los aplicativos → se reservan 500 MB para archivos de informes (`LIMITE_STORAGE` en core/informes.js).
@@ -181,3 +182,4 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-20 — Plan de mantenimiento: Paradas de planta pasa a Programas de trabajo (tipos: parada, mantenimiento programado, auditoría, proyecto) con pestaña Costos. Plan preventivo como primer módulo (estructura inicial).
 - 2026-10-21 — Informes técnicos (F9): registro con código, estados, versiones, relaciones con Plan y Equipos, Storage con medidor y retiro. Nuevo `storage.rules`.
 - 2026-10-21 — Informes: archivos pasan a Firestore por partes (sin Blaze), 500 MB reservados.
+- 2026-10-21 — Informes: autollenado y visor para PDF (pdf.js).

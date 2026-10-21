@@ -121,10 +121,92 @@ async function verArchivo(a, titulo) {
   try {
     const blob = await leerArchivo('inf', a);
     url = URL.createObjectURL(blob);
-    // HTML en iframe aislado (sin acceso a la sesión del SIM)
-    v.querySelector('#vCuerpo').outerHTML = `<iframe ${/html/.test(a.tipo) ? 'sandbox="allow-scripts allow-popups allow-modals allow-downloads"' : ''} src="${url}" title="${esc(a.nombre)}"></iframe>`;
+    const esPDF = /pdf/.test(a.tipo) || /\.pdf$/i.test(a.nombre);
+    if (esPDF) {
+      // PDF dibujado página por página (también en celulares, donde el visor del navegador no se muestra dentro de la página)
+      try { await mostrarPDF(blob, v.querySelector('#vCuerpo')); }
+      catch { v.querySelector('#vCuerpo').outerHTML = `<iframe src="${url}" title="${esc(a.nombre)}"></iframe>`; }
+    } else if (/html/.test(a.tipo)) {
+      // HTML en iframe aislado (sin acceso a la sesión del SIM)
+      v.querySelector('#vCuerpo').outerHTML = `<iframe sandbox="allow-scripts allow-popups allow-modals allow-downloads" src="${url}" title="${esc(a.nombre)}"></iframe>`;
+    } else if (/^image\//.test(a.tipo)) {
+      v.querySelector('#vCuerpo').innerHTML = `<img src="${url}" alt="${esc(a.nombre)}" style="max-width:96%;max-height:100%;object-fit:contain">`;
+    } else {
+      v.querySelector('#vCuerpo').innerHTML = '<div class="muted">Vista previa no disponible. Use "Descargar".</div>';
+    }
     const dl = v.querySelector('#vDl'); dl.disabled = false; dl.onclick = () => descargarBlob(blob, a.nombre);
   } catch (e) { v.querySelector('#vCuerpo').innerHTML = `<div class="alert err">No se pudo abrir el archivo: ${esc(e.code || e.message)}</div>`; }
+}
+
+// ---------------- PDF (pdf.js, se carga solo cuando se necesita) ----------------
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let _pdfjs = null;
+function pdfjs() {
+  if (!_pdfjs) _pdfjs = new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = PDFJS + 'pdf.min.js';
+    sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js'; res(window.pdfjsLib); };
+    sc.onerror = () => { _pdfjs = null; rej(new Error('No se pudo cargar el lector de PDF (revise la conexión).')); };
+    document.head.appendChild(sc);
+  });
+  return _pdfjs;
+}
+// Texto de las primeras páginas como filas de celdas { x, t } (respeta columnas y palabras partidas), y el título
+// (líneas con la letra más grande de la primera página).
+async function textoPDF(buf, paginas = 3) {
+  const lib = await pdfjs();
+  const pdf = await lib.getDocument({ data: buf }).promise;
+  const filasTodas = []; let titulo = '';
+  for (let n = 1; n <= Math.min(paginas, pdf.numPages); n++) {
+    const tc = await (await pdf.getPage(n)).getTextContent();
+    const grupos = new Map();
+    tc.items.forEach(it => {
+      if (!it.str) return;
+      const y = Math.round(it.transform[5] / 3) * 3, h = Math.abs(it.transform[3]) || Math.abs(it.transform[0]) || it.height || 8;
+      if (!grupos.has(y)) grupos.set(y, []);
+      grupos.get(y).push({ x: it.transform[4], w: it.width || 0, s: it.str, h });
+    });
+    const filas = [...grupos.entries()].sort((a, b) => b[0] - a[0]).map(([, its]) => {
+      its.sort((a, b) => a.x - b.x);
+      const celdas = []; let c = null, fin = -1e9, hmax = 0;
+      its.forEach(it => {
+        hmax = Math.max(hmax, it.h);
+        const gap = it.x - fin;
+        if (!c || gap > it.h * 2.2) { c = { x: it.x, t: it.s }; celdas.push(c); }        // columna nueva
+        else c.t += (gap > it.h * 0.18 && !/\s$/.test(c.t) && !/^\s/.test(it.s) ? ' ' : '') + it.s;  // misma frase
+        fin = it.x + it.w;
+      });
+      // caracteres de uso privado (glifos de la fuente sin equivalente, p. ej. guiones largos) → guion o nada
+      celdas.forEach(k => k.t = k.t.replace(/\s[\uE000-\uF8FF]\s/g, ' — ').replace(/[\uE000-\uF8FF]/g, '').replace(/\s+/g, ' ').trim());
+      return { celdas: celdas.filter(k => k.t), h: hmax };
+    }).filter(f => f.celdas.length);
+    if (n === 1 && filas.length) {
+      const mayor = Math.max(...filas.map(f => f.h));
+      const i0 = filas.findIndex(f => f.h >= mayor * 0.95);
+      const tl = []; for (let i = i0; i < filas.length && filas[i].h >= mayor * 0.95; i++) tl.push(filas[i].celdas.map(k => k.t).join(' '));
+      titulo = tl.join(' ');
+    }
+    filas.forEach(f => filasTodas.push(f.celdas));
+  }
+  if (!titulo || titulo.length < 6) {
+    try { const t = (await pdf.getMetadata())?.info?.Title || ''; if (t.length > 6 && !/^untitled$|\.(docx?|pptx?|html?)$/i.test(t)) titulo = t.trim(); } catch {}
+  }
+  return { filas: filasTodas, titulo, paginas: pdf.numPages };
+}
+async function mostrarPDF(blob, cont) {
+  const lib = await pdfjs();
+  const pdf = await lib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
+  cont.innerHTML = '';
+  cont.style.cssText = 'flex:1;overflow:auto;background:#525b66;padding:16px 0;display:block';
+  const ancho = Math.min(cont.clientWidth - 24, 1100), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  for (let n = 1; n <= pdf.numPages; n++) {
+    const pg = await pdf.getPage(n);
+    const v1 = pg.getViewport({ scale: 1 }), esc1 = ancho / v1.width, vp = pg.getViewport({ scale: esc1 * dpr });
+    const c = document.createElement('canvas');
+    c.width = vp.width; c.height = vp.height;
+    c.style.cssText = `display:block;width:${ancho}px;height:${vp.height / dpr}px;margin:0 auto 14px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.35)`;
+    cont.appendChild(c);
+    await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+  }
 }
 
 // ---------------- código correlativo ----------------
@@ -145,21 +227,43 @@ function leerHTML(texto) {
   const d = new DOMParser().parseFromString(texto, 'text/html');
   d.querySelectorAll('script,style,noscript').forEach(x => x.remove());
   const textos = (el) => { const w = d.createTreeWalker(el, NodeFilter.SHOW_TEXT); const o = []; while (w.nextNode()) { const t = w.currentNode.nodeValue.replace(/\s+/g, ' ').trim(); if (t) o.push(t); } return o; };
-  const lineas = d.body ? textos(d.body) : [];
-  const tras = (et) => { const i = lineas.findIndex(l => l.toLowerCase() === et.toLowerCase()); return i >= 0 ? lineas[i + 1] : ''; };
-  const out = { titulo: (d.title || '').trim() };
-  const h1 = d.querySelector('h1'); if (h1) { const t = textos(h1).join(' ').replace(/\s+/g, ' ').trim(); if (t.length > 6) out.titulo = t; }
-  out.dirigido = tras('Dirigido a');
-  const prov = tras('Proveedor'); if (prov) out.proveedor = prov.split('·')[0].trim();
-  const cot = (prov.match(/Cotizaci[oó]n\s*N\.?\s*º?\s*([\w\-\/]+)/i) || [])[1]; if (cot) out.docs = ['Cot. ' + cot];
-  const todo = lineas.join(' ');
-  const iM = todo.search(/Monto solicitado/i);
+  let titulo = (d.title || '').trim();
+  const h1 = d.querySelector('h1'); if (h1) { const t = textos(h1).join(' ').replace(/\s+/g, ' ').trim(); if (t.length > 6) titulo = t; }
+  return datosDeTexto((d.body ? textos(d.body) : []).map(t => [{ x: 0, t }]), titulo);
+}
+// Extrae los datos del informe a partir de filas de celdas { x, t } (HTML: una celda por fila; PDF: columnas)
+const normEt = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[\s:]+/g, '').toUpperCase();
+function datosDeTexto(filas, titulo) {
+  const campo = (...ets) => {
+    for (const et of ets) {
+      const n = normEt(et), re = new RegExp('^' + et + '\\s*:\\s*(.+)$', 'i');
+      for (let i = 0; i < filas.length; i++) for (const c of filas[i]) {
+        if (normEt(c.t) === n) {
+          // valor debajo de la etiqueta: celda de la fila siguiente más cercana en x
+          const sig = filas[i + 1]; if (!sig) continue;
+          return sig.reduce((b, k) => Math.abs(k.x - c.x) < Math.abs(b.x - c.x) ? k : b, sig[0]).t;
+        }
+        const m = c.t.match(re); if (m) return m[1].trim();
+      }
+    }
+    return '';
+  };
+  const out = { titulo: (titulo || '').replace(/\s+/g, ' ').trim() };
+  out.dirigido = campo('Dirigido a', 'Para', 'Atención', 'Atencion');
+  const prov = campo('Proveedor', 'Contratista'); if (prov) out.proveedor = prov.split('·')[0].trim();
+  const todo = filas.map(f => f.map(k => k.t).join(' ')).join(' ');
+  const cot = (todo.match(/Cotizaci[oó]n\s*N\.?\s*[º°o]?\.?\s*([\w\-\/]+(?:[\s\-]20\d{2})?)/i) || [])[1]; if (cot) out.docs = ['Cot. ' + cot.replace(/\s+/, '-')];
+  const iM = todo.search(/Monto (solicitado|total)|Total sin IGV|Presupuesto/i);
   const mm = (iM >= 0 ? todo.slice(iM) : todo).match(/(US\$|S\/\.?)\s?([\d.,]+)/);
   if (mm) { out.moneda = mm[1].startsWith('US') ? 'US$' : 'S/'; out.monto = +mm[2].replace(/,/g, ''); }
-  const fd = todo.match(/(\d{1,2}) de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|se?tiembre|octubre|noviembre|diciembre) de (\d{4})/i);
+  const fd = todo.match(/(\d{1,2}) de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|se?tiembre|octubre|noviembre|diciembre),? (?:de |del )?(\d{4})/i);
   if (fd) { const m = MES.findIndex(x => x.startsWith(fd[2].toLowerCase().slice(0, 3))); out.fecha = `${fd[3]}-${String(m + 1).padStart(2, '0')}-${fd[1].padStart(2, '0')}`; }
-  if (/solicitud de aprobaci[oó]n/i.test(todo)) out.tipo = 'solicitud';
-  else if (/falla/i.test(out.titulo)) out.tipo = 'falla';
+  else { const f2 = todo.match(/\b(\d{2})\/(\d{2})\/(20\d{2})\b/); if (f2) out.fecha = `${f2[3]}-${f2[2]}-${f2[1]}`; }
+  if (/solicitud de aprobaci[oó]n|se solicita la aprobaci[oó]n/i.test(todo)) out.tipo = 'solicitud';
+  else if (/deslinde/i.test(todo)) out.tipo = 'deslinde';
+  else if (/evaluaci[oó]n (t[eé]cnica|de propuestas)|comparativo/i.test(todo)) out.tipo = 'evaluacion';
+  else if (/falla|aver[ií]a/i.test(out.titulo + ' ' + todo.slice(0, 400))) out.tipo = 'falla';
+  if (!out.titulo) out.titulo = (filas.find(f => f.map(k => k.t).join(' ').length > 12) || []).map(k => k.t).join(' ');
   return out;
 }
 
@@ -227,21 +331,26 @@ function nuevoInforme() {
   let archivo = null;
   const m = modal({ titulo: 'Nuevo informe', ancho: 760,
     cuerpo: `<label class="drop" id="dz" for="iFile"><div style="font-family:var(--f-display);font-weight:600;font-size:16px">Seleccionar el informe</div>
-      <div class="muted" style="font-size:13.5px;margin-top:6px" id="dzTx">HTML o PDF, hasta ${fmtBytes(MAX_ARCHIVO)}. Si es HTML, los datos se completan solos.</div>
+      <div class="muted" style="font-size:13.5px;margin-top:6px" id="dzTx">HTML o PDF, hasta ${fmtBytes(MAX_ARCHIVO)}. Los datos se completan solos a partir del informe.</div>
       <input type="file" id="iFile" accept=".html,.htm,.pdf" class="sr"></label>
       <div id="frm" style="margin-top:18px">${camposDatos({})}</div>
       <div class="bar" id="bar" hidden><div></div></div>`,
     pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="button" class="btn" id="bBor">Guardar como borrador</button><button type="submit" class="btn btn-primary" id="bOk">Registrar como presentado</button>` });
   const elegir = async (f) => {
     archivo = f; m.$('#dzTx').textContent = `${f.name} · ${fmtBytes(f.size)}`;
-    if (/\.html?$/i.test(f.name)) {
+    const esHTML = /\.html?$/i.test(f.name), esPDF = /\.pdf$/i.test(f.name) || f.type === 'application/pdf';
+    if (esHTML || esPDF) {
       try {
-        const d = leerHTML(await f.text());
+        m.$('#dzTx').textContent = `${f.name} · ${fmtBytes(f.size)} · leyendo datos…`;
+        let d;
+        if (esHTML) d = leerHTML(await f.text());
+        else { const t = await textoPDF(new Uint8Array(await f.arrayBuffer())); d = datosDeTexto(t.filas, t.titulo); }
+        m.$('#dzTx').textContent = `${f.name} · ${fmtBytes(f.size)}`;
         const set = (id, v) => { if (v !== undefined && v !== null && v !== '') m.$(id).value = v; };
         set('#iTit', d.titulo); set('#iTip', d.tipo); set('#iFec', d.fecha); set('#iDir', d.dirigido); set('#iPro', d.proveedor); set('#iMon', d.moneda); set('#iMto', d.monto);
         m._docs = d.docs || [];
         toast('Datos leídos del informe. Revíselos antes de registrar.');
-      } catch { /* sin autollenado */ }
+      } catch (e) { m.$('#dzTx').textContent = `${f.name} · ${fmtBytes(f.size)} · complete los datos manualmente`; }
     }
   };
   m.$('#iFile').onchange = (e) => e.target.files[0] && elegir(e.target.files[0]);
