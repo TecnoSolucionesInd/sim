@@ -65,7 +65,6 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 | F1 | Congelamiento (conserva su diseño) | Integrado en pruebas · pendiente copia de datos y cambio de enlace |
 | F2 | Costos de mantenimiento (conserva su diseño) | Integrado en pruebas · pendiente cargar datos y respaldo |
 | F3 | Equipos (maestro) | Construido (pruebas) |
-| F4 | Registro de parámetros (Ósmosis, Salas de máquinas, Calderos) | Planificado |
 | F5 | Materiales e inventario (maestro) | Planificado |
 | F6 | Conformidades · Reporte de mantenimiento | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Módulo Paradas de planta en pruebas · pendiente: plan preventivo, programación quincenal, OT |
@@ -152,3 +151,4 @@ firestore.rules         Reglas de seguridad (se pegan en la consola de Firebase)
 - 2026-10-06 — Registro de formatos (F8): constructor de plantillas con revisiones, lista maestra y configuración. Reglas actualizadas (volver a publicar `firestore.rules`).
 - 2026-10-07 — Equipos (F3): base maestra con carga Excel e importación desde Costos. Registro de formatos: llenado en celular, registros, revisión, impresión con QR. Reglas actualizadas (volver a publicar `firestore.rules`).
 - 2026-10-20 — Plan de mantenimiento (F7): módulo Paradas de planta con resumen, curva S, línea de tiempo, línea base, actividades y evidencias con PDF. Parada de Planta de Hielo 2026 disponible para carga inicial.
+- 2026-10-20 — Se retiró del catálogo "Registro de parámetros" (F4): las lecturas de parámetros se cubren con Registro de formatos (F8).
