@@ -155,13 +155,14 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Código `IPSMSA/MMTO/INF-AA-NNN`, correlativo anual en `datos/inf/config/contador` (transacción). Se asigna al registrar.
 - Campos: titulo, tipo (solicitud|falla|evaluacion|deslinde|otro), fecha, dirigido, proveedor, moneda, monto, resumen, estado,
   version, archivo, versiones[], historial[], aprobacion {fecha, por, medio, nota, evidencia}, eqIds/eqCods, progId/progNombre, docs[].
-- Destinatarios (`datos/inf/config/contactos.lista`: id, nombre, cargo, correo, area, copia): "Dirigido a" se elige de esta lista.
+- Destinatarios (`datos/inf/config/contactos.lista`: id, nombre, cargo, correo, area, rolDef para|copia|""): "Dirigido a" se elige de esta lista.
 - Pedido Nisira en el informe (`pedidoTipo` PSR|PED, `pedidoNum` con formato serie-número `0001-XXXXX`; si se escribe solo el número se antepone 0001-), editable en Relaciones aun después de aprobado; si no está, se toma de la aprobación
   o de un documento escrito como "PSR 0004521". Otros documentos (OC, OS, cotización) en `docs[]`: se agregan con Enter, botón Agregar o al salir del campo.
 - Aprobación: monto aprobado (puede diferir del solicitado), área, pedido (precargado desde el informe), resumen de lo aprobado.
   Al confirmar se abre el correo del usuario (mailto) con un resumen informativo (la aprobación se obtiene al exponer el informe):
   trabajo, área, proveedor y cotización, monto aprobado, pedido PSR/PED, aprobado por, código del informe y fecha; pide a Logística
-  generar la OSR (PSR) u OCO (PED). Para = destinatario elegido; CC = marcados "Copia". Asunto: "Aprobado — PSR 0004521 · <trabajo>".
+  generar la OSR (PSR) u OCO (PED). Varios destinatarios en Para y en CC (tabla en la aprobación); por defecto Para = a quien va dirigido
+  el informe + contactos con `rolDef: "para"` (p. ej. Logística) y CC = `rolDef: "copia"`. Se guardan `aprobacion.paraIds` y `aprobacion.ccIds`. Asunto: "Aprobado — PSR 0004521 · <trabajo>".
   Envío 100 % automático requeriría un intermediario (Apps Script o servicio externo); se descartó por ahora.
 - Estados: borrador → presentado → aprobado | observado | rechazado; observado → presentado (con nueva versión).
   La aprobación la registra Admin/Supervisor con la evidencia (correo o acta); Gerencia no entra al SIM.
@@ -194,3 +195,4 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-22 — Informes: destinatarios con correo, datos de aprobación (monto, área, PSR/PED) y correo de confirmación con un clic.
 - 2026-10-22 — Informes: corrige documentos que no se guardaban sin Enter; pedido PSR/PED propio del informe y en el correo.
 - 2026-10-22 — Informes: correo de aprobación pasa a resumen informativo para Logística (sin pedir confirmación).
+- 2026-10-22 — Informes: varios destinatarios en Para y en CC; rol por defecto de cada destinatario.

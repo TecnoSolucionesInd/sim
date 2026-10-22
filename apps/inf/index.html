@@ -434,7 +434,7 @@ async function ficha(id) {
   if (m.$('#bEvi')) m.$('#bEvi').onclick = () => verArchivo(ap.evidencia, 'Evidencia de aprobación');
   if (m.$('#bMail')) m.$('#bMail').onclick = async () => {
     agregarDoc();
-    if (abrirCorreo(estadoActual(), ap) && !ap.correo) await updateDoc(doc(colInf(), x.id), { 'aprobacion.correo': { preparado: ahora(), para: (CONTACTOS.find(c => c.id === ap.paraId) || contactoDe(ap.por) || contactoDe(x.dirigido) || {}).correo || '' } }).catch(() => {});
+    if (abrirCorreo(estadoActual(), ap) && !ap.correo) await updateDoc(doc(colInf(), x.id), { 'aprobacion.correo': { preparado: ahora(), para: CONTACTOS.filter(c => (ap.paraIds || [ap.paraId]).includes(c.id)).map(c => c.correo).join(', ') } }).catch(() => {});
   };
 
   // relaciones
@@ -513,6 +513,7 @@ async function ficha(id) {
 }
 
 // ---------------- destinatarios y correo de aprobación ----------------
+const rolDef = (c) => c.rolDef || (c.copia ? 'copia' : '');
 const etiquetaContacto = (c) => c.cargo ? `${c.nombre} — ${c.cargo}` : c.nombre;
 const nrm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 function contactoDe(texto) {
@@ -548,13 +549,29 @@ function textoCorreo(x, ap, para) {
   lin.push('', `Se solicita a Logística generar la ${ORDEN[ped.tipo] || 'orden'} correspondiente.`, '', 'Atentamente,', quien(), 'Departamento de Mantenimiento');
   return lin.join('\n');
 }
+// Tabla de destinatarios del correo: Para (quien actúa) y CC (quien se informa), varios en cada uno.
+// Por defecto: Para = a quien va dirigido el informe + los marcados "Para" en Destinatarios; CC = los marcados "Copia".
+function destTabla(x) {
+  const conCorreo = CONTACTOS.filter(c => c.correo);
+  if (!conCorreo.length) return '<div class="sub" id="eDest" style="margin-top:10px">Aún no hay destinatarios con correo. Regístrelos en Destinatarios.</div>';
+  const dir = contactoDe(x.dirigido);
+  const enPara = (c) => (dir && dir.id === c.id) || rolDef(c) === 'para';
+  return `<div id="eDest" style="margin-top:10px;max-height:220px;overflow:auto;border:1px solid rgba(255,255,255,.1);border-radius:12px">
+    <table class="table" style="font-size:13.5px"><thead><tr><th style="padding:10px 14px">Destinatario</th><th style="padding:10px 14px;text-align:center;width:70px">Para</th><th style="padding:10px 14px;text-align:center;width:70px">CC</th></tr></thead>
+    <tbody>${conCorreo.map(c => `<tr><td style="padding:8px 14px"><div style="font-weight:500">${esc(c.nombre)}</div><div class="sub" style="margin:0">${esc(c.cargo || c.correo)}</div></td>
+      <td style="padding:8px 14px;text-align:center"><input type="checkbox" class="eTo" value="${c.id}" aria-label="Para: ${esc(c.nombre)}" style="width:18px;height:18px;accent-color:var(--mint)" ${enPara(c) ? 'checked' : ''}></td>
+      <td style="padding:8px 14px;text-align:center"><input type="checkbox" class="eCC" value="${c.id}" aria-label="CC: ${esc(c.nombre)}" style="width:18px;height:18px;accent-color:var(--mint)" ${!enPara(c) && rolDef(c) === 'copia' ? 'checked' : ''}></td></tr>`).join('')}</tbody></table></div>`;
+}
 function abrirCorreo(x, ap) {
-  const para = CONTACTOS.find(c => c.id === ap.paraId) || contactoDe(ap.por) || contactoDe(x.dirigido);
-  const cc = CONTACTOS.filter(c => (ap.ccIds || []).includes(c.id) && c.correo).map(c => c.correo);
-  if (!para?.correo) { toast('El destinatario no tiene correo registrado. Agréguelo en Destinatarios.', 'err'); return false; }
+  const ids = ap.paraIds || (ap.paraId ? [ap.paraId] : []);
+  let paraL = CONTACTOS.filter(c => ids.includes(c.id) && c.correo);
+  if (!paraL.length) { const c = contactoDe(ap.por) || contactoDe(x.dirigido); if (c?.correo) paraL = [c]; }
+  const para = paraL[0];
+  const cc = CONTACTOS.filter(c => (ap.ccIds || []).includes(c.id) && c.correo && !paraL.includes(c)).map(c => c.correo);
+  if (!paraL.length) { toast('Elija al menos un destinatario con correo registrado (Destinatarios).', 'err'); return false; }
   const pd = pedidoDe(x, ap);
   const asunto = `Aprobado${pd.tipo && pd.num ? ' — ' + pd.tipo + ' ' + pd.num : ''} · ${x.titulo}`;
-  const url = `mailto:${encodeURIComponent(para.correo)}?${cc.length ? 'cc=' + encodeURIComponent(cc.join(',')) + '&' : ''}subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(textoCorreo(x, ap, para))}`;
+  const url = `mailto:${paraL.map(c => encodeURIComponent(c.correo)).join(',')}?${cc.length ? 'cc=' + encodeURIComponent(cc.join(',')) + '&' : ''}subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(textoCorreo(x, ap, para))}`;
   const a = document.createElement('a'); a.href = url; document.body.appendChild(a); a.click(); a.remove();
   return true;
 }
@@ -577,17 +594,18 @@ function cambiarEstado(x, accion, mFicha) {
         <div style="grid-column:1/-1"><label class="label" for="eDet">Resumen de lo aprobado</label><textarea class="field" id="eDet" rows="3" style="height:auto;padding:12px 16px;line-height:1.5">${esc(x.resumen || x.titulo || '')}</textarea></div>` : ''}
       <div style="grid-column:1/-1"><label class="label" for="eNot">${accion === 'observar' ? 'Observaciones recibidas' : 'Nota (opcional)'}</label><textarea class="field" id="eNot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5"></textarea></div>
       ${accion === 'aprobar' ? `<div style="grid-column:1/-1" class="box">
-        <label class="check"><input type="checkbox" id="eMail" checked>Preparar correo de aprobación (resumen para el destinatario y Logística)</label>
-        <div class="g2" style="margin-top:10px"><div><label class="label" for="ePara">Para</label><select class="field" id="ePara"><option value="">— Elija destinatario —</option>${CONTACTOS.map(c => `<option value="${c.id}" ${c.correo ? '' : 'disabled'}>${esc(etiquetaContacto(c))}${c.correo ? '' : ' (sin correo)'}</option>`).join('')}</select></div>
-          <div><span class="label">Con copia</span><div style="display:flex;flex-direction:column;gap:6px;max-height:110px;overflow:auto">${CONTACTOS.filter(c => c.correo).map(c => `<label class="check" style="font-size:13px"><input type="checkbox" class="eCC" value="${c.id}" ${c.copia ? 'checked' : ''}>${esc(c.nombre)}</label>`).join('') || '<span class="sub">Sin destinatarios con correo</span>'}</div></div></div>
+        <label class="check"><input type="checkbox" id="eMail" checked>Preparar correo de aprobación (resumen informativo)</label>
+        ${destTabla(x)}
         <div class="sub" style="margin-top:8px">Se abre su correo con el resumen listo para enviar: trabajo, área, proveedor, monto, pedido y fecha de aprobación, con el pedido a Logística de generar la OSR u OCO. <a href="#destinatarios">Gestionar destinatarios</a></div></div>` : ''}
       ${conAprob ? `<div style="grid-column:1/-1"><label class="label" for="eEv">Evidencia (correo o acta en PDF/imagen, opcional)</label><input class="field" id="eEv" type="file" accept=".pdf,image/*,.html" style="padding-top:11px"></div>` : ''}
     </div><div class="bar" id="bar" hidden><div></div></div>`,
     pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="eOk">Confirmar</button>` });
   if (m.$('#eEv')) m.$('#eEv').onchange = (e) => { evid = e.target.files[0] || null; };
-  if (m.$('#ePara')) {
-    const c0 = contactoDe(x.dirigido); if (c0 && c0.correo) m.$('#ePara').value = c0.id;
-    m.$('#ePara').onchange = () => { const c = CONTACTOS.find(k => k.id === m.$('#ePara').value); if (c) m.$('#ePor').value = etiquetaContacto(c); };
+  if (m.$('#eDest')) {
+    // una persona va en Para o en CC, no en ambos
+    m.bg.querySelectorAll('.eTo,.eCC').forEach(ch => ch.onchange = () => {
+      if (ch.checked) { const otro = m.bg.querySelector(`.${ch.classList.contains('eTo') ? 'eCC' : 'eTo'}[value="${ch.value}"]`); if (otro) otro.checked = false; }
+    });
     m.bg.querySelectorAll('a[href="#destinatarios"]').forEach(a => a.onclick = () => { m.cerrar(); mFicha.cerrar(); });
   }
   m.form.onsubmit = async (ev) => {
@@ -604,10 +622,10 @@ function cambiarEstado(x, accion, mFicha) {
           ap.montoAprobado = m.$('#eMto').value === '' ? null : +m.$('#eMto').value;
           ap.area = m.$('#eArea').value; ap.pedidoTipo = m.$('#ePed').value; ap.pedidoNum = fmtPedido(m.$('#ePedN').value);
           ap.detalle = m.$('#eDet').value.trim();
-          ap.paraId = m.$('#ePara').value || null;
+          ap.paraIds = [...m.bg.querySelectorAll('.eTo:checked')].map(i => i.value);
           ap.ccIds = [...m.bg.querySelectorAll('.eCC:checked')].map(i => i.value);
-          if (m.$('#eMail').checked && !ap.paraId) { b.disabled = false; return m.err('Elija el destinatario del correo o desmarque "Preparar correo".'); }
-          if (m.$('#eMail').checked) ap.correo = { preparado: ahora(), para: (CONTACTOS.find(c => c.id === ap.paraId) || {}).correo || '' };
+          if (m.$('#eMail').checked && !ap.paraIds.length) { b.disabled = false; return m.err('Marque al menos un destinatario en "Para" o desmarque "Preparar correo".'); }
+          if (m.$('#eMail').checked) ap.correo = { preparado: ahora(), para: CONTACTOS.filter(c => ap.paraIds.includes(c.id)).map(c => c.correo).join(', ') };
         }
         if (evid) { m.$('#bar').hidden = false; ap.evidencia = await subirArchivo(x.id, 'aprobacion', evid, (p) => m.$('#bar div').style.width = Math.round(p * 100) + '%'); }
         upd.aprobacion = ap;
@@ -629,11 +647,11 @@ function vistaDestinatarios(main) {
   main.innerHTML = `
     <div class="pagehead"><div><div class="eyebrow rise">Informes técnicos</div><h1 class="h-display rise d1">Destinatarios</h1></div>
       ${ed ? '<button class="btn btn-primary rise d2" id="bNC"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo destinatario</button>' : ''}</div>
-    <p class="muted rise d2" style="margin:-6px 0 18px;line-height:1.6;max-width:760px">Personas a quienes se dirigen los informes. Su correo se usa para preparar el correo de aprobación. Los marcados con "Copia" se incluyen en copia por defecto (por ejemplo, Logística).</p>
+    <p class="muted rise d2" style="margin:-6px 0 18px;line-height:1.6;max-width:760px">Personas a quienes se dirigen los informes. Su correo se usa para preparar el correo de aprobación. En cada correo se pueden elegir varios destinatarios en Para y en Copia; aquí se define quién aparece marcado por defecto.</p>
     <div class="glass rise d3 tbl-wrap"><table class="table" style="min-width:720px">
-      <thead><tr><th>Nombre</th><th>Cargo</th><th>Correo</th><th>Área</th><th>Copia</th><th></th></tr></thead>
+      <thead><tr><th>Nombre</th><th>Cargo</th><th>Correo</th><th>Área</th><th>Por defecto</th><th></th></tr></thead>
       <tbody>${CONTACTOS.map(c => `<tr><td style="font-weight:500">${esc(c.nombre)}</td><td style="font-size:13.5px">${esc(c.cargo || '')}</td><td class="mono" style="font-size:12.5px">${esc(c.correo || '—')}</td>
-        <td style="font-size:13.5px">${esc(c.area || '')}</td><td>${c.copia ? '<span class="pill" style="background:rgba(111,227,207,.16);color:#8FF0DE">Copia</span>' : ''}</td>
+        <td style="font-size:13.5px">${esc(c.area || '')}</td><td>${rolDef(c) === 'para' ? '<span class="pill" style="background:rgba(124,200,248,.16);color:#9ED6FA">Para</span>' : rolDef(c) === 'copia' ? '<span class="pill" style="background:rgba(111,227,207,.16);color:#8FF0DE">Copia</span>' : ''}</td>
         <td style="text-align:right">${ed ? `<button class="btn" data-ec="${c.id}" style="height:36px;font-size:12.5px">Editar</button>` : ''}</td></tr>`).join('')
         || '<tr><td colspan="6" class="muted" style="padding:28px 20px">Aún no hay destinatarios registrados.</td></tr>'}</tbody></table></div>`;
   if (main.querySelector('#bNC')) main.querySelector('#bNC').onclick = () => editarContacto(null);
@@ -647,13 +665,14 @@ function editarContacto(c) {
       <div><label class="label" for="cCar">Cargo</label><input class="field" id="cCar" value="${esc(v.cargo)}" placeholder="Jefe de Operaciones"></div>
       <div><label class="label" for="cMail">Correo</label><input class="field" id="cMail" type="email" value="${esc(v.correo)}"></div>
       <div><label class="label" for="cArea">Área</label><input class="field" id="cArea" value="${esc(v.area)}" placeholder="Operaciones"></div>
-      <div style="grid-column:1/-1"><label class="check"><input type="checkbox" id="cCopia" ${v.copia ? 'checked' : ''}>Incluir en copia por defecto en los correos de aprobación</label></div></div>`,
+      <div style="grid-column:1/-1"><label class="label" for="cRol">En los correos de aprobación, incluir por defecto en</label>
+        <select class="field" id="cRol"><option value="">No incluir (se elige en cada correo)</option><option value="para" ${rolDef(v) === 'para' ? 'selected' : ''}>Para (debe actuar, p. ej. Logística)</option><option value="copia" ${rolDef(v) === 'copia' ? 'selected' : ''}>Copia (solo informado)</option></select></div></div>`,
     pie: `${nuevo ? '' : '<button type="button" class="btn btn-danger" id="cDel" style="margin-right:auto">Eliminar</button>'}<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button>` });
   const guardar = async (lista) => { await setDoc(docContactos(), { lista, actualizado: serverTimestamp() }); };
   if (m.$('#cDel')) m.$('#cDel').onclick = async () => { await guardar(CONTACTOS.filter(k => k.id !== c.id)); m.cerrar(); toast('Destinatario eliminado.'); };
   m.form.onsubmit = async (ev) => {
     ev.preventDefault(); m.err('');
-    const d = { id: v.id || ('c' + Date.now().toString(36)), nombre: m.$('#cNom').value.trim(), cargo: m.$('#cCar').value.trim(), correo: m.$('#cMail').value.trim().toLowerCase(), area: m.$('#cArea').value.trim(), copia: m.$('#cCopia').checked };
+    const d = { id: v.id || ('c' + Date.now().toString(36)), nombre: m.$('#cNom').value.trim(), cargo: m.$('#cCar').value.trim(), correo: m.$('#cMail').value.trim().toLowerCase(), area: m.$('#cArea').value.trim(), rolDef: m.$('#cRol').value, copia: m.$('#cRol').value === 'copia' };
     if (!d.nombre) return m.err('Ingrese el nombre.');
     if (d.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.correo)) return m.err('El correo no es válido.');
     try { await guardar(nuevo ? CONTACTOS.concat([d]) : CONTACTOS.map(k => k.id === d.id ? d : k)); m.cerrar(); toast('Destinatario guardado.'); }
