@@ -163,7 +163,12 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   trabajo, área, proveedor y cotización, monto aprobado, pedido PSR/PED, aprobado por, código del informe y fecha; pide a Logística
   generar la OSR (PSR) u OCO (PED). Varios destinatarios en Para y en CC (tabla en la aprobación); por defecto Para = a quien va dirigido
   el informe + contactos con `rolDef: "para"` (p. ej. Logística) y CC = `rolDef: "copia"`. Se guardan `aprobacion.paraIds` y `aprobacion.ccIds`. Asunto: "Aprobado — PSR 0004521 · <trabajo>".
+  Método por defecto (el usuario usa Outlook de escritorio): descarga de un borrador `.eml` con `X-Unsent: 1` (se abre en Outlook como correo
+  nuevo) con To/Cc, asunto, cuerpo texto + HTML (tabla) y adjuntos: informe vigente + documentos adjuntos elegidos. Alternativa: mailto (sin
+  adjuntos; el estándar mailto no admite archivos). El método elegido se recuerda en el navegador (`sim_inf_metodo`).
   Envío 100 % automático requeriría un intermediario (Apps Script o servicio externo); se descartó por ahora.
+- Documentos adjuntos del informe (`adjuntos[]`: archivo + `etiqueta` PSR|PED|Cotización|OS|OC|Acta|Documento, detectada por el nombre):
+  se suben desde la ficha (varios a la vez), se ven, se quitan y aparecen en Almacenamiento.
 - Estados: borrador → presentado → aprobado | observado | rechazado; observado → presentado (con nueva versión).
   La aprobación la registra Admin/Supervisor con la evidencia (correo o acta); Gerencia no entra al SIM.
 - Al cargar un HTML o PDF, se autollenan título, tipo, fecha, dirigido, proveedor, monto y cotización. PDF: pdf.js 3.11.174 (cdnjs, carga bajo demanda),
@@ -196,3 +201,4 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-22 — Informes: corrige documentos que no se guardaban sin Enter; pedido PSR/PED propio del informe y en el correo.
 - 2026-10-22 — Informes: correo de aprobación pasa a resumen informativo para Logística (sin pedir confirmación).
 - 2026-10-22 — Informes: varios destinatarios en Para y en CC; rol por defecto de cada destinatario.
+- 2026-10-22 — Informes: documentos adjuntos (PSR, cotización…) y borrador .eml para Outlook con adjuntos automáticos.

@@ -210,6 +210,9 @@ async function mostrarPDF(blob, cont) {
   }
 }
 
+const etiquetaAdjunto = (n) => /\bPSR\b|pedido.?de.?servicio/i.test(n) ? 'PSR' : /\bPED\b|pedido/i.test(n) ? 'PED'
+  : /cot/i.test(n) ? 'Cotización' : /\bOSR?\b|orden.?de.?servicio/i.test(n) ? 'OS' : /\bOCO?\b|orden.?de.?compra/i.test(n) ? 'OC' : /acta|conformidad/i.test(n) ? 'Acta' : 'Documento';
+
 // ---------------- código correlativo ----------------
 async function nuevoCodigo() {
   const aa = String(new Date().getFullYear()).slice(-2);
@@ -394,6 +397,7 @@ async function ficha(id) {
   const relEd = escribe();                       // las relaciones y el pedido se pueden completar aun después de aprobado
   const disR = relEd ? '' : 'disabled';
   const ped = pedidoDe(x);
+  const adjs = x.adjuntos || [];
   const vers = (x.versiones || []).slice().sort((a, b) => b.ver - a.ver);
   const ap = x.aprobacion;
   const m = modal({ titulo: `<span class="cod" style="font-size:13px">${esc(x.codigo)}</span><div>${esc(x.titulo)}</div>`, ancho: 1040,
@@ -425,6 +429,12 @@ async function ficha(id) {
           ${v.retirado ? '' : `<button type="button" class="btn" data-v="${v.ver}" style="height:34px;font-size:12.5px">Ver</button>`}</div>`).join('')}
           ${escribe() && !cerrado ? `<button type="button" class="btn" id="bNV" style="height:38px;margin-top:10px;width:100%">Subir nueva versión</button><input type="file" id="fNV" accept=".html,.htm,.pdf" class="sr">` : ''}
           <div class="bar" id="barNV" hidden><div></div></div></div>
+        <div class="box"><h4>Documentos adjuntos</h4>
+          ${adjs.filter(a => !a.retirado).map(a => `<div class="it"><div style="min-width:0"><b>${esc(a.etiqueta || 'Documento')}</b> <span class="sub" style="display:block;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.nombre)} · ${fmtBytes(a.bytes)}</span></div>
+            <div style="display:flex;gap:6px;flex-shrink:0"><button type="button" class="btn" data-adj="${a.fid}" data-t="${esc((a.etiqueta || 'Documento') + ' — ' + x.codigo)}" style="height:34px;font-size:12.5px">Ver</button>${relEd ? `<button type="button" class="btn btn-icon" data-qadj="${a.fid}" aria-label="Quitar ${esc(a.nombre)}" style="width:34px;height:34px">×</button>` : ''}</div></div>`).join('')
+            || '<div class="sub">PSR, PED, cotización u otros documentos que acompañan al informe. Se adjuntan solos al correo de aprobación.</div>'}
+          ${relEd ? `<button type="button" class="btn" id="bAdj" style="height:38px;margin-top:10px;width:100%">Agregar documentos</button><input type="file" id="fAdj" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.html,.htm" multiple class="sr">` : ''}
+          <div class="bar" id="barAdj" hidden><div></div></div></div>
         <div class="box"><h4>Historial</h4><div class="tl">${(x.historial || []).slice().reverse().map(h => `<div class="e" style="--c:${(ESTADOS_INF[h.estado] || ESTADOS_INF.borrador).fg}"><b>${esc((ESTADOS_INF[h.estado] || {}).label || h.estado)}</b> · ${fmtF(h.fecha)}<div class="sub">${esc(h.nota || '')}${h.por ? ' — ' + esc(h.por) : ''}</div></div>`).join('')}</div></div>
       </div></div>`,
     pie: relEd ? `<button type="button" class="btn" data-x>Cerrar</button><button type="submit" class="btn btn-primary" id="bG">Guardar cambios</button>` : `<button type="button" class="btn" data-x>Cerrar</button>` });
@@ -432,10 +442,36 @@ async function ficha(id) {
   m.$('#bVer').onclick = () => verArchivo(x.archivo, x.titulo);
   m.bg.querySelectorAll('[data-v]').forEach(b => b.onclick = () => verArchivo(vers.find(v => String(v.ver) === b.dataset.v), `${x.titulo} — v${b.dataset.v}`));
   if (m.$('#bEvi')) m.$('#bEvi').onclick = () => verArchivo(ap.evidencia, 'Evidencia de aprobación');
-  if (m.$('#bMail')) m.$('#bMail').onclick = async () => {
-    agregarDoc();
-    if (abrirCorreo(estadoActual(), ap) && !ap.correo) await updateDoc(doc(colInf(), x.id), { 'aprobacion.correo': { preparado: ahora(), para: CONTACTOS.filter(c => (ap.paraIds || [ap.paraId]).includes(c.id)).map(c => c.correo).join(', ') } }).catch(() => {});
-  };
+  if (m.$('#bMail')) m.$('#bMail').onclick = () => { agregarDoc(); modalCorreo(estadoActual(), ap); };
+  // documentos adjuntos (PSR, cotización, etc.)
+  m.bg.querySelectorAll('[data-adj]').forEach(b => b.onclick = () => verArchivo(adjs.find(a => a.fid === b.dataset.adj), b.dataset.t));
+  m.bg.querySelectorAll('[data-qadj]').forEach(b => b.onclick = async () => {
+    const a = adjs.find(k => k.fid === b.dataset.qadj); if (!a || !confirm(`¿Quitar ${a.nombre} del informe? El archivo se elimina del SIM.`)) return;
+    try {
+      await borrarArchivo('inf', a);
+      const sx = (await getDoc(doc(colInf(), x.id))).data();
+      await updateDoc(doc(colInf(), x.id), { adjuntos: (sx.adjuntos || []).filter(k => k.fid !== a.fid), actualizado: serverTimestamp(),
+        historial: arrayUnion({ fecha: ahora(), estado: sx.estado, nota: `Adjunto retirado: ${a.nombre}`, por: quien() }) });
+      await setDoc(docUso(), { bytes: increment(-(+a.bytes || 0)), archivos: increment(-1), actualizado: serverTimestamp() }, { merge: true });
+      toast('Adjunto retirado.'); m.cerrar(); setTimeout(() => ficha(x.id), 300);
+    } catch (e) { toast('No se pudo retirar: ' + (e.code || e.message), 'err'); }
+  });
+  if (m.$('#bAdj')) {
+    m.$('#bAdj').onclick = () => m.$('#fAdj').click();
+    m.$('#fAdj').onchange = async (e) => {
+      const files = [...e.target.files]; if (!files.length) return;
+      m.$('#barAdj').hidden = false;
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i];
+          const a = await subirArchivo(x.id, 'adjunto', f, (p) => m.$('#barAdj div').style.width = Math.round(((i + p) / files.length) * 100) + '%');
+          a.etiqueta = etiquetaAdjunto(f.name);
+          await updateDoc(doc(colInf(), x.id), { adjuntos: arrayUnion(a), actualizado: serverTimestamp() });
+        }
+        toast(files.length > 1 ? `${files.length} documentos adjuntados.` : 'Documento adjuntado.'); m.cerrar(); setTimeout(() => ficha(x.id), 300);
+      } catch (er) { toast('No se pudo adjuntar: ' + (er.code || er.message), 'err'); m.$('#barAdj').hidden = true; }
+    };
+  }
 
   // relaciones
   let eqIds = [...(x.eqIds || [])], eqCods = [...(x.eqCods || [])], docs = [...(x.docs || [])];
@@ -535,45 +571,154 @@ function pedidoDe(x, ap = x.aprobacion || {}) {
 const otrosDocs = (x, ped) => (x.docs || []).filter(d => !(ped.num && String(d).toUpperCase().includes(String(ped.num).toUpperCase()) && /PSR|PED/i.test(d)));
 const fmtFechaCorta = (iso) => iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
 const ORDEN = { PSR: 'OSR (orden de servicio)', PED: 'OCO (orden de compra)' };
-function textoCorreo(x, ap, para) {
+function datosCorreo(x, ap) {
   const ped = pedidoDe(x, ap);
-  const lin = ['Estimados:', '', `Se comunica la aprobación del siguiente requerimiento, expuesto y aprobado el ${fmtFechaCorta(ap.fecha)}:`, ''];
-  lin.push(`Trabajo: ${x.titulo}`);
-  if (ap.area || x.area) lin.push(`Área: ${ap.area || x.area}`);
-  if (x.proveedor) { const cot = (x.docs || []).find(d => /^cot/i.test(d)); lin.push(`Proveedor: ${x.proveedor}${cot ? ' (' + cot + ')' : ''}`); }
-  if (ap.montoAprobado != null) lin.push(`Monto aprobado: ${money(ap.montoAprobado, ap.monedaAprobada)} sin IGV`);
-  if (ped.tipo || ped.num) lin.push(`Pedido: ${ped.tipo || ''}${ped.num ? ' ' + ped.num : ' por emitir'}${ped.tipo ? ' (' + (ped.tipo === 'PSR' ? 'servicio' : 'materiales') + ')' : ''}`);
-  if (ap.por) lin.push(`Aprobado por: ${ap.por}`);
-  lin.push(`Informe: ${x.codigo}`);
-  if (ap.detalle && ap.detalle !== x.titulo) lin.push('', 'Detalle: ' + (ap.detalle.length > 320 ? ap.detalle.slice(0, 317).trim() + '…' : ap.detalle));
-  lin.push('', `Se solicita a Logística generar la ${ORDEN[ped.tipo] || 'orden'} correspondiente.`, '', 'Atentamente,', quien(), 'Departamento de Mantenimiento');
+  const filas = [['Trabajo', x.titulo]];
+  if (ap.area || x.area) filas.push(['Área', ap.area || x.area]);
+  if (x.proveedor) { const cot = (x.docs || []).find(d => /^cot/i.test(d)); filas.push(['Proveedor', `${x.proveedor}${cot ? ' (' + cot + ')' : ''}`]); }
+  if (ap.montoAprobado != null) filas.push(['Monto aprobado', `${money(ap.montoAprobado, ap.monedaAprobada)} sin IGV`]);
+  if (ped.tipo || ped.num) filas.push(['Pedido', `${ped.tipo || ''}${ped.num ? ' ' + ped.num : ' por emitir'}${ped.tipo ? ' (' + (ped.tipo === 'PSR' ? 'servicio' : 'materiales') + ')' : ''}`]);
+  if (ap.por) filas.push(['Aprobado por', ap.por]);
+  filas.push(['Informe', x.codigo]);
+  const detalle = ap.detalle && ap.detalle !== x.titulo ? (ap.detalle.length > 320 ? ap.detalle.slice(0, 317).trim() + '…' : ap.detalle) : '';
+  return {
+    asunto: `Aprobado${ped.tipo && ped.num ? ' — ' + ped.tipo + ' ' + ped.num : ''} · ${x.titulo}`,
+    intro: `Se comunica la aprobación del siguiente requerimiento, expuesto y aprobado el ${fmtFechaCorta(ap.fecha)}:`,
+    filas, detalle,
+    cierre: `Se solicita a Logística generar la ${ORDEN[ped.tipo] || 'orden'} correspondiente.`,
+    firma: [quien(), 'Departamento de Mantenimiento']
+  };
+}
+function textoCorreo(x, ap) {
+  const d = datosCorreo(x, ap);
+  const lin = ['Estimados:', '', d.intro, '', ...d.filas.map(([k, v]) => `${k}: ${v}`)];
+  if (d.detalle) lin.push('', 'Detalle: ' + d.detalle);
+  lin.push('', d.cierre, '', 'Atentamente,', ...d.firma);
   return lin.join('\n');
 }
+function htmlCorreo(x, ap, adjuntos) {
+  const d = datosCorreo(x, ap);
+  const td = 'padding:7px 14px;border-bottom:1px solid #E3E8EE;font-size:14px;vertical-align:top';
+  return `<!doctype html><html><body style="margin:0;font-family:'Segoe UI',Calibri,Arial,sans-serif;color:#1B2733;font-size:14px;line-height:1.5">
+<p>Estimados:</p><p>${esc(d.intro)}</p>
+<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #D5DCE4;border-left:4px solid #2BA6A0;min-width:420px">
+${d.filas.map(([k, v]) => `<tr><td style="${td};color:#5D7086;white-space:nowrap;background:#F5F7F9">${esc(k)}</td><td style="${td};font-weight:${/Monto|Pedido/.test(k) ? '600' : '400'}">${esc(v)}</td></tr>`).join('')}
+</table>
+${d.detalle ? `<p style="margin-top:14px"><span style="color:#5D7086">Detalle:</span> ${esc(d.detalle)}</p>` : ''}
+${adjuntos && adjuntos.length ? `<p style="color:#5D7086;font-size:13px">Adjuntos: ${adjuntos.map(esc).join(' · ')}</p>` : ''}
+<p><b>${esc(d.cierre)}</b></p>
+<p>Atentamente,<br>${d.firma.map(esc).join('<br>')}</p></body></html>`;
+}
+
 // Tabla de destinatarios del correo: Para (quien actúa) y CC (quien se informa), varios en cada uno.
 // Por defecto: Para = a quien va dirigido el informe + los marcados "Para" en Destinatarios; CC = los marcados "Copia".
-function destTabla(x) {
+function destTabla(x, ap = null) {
   const conCorreo = CONTACTOS.filter(c => c.correo);
+  const yaPara = ap?.paraIds || (ap?.paraId ? [ap.paraId] : null), yaCC = ap?.ccIds || null;
   if (!conCorreo.length) return '<div class="sub" id="eDest" style="margin-top:10px">Aún no hay destinatarios con correo. Regístrelos en Destinatarios.</div>';
   const dir = contactoDe(x.dirigido);
-  const enPara = (c) => (dir && dir.id === c.id) || rolDef(c) === 'para';
+  const enPara = (c) => yaPara ? yaPara.includes(c.id) : ((dir && dir.id === c.id) || rolDef(c) === 'para');
+  const enCC = (c) => yaCC ? yaCC.includes(c.id) && !enPara(c) : (!enPara(c) && rolDef(c) === 'copia');
   return `<div id="eDest" style="margin-top:10px;max-height:220px;overflow:auto;border:1px solid rgba(255,255,255,.1);border-radius:12px">
     <table class="table" style="font-size:13.5px"><thead><tr><th style="padding:10px 14px">Destinatario</th><th style="padding:10px 14px;text-align:center;width:70px">Para</th><th style="padding:10px 14px;text-align:center;width:70px">CC</th></tr></thead>
     <tbody>${conCorreo.map(c => `<tr><td style="padding:8px 14px"><div style="font-weight:500">${esc(c.nombre)}</div><div class="sub" style="margin:0">${esc(c.cargo || c.correo)}</div></td>
       <td style="padding:8px 14px;text-align:center"><input type="checkbox" class="eTo" value="${c.id}" aria-label="Para: ${esc(c.nombre)}" style="width:18px;height:18px;accent-color:var(--mint)" ${enPara(c) ? 'checked' : ''}></td>
-      <td style="padding:8px 14px;text-align:center"><input type="checkbox" class="eCC" value="${c.id}" aria-label="CC: ${esc(c.nombre)}" style="width:18px;height:18px;accent-color:var(--mint)" ${!enPara(c) && rolDef(c) === 'copia' ? 'checked' : ''}></td></tr>`).join('')}</tbody></table></div>`;
+      <td style="padding:8px 14px;text-align:center"><input type="checkbox" class="eCC" value="${c.id}" aria-label="CC: ${esc(c.nombre)}" style="width:18px;height:18px;accent-color:var(--mint)" ${enCC(c) ? 'checked' : ''}></td></tr>`).join('')}</tbody></table></div>`;
 }
-function abrirCorreo(x, ap) {
+function destinatarios(x, ap) {
   const ids = ap.paraIds || (ap.paraId ? [ap.paraId] : []);
   let paraL = CONTACTOS.filter(c => ids.includes(c.id) && c.correo);
   if (!paraL.length) { const c = contactoDe(ap.por) || contactoDe(x.dirigido); if (c?.correo) paraL = [c]; }
-  const para = paraL[0];
-  const cc = CONTACTOS.filter(c => (ap.ccIds || []).includes(c.id) && c.correo && !paraL.includes(c)).map(c => c.correo);
+  const ccL = CONTACTOS.filter(c => (ap.ccIds || []).includes(c.id) && c.correo && !paraL.includes(c));
+  return { paraL, ccL };
+}
+function abrirCorreo(x, ap) {
+  const { paraL, ccL } = destinatarios(x, ap);
   if (!paraL.length) { toast('Elija al menos un destinatario con correo registrado (Destinatarios).', 'err'); return false; }
-  const pd = pedidoDe(x, ap);
-  const asunto = `Aprobado${pd.tipo && pd.num ? ' — ' + pd.tipo + ' ' + pd.num : ''} · ${x.titulo}`;
-  const url = `mailto:${paraL.map(c => encodeURIComponent(c.correo)).join(',')}?${cc.length ? 'cc=' + encodeURIComponent(cc.join(',')) + '&' : ''}subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(textoCorreo(x, ap, para))}`;
+  const url = `mailto:${paraL.map(c => encodeURIComponent(c.correo)).join(',')}?${ccL.length ? 'cc=' + encodeURIComponent(ccL.map(c => c.correo).join(',')) + '&' : ''}subject=${encodeURIComponent(datosCorreo(x, ap).asunto)}&body=${encodeURIComponent(textoCorreo(x, ap))}`;
   const a = document.createElement('a'); a.href = url; document.body.appendChild(a); a.click(); a.remove();
   return true;
+}
+
+// ---- Borrador de correo para Outlook de escritorio (.eml con X-Unsent: se abre como correo nuevo, con adjuntos) ----
+const CRLF = '\r\n';
+const b64txt = (t) => { const u = new TextEncoder().encode(t); let b = ''; for (let i = 0; i < u.length; i += 0x8000) b += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(b); };
+const b64blob = async (blob) => { const u = new Uint8Array(await blob.arrayBuffer()); let b = ''; for (let i = 0; i < u.length; i += 0x8000) b += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(b); };
+const cortar76 = (b) => b.replace(/.{1,76}/g, '$&' + CRLF);
+const cab = (t) => {   // encabezado con tildes: palabras codificadas de hasta ~30 caracteres
+  if (/^[\x20-\x7e]*$/.test(t)) return t;
+  const trozos = []; for (let i = 0; i < t.length; i += 30) trozos.push(`=?UTF-8?B?${b64txt(t.slice(i, i + 30))}?=`);
+  return trozos.join(CRLF + ' ');
+};
+const dir = (c) => `${cab(c.nombre)} <${c.correo}>`;
+const mimeDe = (a) => a.tipo || (/\.pdf$/i.test(a.nombre) ? 'application/pdf' : /\.html?$/i.test(a.nombre) ? 'text/html' : 'application/octet-stream');
+
+function adjCandidatos(x) {
+  const out = [];
+  if (x.archivo && !x.archivo.retirado) out.push({ key: 'inf', etiqueta: `Informe ${x.codigo}${x.version > 1 ? ' v' + x.version : ''}`, a: x.archivo,
+    nombre: nombreSeguro(`${x.codigo.replace(/\//g, '-')}_${x.archivo.nombre}`) });
+  (x.adjuntos || []).filter(a => !a.retirado).forEach(a => out.push({ key: a.fid, etiqueta: `${a.etiqueta || 'Documento'}: ${a.nombre}`, a, nombre: nombreSeguro(a.nombre) }));
+  return out;
+}
+function seccionEnvio(x) {
+  const cands = adjCandidatos(x);
+  let met = 'eml'; try { met = localStorage.getItem('sim_inf_metodo') || 'eml'; } catch {}
+  return `<div style="margin-top:12px"><span class="label">Adjuntar</span>
+      ${cands.length ? `<div style="display:flex;flex-direction:column;gap:6px">${cands.map(c => `<label class="check" style="font-size:13.5px"><input type="checkbox" class="eAdj" value="${esc(c.key)}" checked>${esc(c.etiqueta)} <span class="sub" style="margin:0">· ${fmtBytes(c.a.bytes)}</span></label>`).join('')}</div>` : '<div class="sub">Sin archivos disponibles.</div>'}</div>
+    <div style="margin-top:12px"><label class="label" for="eMet">Cómo preparar el correo</label>
+      <select class="field" id="eMet"><option value="eml" ${met === 'eml' ? 'selected' : ''}>Outlook de escritorio — borrador con adjuntos (.eml)</option><option value="mailto" ${met === 'mailto' ? 'selected' : ''}>Otro programa — sin adjuntos</option></select></div>`;
+}
+const leerEnvio = (m) => ({ metodo: m.$('#eMet')?.value || 'mailto', adj: [...m.bg.querySelectorAll('.eAdj:checked')].map(i => i.value) });
+
+async function prepararCorreo(x, ap, { metodo, adj }) {
+  try { localStorage.setItem('sim_inf_metodo', metodo); } catch {}
+  if (metodo !== 'eml') return abrirCorreo(x, ap);
+  const { paraL, ccL } = destinatarios(x, ap);
+  if (!paraL.length) { toast('Elija al menos un destinatario con correo registrado (Destinatarios).', 'err'); return false; }
+  const sel = adjCandidatos(x).filter(c => adj.includes(c.key));
+  const total = sel.reduce((s, c) => s + (+c.a.bytes || 0), 0);
+  if (total > 15 * 1024 ** 2) toast(`Los adjuntos suman ${fmtBytes(total)}; algunos servidores de correo rechazan más de 15–20 MB.`, 'err');
+  toast(sel.length ? 'Preparando el correo con adjuntos…' : 'Preparando el correo…');
+  const d = datosCorreo(x, ap);
+  const b1 = 'SIM-mix-' + Date.now().toString(36), b2 = 'SIM-alt-' + Date.now().toString(36);
+  const partes = [
+    'X-Unsent: 1', `To: ${paraL.map(dir).join(', ')}`, ...(ccL.length ? [`Cc: ${ccL.map(dir).join(', ')}`] : []),
+    `Subject: ${cab(d.asunto)}`, `Date: ${new Date().toUTCString()}`, 'MIME-Version: 1.0', `Content-Type: multipart/mixed; boundary="${b1}"`, '',
+    `--${b1}`, `Content-Type: multipart/alternative; boundary="${b2}"`, '',
+    `--${b2}`, 'Content-Type: text/plain; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', cortar76(b64txt(textoCorreo(x, ap))),
+    `--${b2}`, 'Content-Type: text/html; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', cortar76(b64txt(htmlCorreo(x, ap, sel.map(c => c.nombre)))),
+    `--${b2}--`, ''
+  ];
+  for (const c of sel) {
+    const blob = await leerArchivo('inf', c.a);
+    partes.push(`--${b1}`, `Content-Type: ${mimeDe(c.a)}; name="${c.nombre}"`, `Content-Disposition: attachment; filename="${c.nombre}"`,
+      'Content-Transfer-Encoding: base64', '', cortar76(await b64blob(blob)));
+  }
+  partes.push(`--${b1}--`, '');
+  const ped = pedidoDe(x, ap);
+  descargarBlob(new Blob([partes.join(CRLF)], { type: 'message/rfc822' }), nombreSeguro(`Aprobado_${ped.tipo && ped.num ? ped.tipo + '_' + ped.num + '_' : ''}${x.codigo.replace(/\//g, '-')}.eml`));
+  toast('Correo descargado: ábralo desde la barra de descargas y se abrirá en Outlook listo para enviar.');
+  return true;
+}
+function modalCorreo(x, ap) {
+  const m = modal({ titulo: 'Preparar correo de aprobación', ancho: 640,
+    cuerpo: `<div class="sub" style="margin:0 0 4px">Resumen informativo para los destinatarios y Logística.</div>${destTabla(x, ap)}${seccionEnvio(x)}`,
+    pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="mcOk">Preparar correo</button>` });
+  m.bg.querySelectorAll('.eTo,.eCC').forEach(ch => ch.onchange = () => { if (ch.checked) { const o = m.bg.querySelector(`.${ch.classList.contains('eTo') ? 'eCC' : 'eTo'}[value="${ch.value}"]`); if (o) o.checked = false; } });
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault(); m.err('');
+    const ap2 = { ...ap, paraIds: [...m.bg.querySelectorAll('.eTo:checked')].map(i => i.value), ccIds: [...m.bg.querySelectorAll('.eCC:checked')].map(i => i.value) };
+    if (!ap2.paraIds.length) return m.err('Marque al menos un destinatario en "Para".');
+    m.$('#mcOk').disabled = true;
+    try {
+      const env = leerEnvio(m);
+      if (await prepararCorreo(x, ap2, env)) {
+        await updateDoc(doc(colInf(), x.id), { 'aprobacion.paraIds': ap2.paraIds, 'aprobacion.ccIds': ap2.ccIds,
+          'aprobacion.correo': { preparado: ahora(), metodo: env.metodo, para: destinatarios(x, ap2).paraL.map(c => c.correo).join(', ') } }).catch(() => {});
+        m.cerrar();
+      } else m.$('#mcOk').disabled = false;
+    } catch (e) { m.err('No se pudo preparar el correo: ' + (e.code || e.message)); m.$('#mcOk').disabled = false; }
+  };
 }
 
 function cambiarEstado(x, accion, mFicha) {
@@ -595,8 +740,8 @@ function cambiarEstado(x, accion, mFicha) {
       <div style="grid-column:1/-1"><label class="label" for="eNot">${accion === 'observar' ? 'Observaciones recibidas' : 'Nota (opcional)'}</label><textarea class="field" id="eNot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5"></textarea></div>
       ${accion === 'aprobar' ? `<div style="grid-column:1/-1" class="box">
         <label class="check"><input type="checkbox" id="eMail" checked>Preparar correo de aprobación (resumen informativo)</label>
-        ${destTabla(x)}
-        <div class="sub" style="margin-top:8px">Se abre su correo con el resumen listo para enviar: trabajo, área, proveedor, monto, pedido y fecha de aprobación, con el pedido a Logística de generar la OSR u OCO. <a href="#destinatarios">Gestionar destinatarios</a></div></div>` : ''}
+        ${destTabla(x)}${seccionEnvio(x)}
+        <div class="sub" style="margin-top:8px">Resumen con trabajo, área, proveedor, monto, pedido y fecha de aprobación, y el pedido a Logística de generar la OSR u OCO. <a href="#destinatarios">Gestionar destinatarios</a></div></div>` : ''}
       ${conAprob ? `<div style="grid-column:1/-1"><label class="label" for="eEv">Evidencia (correo o acta en PDF/imagen, opcional)</label><input class="field" id="eEv" type="file" accept=".pdf,image/*,.html" style="padding-top:11px"></div>` : ''}
     </div><div class="bar" id="bar" hidden><div></div></div>`,
     pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="eOk">Confirmar</button>` });
@@ -613,6 +758,7 @@ function cambiarEstado(x, accion, mFicha) {
     const fecha = m.$('#eFec').value || hoyISO(), nota = m.$('#eNot').value.trim();
     if (accion === 'observar' && !nota) return m.err('Registre las observaciones recibidas.');
     const b = m.$('#eOk'); b.disabled = true;
+    let envio = null;
     try {
       const upd = { estado: T[1], actualizado: serverTimestamp() };
       if (conAprob) {
@@ -625,7 +771,7 @@ function cambiarEstado(x, accion, mFicha) {
           ap.paraIds = [...m.bg.querySelectorAll('.eTo:checked')].map(i => i.value);
           ap.ccIds = [...m.bg.querySelectorAll('.eCC:checked')].map(i => i.value);
           if (m.$('#eMail').checked && !ap.paraIds.length) { b.disabled = false; return m.err('Marque al menos un destinatario en "Para" o desmarque "Preparar correo".'); }
-          if (m.$('#eMail').checked) ap.correo = { preparado: ahora(), para: CONTACTOS.filter(c => ap.paraIds.includes(c.id)).map(c => c.correo).join(', ') };
+          if (m.$('#eMail').checked) { envio = leerEnvio(m); ap.correo = { preparado: ahora(), metodo: envio.metodo, para: CONTACTOS.filter(c => ap.paraIds.includes(c.id)).map(c => c.correo).join(', ') }; }
         }
         if (evid) { m.$('#bar').hidden = false; ap.evidencia = await subirArchivo(x.id, 'aprobacion', evid, (p) => m.$('#bar div').style.width = Math.round(p * 100) + '%'); }
         upd.aprobacion = ap;
@@ -635,8 +781,9 @@ function cambiarEstado(x, accion, mFicha) {
       if (upd.aprobacion?.area) upd.area = upd.aprobacion.area;
       if (upd.aprobacion?.pedidoTipo || upd.aprobacion?.pedidoNum) { upd.pedidoTipo = upd.aprobacion.pedidoTipo; upd.pedidoNum = upd.aprobacion.pedidoNum; }
       await updateDoc(doc(colInf(), x.id), upd);
-      if (upd.aprobacion?.correo) abrirCorreo({ ...x, pedidoTipo: upd.pedidoTipo ?? x.pedidoTipo, pedidoNum: upd.pedidoNum ?? x.pedidoNum }, upd.aprobacion);
-      m.cerrar(); mFicha.cerrar(); toast(`${x.codigo}: ${ESTADOS_INF[T[1]].label.toLowerCase()}.`); setTimeout(() => ficha(x.id), 300);
+      m.cerrar(); mFicha.cerrar(); toast(`${x.codigo}: ${ESTADOS_INF[T[1]].label.toLowerCase()}.`);
+      if (upd.aprobacion?.correo) await prepararCorreo({ ...x, area: upd.area ?? x.area, pedidoTipo: upd.pedidoTipo ?? x.pedidoTipo, pedidoNum: upd.pedidoNum ?? x.pedidoNum }, upd.aprobacion, envio).catch(e => toast('No se pudo preparar el correo: ' + e.message, 'err'));
+      setTimeout(() => ficha(x.id), 300);
     } catch (er) { m.err('No se pudo registrar: ' + (er.code || er.message)); b.disabled = false; }
   };
 }
@@ -686,6 +833,7 @@ function archivosDe(lista) {
   lista.forEach(x => {
     (x.versiones || []).forEach(v => out.push({ inf: x, a: v, tipo: `Versión v${v.ver}`, clave: 'v' + v.ver }));
     if (x.aprobacion?.evidencia) out.push({ inf: x, a: x.aprobacion.evidencia, tipo: 'Evidencia de aprobación', clave: 'aprobacion' });
+    (x.adjuntos || []).forEach(a => out.push({ inf: x, a, tipo: `Adjunto · ${a.etiqueta || 'Documento'}`, clave: 'adj' }));
   });
   return out.sort((p, q) => String(p.a.fecha).localeCompare(String(q.a.fecha)));
 }
@@ -742,6 +890,7 @@ function retirar(z) {
       const s = await getDoc(r); const d = s.data();
       const upd = { actualizado: serverTimestamp(), historial: arrayUnion({ fecha, estado: d.estado, nota: `Archivo retirado del SIM: ${z.a.nombre}`, por: quien() }) };
       if (z.clave === 'aprobacion') upd['aprobacion.evidencia.retirado'] = fecha;
+      else if (z.clave === 'adj') upd.adjuntos = (d.adjuntos || []).map(a => a.fid === z.a.fid ? { ...a, retirado: fecha } : a);
       else {
         upd.versiones = (d.versiones || []).map(v => v.fid === z.a.fid ? { ...v, retirado: fecha } : v);
         if (d.archivo?.fid === z.a.fid) upd['archivo.retirado'] = fecha;
