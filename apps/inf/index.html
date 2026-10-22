@@ -210,8 +210,11 @@ async function mostrarPDF(blob, cont) {
   }
 }
 
-const etiquetaAdjunto = (n) => /\bPSR\b|pedido.?de.?servicio/i.test(n) ? 'PSR' : /\bPED\b|pedido/i.test(n) ? 'PED'
-  : /cot/i.test(n) ? 'Cotización' : /\bOSR?\b|orden.?de.?servicio/i.test(n) ? 'OS' : /\bOCO?\b|orden.?de.?compra/i.test(n) ? 'OC' : /acta|conformidad/i.test(n) ? 'Acta' : 'Documento';
+const palabra = (t) => new RegExp('(^|[^a-z0-9])(' + t + ')([^a-z]|$)', 'i');   // "PSR_0001", "PSR 0001", "psr-12"
+const etiquetaAdjunto = (n) => palabra('PSR').test(n) || /pedido.?de.?servicio/i.test(n) ? 'PSR' : palabra('PED').test(n) || /pedido/i.test(n) ? 'PED'
+  : /cot/i.test(n) ? 'Cotización' : palabra('OSR?').test(n) || /orden.?de.?servicio/i.test(n) ? 'OS' : palabra('OCO?').test(n) || /orden.?de.?compra/i.test(n) ? 'OC'
+  : /acta|conformidad/i.test(n) ? 'Acta' : /correo|mail|\.msg$|\.eml$/i.test(n) ? 'Correo enviado' : 'Documento';
+const etq = (a) => !a.etiqueta || a.etiqueta === 'Documento' ? etiquetaAdjunto(a.nombre || '') : a.etiqueta;  // reetiqueta los ya subidos
 
 // ---------------- código correlativo ----------------
 async function nuevoCodigo() {
@@ -306,7 +309,7 @@ function pintarTabla(main) {
   tb.innerHTML = lista.map((x, i) => `<tr class="rowbtn slide" data-id="${x.id}" style="animation-delay:${Math.min(i * 0.04, .6).toFixed(2)}s">
     <td><div class="cod">${esc(x.codigo)}${x.version > 1 ? ` · v${x.version}` : ''}</div><div class="ttl">${esc(x.titulo)}</div>${x.proveedor ? `<div class="sub">${esc(x.proveedor)}</div>` : ''}</td>
     <td style="font-size:13.5px">${esc(tipoLbl(x.tipo))}</td><td style="font-size:13.5px">${esc(x.dirigido || '—')}</td>
-    <td style="white-space:nowrap;font-size:13.5px">${fmtF(x.fecha)}</td><td class="num">${money(x.monto, x.moneda)}</td><td>${pill(x.estado)}</td></tr>`).join('')
+    <td style="white-space:nowrap;font-size:13.5px">${fmtF(x.fecha)}</td><td class="num">${money(x.monto, x.moneda)}</td><td>${pill(x.estado)}${x.estado === 'aprobado' ? (x.aprobacion?.correo?.enviado ? '<div class="sub" style="color:#8FF0DE">✓ Correo enviado</div>' : '<div class="sub" style="color:#FFCF73">Correo pendiente</div>') : ''}</td></tr>`).join('')
     || `<tr><td colspan="6" class="muted" style="padding:28px 20px">${L.length ? 'No hay informes que coincidan con el filtro.' : 'Aún no hay informes registrados.'}</td></tr>`;
   tb.querySelectorAll('[data-id]').forEach(r => r.onclick = () => ficha(r.dataset.id));
 }
@@ -422,16 +425,15 @@ async function ficha(id) {
           ${ap ? `<div style="margin-top:12px;font-size:13.5px;line-height:1.6"><b>${x.estado === 'rechazado' ? 'Rechazado' : 'Aprobado'}</b> el ${fmtF(ap.fecha)}${ap.por ? ' por ' + esc(ap.por) : ''}${ap.medio ? ' · ' + esc(ap.medio) : ''}${ap.nota ? `<div class="sub">${esc(ap.nota)}</div>` : ''}
             ${ap.montoAprobado != null ? `<div>Monto aprobado: <b>${money(ap.montoAprobado, ap.monedaAprobada)}</b></div>` : ''}
             ${ap.area || ped.tipo ? `<div class="sub">${ap.area ? 'Área: ' + esc(ap.area) : ''}${ped.tipo ? `${ap.area ? ' · ' : ''}${esc(ped.tipo)}${ped.num ? ' ' + esc(ped.num) : ' por emitir'}` : ''}</div>` : ''}
-            ${ap.correo ? `<div class="sub">Correo de aprobación preparado el ${fmtF(ap.correo.preparado)}${ap.correo.para ? ' para ' + esc(ap.correo.para) : ''}</div>` : ''}
-            ${x.estado === 'aprobado' ? `<button type="button" class="btn" id="bMail" style="height:36px;margin-top:8px;font-size:13px">Preparar correo de aprobación</button>` : ''}
+            ${x.estado === 'aprobado' ? bloqueCorreo(ap) : ''}
             ${ap.evidencia ? `<button type="button" class="btn" id="bEvi" style="height:36px;margin-top:8px;font-size:13px">Ver evidencia de aprobación</button>` : ''}</div>` : ''}</div>
         <div class="box"><h4>Versiones</h4>${vers.map(v => `<div class="it"><div><b>v${v.ver}</b> <span class="sub">${fmtF(v.fecha)} · ${fmtBytes(v.bytes)}${v.retirado ? ' · retirado' : ''}</span></div>
           ${v.retirado ? '' : `<button type="button" class="btn" data-v="${v.ver}" style="height:34px;font-size:12.5px">Ver</button>`}</div>`).join('')}
           ${escribe() && !cerrado ? `<button type="button" class="btn" id="bNV" style="height:38px;margin-top:10px;width:100%">Subir nueva versión</button><input type="file" id="fNV" accept=".html,.htm,.pdf" class="sr">` : ''}
           <div class="bar" id="barNV" hidden><div></div></div></div>
         <div class="box"><h4>Documentos adjuntos</h4>
-          ${adjs.filter(a => !a.retirado).map(a => `<div class="it"><div style="min-width:0"><b>${esc(a.etiqueta || 'Documento')}</b> <span class="sub" style="display:block;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.nombre)} · ${fmtBytes(a.bytes)}</span></div>
-            <div style="display:flex;gap:6px;flex-shrink:0"><button type="button" class="btn" data-adj="${a.fid}" data-t="${esc((a.etiqueta || 'Documento') + ' — ' + x.codigo)}" style="height:34px;font-size:12.5px">Ver</button>${relEd ? `<button type="button" class="btn btn-icon" data-qadj="${a.fid}" aria-label="Quitar ${esc(a.nombre)}" style="width:34px;height:34px">×</button>` : ''}</div></div>`).join('')
+          ${adjs.filter(a => !a.retirado).map(a => `<div class="it"><div style="min-width:0"><b>${esc(etq(a))}</b> <span class="sub" style="display:block;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.nombre)} · ${fmtBytes(a.bytes)}</span></div>
+            <div style="display:flex;gap:6px;flex-shrink:0"><button type="button" class="btn" data-adj="${a.fid}" data-t="${esc((etq(a)) + ' — ' + x.codigo)}" style="height:34px;font-size:12.5px">Ver</button>${relEd ? `<button type="button" class="btn btn-icon" data-qadj="${a.fid}" aria-label="Quitar ${esc(a.nombre)}" style="width:34px;height:34px">×</button>` : ''}</div></div>`).join('')
             || '<div class="sub">PSR, PED, cotización u otros documentos que acompañan al informe. Se adjuntan solos al correo de aprobación.</div>'}
           ${relEd ? `<button type="button" class="btn" id="bAdj" style="height:38px;margin-top:10px;width:100%">Agregar documentos</button><input type="file" id="fAdj" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.html,.htm" multiple class="sr">` : ''}
           <div class="bar" id="barAdj" hidden><div></div></div></div>
@@ -443,6 +445,7 @@ async function ficha(id) {
   m.bg.querySelectorAll('[data-v]').forEach(b => b.onclick = () => verArchivo(vers.find(v => String(v.ver) === b.dataset.v), `${x.titulo} — v${b.dataset.v}`));
   if (m.$('#bEvi')) m.$('#bEvi').onclick = () => verArchivo(ap.evidencia, 'Evidencia de aprobación');
   if (m.$('#bMail')) m.$('#bMail').onclick = () => { agregarDoc(); modalCorreo(estadoActual(), ap); };
+  if (m.$('#bEnv')) m.$('#bEnv').onclick = () => registrarEnvio(x.id, m);
   // documentos adjuntos (PSR, cotización, etc.)
   m.bg.querySelectorAll('[data-adj]').forEach(b => b.onclick = () => verArchivo(adjs.find(a => a.fid === b.dataset.adj), b.dataset.t));
   m.bg.querySelectorAll('[data-qadj]').forEach(b => b.onclick = async () => {
@@ -510,7 +513,7 @@ async function ficha(id) {
   if (escribe() && x.estado === 'borrador') acc.push(['presentar', 'Marcar como presentado']);
   if (gestor() && ['presentado', 'observado'].includes(x.estado)) acc.push(['aprobar', 'Registrar aprobación'], ['observar', 'Registrar observación'], ['rechazar', 'Registrar rechazo']);
   if (escribe() && x.estado === 'observado') acc.push(['presentar', 'Volver a presentar']);
-  m.$('#acc').innerHTML = acc.map(([k, l]) => `<button type="button" class="btn ${k === 'aprobar' ? 'btn-primary' : ''}" data-a="${k}" style="height:38px;font-size:13px">${l}</button>`).join('') || '<span class="sub">Sin acciones disponibles.</span>';
+  m.$('#acc').innerHTML = acc.map(([k, l]) => `<button type="button" class="btn ${k === 'aprobar' ? 'btn-primary' : ''}" data-a="${k}" style="height:38px;font-size:13px">${l}</button>`).join('') || (x.aprobacion ? '' : '<span class="sub">Sin acciones disponibles.</span>');
   m.bg.querySelectorAll('[data-a]').forEach(b => b.onclick = () => cambiarEstado(x, b.dataset.a, m));
 
   // nueva versión
@@ -657,7 +660,7 @@ function adjCandidatos(x) {
   const out = [];
   if (x.archivo && !x.archivo.retirado) out.push({ key: 'inf', etiqueta: `Informe ${x.codigo}${x.version > 1 ? ' v' + x.version : ''}`, a: x.archivo,
     nombre: nombreSeguro(`${x.codigo.replace(/\//g, '-')}_${x.archivo.nombre}`) });
-  (x.adjuntos || []).filter(a => !a.retirado).forEach(a => out.push({ key: a.fid, etiqueta: `${a.etiqueta || 'Documento'}: ${a.nombre}`, a, nombre: nombreSeguro(a.nombre) }));
+  (x.adjuntos || []).filter(a => !a.retirado).forEach(a => out.push({ key: a.fid, etiqueta: `${etq(a)}: ${a.nombre}`, a, nombre: nombreSeguro(a.nombre) }));
   return out;
 }
 function seccionEnvio(x) {
@@ -700,6 +703,73 @@ async function prepararCorreo(x, ap, { metodo, adj }) {
   toast('Correo descargado: ábralo desde la barra de descargas y se abrirá en Outlook listo para enviar.');
   return true;
 }
+// ---- Estado del correo de aprobación: preparado → enviado (registro manual: el SIM no ve el buzón de Outlook) ----
+const fmtFH = (iso) => iso ? new Date(iso).toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+function bloqueCorreo(ap) {
+  const c = ap.correo || {};
+  const btn = (id, txt, pri) => `<button type="button" class="btn ${pri ? 'btn-primary' : ''}" id="${id}" style="height:36px;margin-top:8px;font-size:13px">${txt}</button>`;
+  const enlace = (id, txt) => `<button type="button" id="${id}" style="background:none;border:0;padding:0;margin-top:8px;color:var(--mint-2);font-size:12.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer">${txt}</button>`;
+  if (c.enviado) return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(111,227,207,.10);border:1px solid rgba(111,227,207,.35)">
+      <div style="color:#8FF0DE;font-weight:600">✓ Correo de aprobación enviado</div>
+      <div class="sub" style="margin-top:2px">${fmtFH(c.enviado)}${c.para ? ' · Para: ' + esc(c.para) : ''}${c.cc ? ' · CC: ' + esc(c.cc) : ''}</div>
+      ${(c.adjuntos || []).length ? `<div class="sub">Adjuntos: ${c.adjuntos.map(esc).join(' · ')}</div>` : ''}</div>
+    ${enlace('bMail', 'Preparar nuevamente (reenvío)')}`;
+  if (c.preparado) return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(245,185,74,.10);border:1px solid rgba(245,185,74,.35)">
+      <div style="color:#FFCF73;font-weight:600">Correo preparado · envío por registrar</div>
+      <div class="sub" style="margin-top:2px">Preparado el ${fmtFH(c.preparado)}${c.para ? ' para ' + esc(c.para) : ''}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${btn('bEnv', 'Registrar envío', true)}${btn('bMail', 'Preparar nuevamente')}</div>`;
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap">${btn('bMail', 'Preparar correo de aprobación', true)}</div>${enlace('bEnv', 'Ya lo envié por otro medio: registrar envío')}`;
+}
+const infoCorreo = (x, ap, env) => {
+  const { paraL, ccL } = destinatarios(x, ap);
+  return { preparado: ahora(), metodo: env.metodo, para: paraL.map(c => c.correo).join(', '), cc: ccL.map(c => c.correo).join(', '),
+    adjuntos: env.metodo === 'eml' ? adjCandidatos(x).filter(c => env.adj.includes(c.key)).map(c => c.nombre) : [] };
+};
+function avisoEnvio(id) {
+  const m = modal({ titulo: 'Correo preparado', ancho: 520,
+    cuerpo: `<p class="muted" style="margin:0;line-height:1.6">Ábralo en Outlook y envíelo. Cuando lo haya enviado, registre el envío para que quede en el historial del informe.</p>`,
+    pie: `<button type="button" class="btn" data-x>Más tarde</button><button type="submit" class="btn btn-primary">Ya lo envié: registrar envío</button>` });
+  m.form.onsubmit = (ev) => { ev.preventDefault(); m.cerrar(); registrarEnvio(id); };
+}
+async function registrarEnvio(id, mFicha = null) {
+  const x = await getDoc(doc(colInf(), id)).then(s => ({ id: s.id, ...s.data() }));
+  const c = x.aprobacion?.correo || {};
+  const local = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  let arch = null;
+  const m = modal({ titulo: 'Registrar envío del correo', ancho: 560,
+    cuerpo: `<div class="g2">
+      <div><label class="label" for="rvF">Fecha y hora de envío</label><input class="field" id="rvF" type="datetime-local" value="${local}"></div>
+      <div><label class="label" for="rvP">Enviado a</label><input class="field" id="rvP" value="${esc(c.para || '')}" placeholder="correo@empresa.com"></div>
+      <div style="grid-column:1/-1"><label class="label" for="rvC">Con copia</label><input class="field" id="rvC" value="${esc(c.cc || '')}"></div>
+      <div style="grid-column:1/-1"><label class="label" for="rvA">Correo enviado como evidencia (opcional)</label>
+        <input class="field" id="rvA" type="file" accept=".msg,.eml,.pdf,image/*" style="padding-top:11px">
+        <div class="sub">Puede arrastrar el correo desde Outlook (Enviados) o guardarlo como PDF.</div></div></div>
+      <div class="bar" id="rvBar" hidden><div></div></div>`,
+    pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="rvOk">Registrar envío</button>` });
+  m.$('#rvA').onchange = (e) => { arch = e.target.files[0] || null; };
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault(); m.err('');
+    const f = m.$('#rvF').value; if (!f) return m.err('Indique la fecha y hora de envío.');
+    const iso = new Date(f).toISOString(), para = m.$('#rvP').value.trim(), cc = m.$('#rvC').value.trim();
+    m.$('#rvOk').disabled = true;
+    try {
+      const upd = {
+        'aprobacion.correo': { ...c, preparado: c.preparado || iso, para, cc, enviado: iso, enviadoPor: quien() }, actualizado: serverTimestamp(),
+        historial: arrayUnion({ fecha: iso, estado: 'aprobado', nota: `Correo de aprobación enviado (${fmtFH(iso)})${para ? ' — Para: ' + para : ''}${cc ? '; CC: ' + cc : ''}${(c.adjuntos || []).length ? '; ' + c.adjuntos.length + ' adjunto(s)' : ''}`, por: quien() })
+      };
+      if (arch) {
+        m.$('#rvBar').hidden = false;
+        const a = await subirArchivo(x.id, 'correo', arch, (pr) => m.$('#rvBar div').style.width = Math.round(pr * 100) + '%');
+        a.etiqueta = 'Correo enviado';
+        upd.adjuntos = arrayUnion(a);
+      }
+      await updateDoc(doc(colInf(), x.id), upd);
+      m.cerrar(); if (mFicha) mFicha.cerrar();
+      toast('Envío registrado en el historial.'); setTimeout(() => ficha(x.id), 300);
+    } catch (e) { m.err('No se pudo registrar: ' + (e.code || e.message)); m.$('#rvOk').disabled = false; }
+  };
+}
+
 function modalCorreo(x, ap) {
   const m = modal({ titulo: 'Preparar correo de aprobación', ancho: 640,
     cuerpo: `<div class="sub" style="margin:0 0 4px">Resumen informativo para los destinatarios y Logística.</div>${destTabla(x, ap)}${seccionEnvio(x)}`,
@@ -714,8 +784,9 @@ function modalCorreo(x, ap) {
       const env = leerEnvio(m);
       if (await prepararCorreo(x, ap2, env)) {
         await updateDoc(doc(colInf(), x.id), { 'aprobacion.paraIds': ap2.paraIds, 'aprobacion.ccIds': ap2.ccIds,
-          'aprobacion.correo': { preparado: ahora(), metodo: env.metodo, para: destinatarios(x, ap2).paraL.map(c => c.correo).join(', ') } }).catch(() => {});
-        m.cerrar();
+          'aprobacion.correo': infoCorreo(x, ap2, env) }).catch(() => {});
+        m.cerrar(); document.querySelectorAll('.modal-bg').forEach(b => b.remove());
+        avisoEnvio(x.id);
       } else m.$('#mcOk').disabled = false;
     } catch (e) { m.err('No se pudo preparar el correo: ' + (e.code || e.message)); m.$('#mcOk').disabled = false; }
   };
@@ -771,7 +842,7 @@ function cambiarEstado(x, accion, mFicha) {
           ap.paraIds = [...m.bg.querySelectorAll('.eTo:checked')].map(i => i.value);
           ap.ccIds = [...m.bg.querySelectorAll('.eCC:checked')].map(i => i.value);
           if (m.$('#eMail').checked && !ap.paraIds.length) { b.disabled = false; return m.err('Marque al menos un destinatario en "Para" o desmarque "Preparar correo".'); }
-          if (m.$('#eMail').checked) { envio = leerEnvio(m); ap.correo = { preparado: ahora(), metodo: envio.metodo, para: CONTACTOS.filter(c => ap.paraIds.includes(c.id)).map(c => c.correo).join(', ') }; }
+          if (m.$('#eMail').checked) { envio = leerEnvio(m); ap.correo = infoCorreo(x, ap, envio); }
         }
         if (evid) { m.$('#bar').hidden = false; ap.evidencia = await subirArchivo(x.id, 'aprobacion', evid, (p) => m.$('#bar div').style.width = Math.round(p * 100) + '%'); }
         upd.aprobacion = ap;
@@ -782,7 +853,10 @@ function cambiarEstado(x, accion, mFicha) {
       if (upd.aprobacion?.pedidoTipo || upd.aprobacion?.pedidoNum) { upd.pedidoTipo = upd.aprobacion.pedidoTipo; upd.pedidoNum = upd.aprobacion.pedidoNum; }
       await updateDoc(doc(colInf(), x.id), upd);
       m.cerrar(); mFicha.cerrar(); toast(`${x.codigo}: ${ESTADOS_INF[T[1]].label.toLowerCase()}.`);
-      if (upd.aprobacion?.correo) await prepararCorreo({ ...x, area: upd.area ?? x.area, pedidoTipo: upd.pedidoTipo ?? x.pedidoTipo, pedidoNum: upd.pedidoNum ?? x.pedidoNum }, upd.aprobacion, envio).catch(e => toast('No se pudo preparar el correo: ' + e.message, 'err'));
+      if (upd.aprobacion?.correo) {
+        const ok = await prepararCorreo({ ...x, area: upd.area ?? x.area, pedidoTipo: upd.pedidoTipo ?? x.pedidoTipo, pedidoNum: upd.pedidoNum ?? x.pedidoNum }, upd.aprobacion, envio).catch(e => { toast('No se pudo preparar el correo: ' + e.message, 'err'); return false; });
+        if (ok) { avisoEnvio(x.id); return; }
+      }
       setTimeout(() => ficha(x.id), 300);
     } catch (er) { m.err('No se pudo registrar: ' + (er.code || er.message)); b.disabled = false; }
   };
@@ -833,7 +907,7 @@ function archivosDe(lista) {
   lista.forEach(x => {
     (x.versiones || []).forEach(v => out.push({ inf: x, a: v, tipo: `Versión v${v.ver}`, clave: 'v' + v.ver }));
     if (x.aprobacion?.evidencia) out.push({ inf: x, a: x.aprobacion.evidencia, tipo: 'Evidencia de aprobación', clave: 'aprobacion' });
-    (x.adjuntos || []).forEach(a => out.push({ inf: x, a, tipo: `Adjunto · ${a.etiqueta || 'Documento'}`, clave: 'adj' }));
+    (x.adjuntos || []).forEach(a => out.push({ inf: x, a, tipo: `Adjunto · ${etq(a)}`, clave: 'adj' }));
   });
   return out.sort((p, q) => String(p.a.fecha).localeCompare(String(q.a.fecha)));
 }

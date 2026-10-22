@@ -167,6 +167,10 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   nuevo) con To/Cc, asunto, cuerpo texto + HTML (tabla) y adjuntos: informe vigente + documentos adjuntos elegidos. Alternativa: mailto (sin
   adjuntos; el estándar mailto no admite archivos). El método elegido se recuerda en el navegador (`sim_inf_metodo`).
   Envío 100 % automático requeriría un intermediario (Apps Script o servicio externo); se descartó por ahora.
+- Registro del envío (manual: el SIM no ve el buzón de Outlook): `aprobacion.correo` = { preparado, metodo, para, cc, adjuntos[], enviado, enviadoPor }.
+  Tras preparar, el SIM pide "Registrar envío" (fecha/hora editables, correo enviado opcional como adjunto "Correo enviado") y lo anota en el historial.
+  Ficha: preparado sin registrar = aviso ámbar + "Registrar envío"; enviado = recuadro verde + enlace "Preparar nuevamente (reenvío)".
+  Lista: aprobados muestran "Correo pendiente" o "✓ Correo enviado".
 - Documentos adjuntos del informe (`adjuntos[]`: archivo + `etiqueta` PSR|PED|Cotización|OS|OC|Acta|Documento, detectada por el nombre):
   se suben desde la ficha (varios a la vez), se ven, se quitan y aparecen en Almacenamiento.
 - Estados: borrador → presentado → aprobado | observado | rechazado; observado → presentado (con nueva versión).
@@ -202,3 +206,4 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-22 — Informes: correo de aprobación pasa a resumen informativo para Logística (sin pedir confirmación).
 - 2026-10-22 — Informes: varios destinatarios en Para y en CC; rol por defecto de cada destinatario.
 - 2026-10-22 — Informes: documentos adjuntos (PSR, cotización…) y borrador .eml para Outlook con adjuntos automáticos.
+- 2026-10-22 — Informes: registro del envío del correo (historial, estado en ficha y lista); etiquetas de adjuntos corregidas (PSR_…).
