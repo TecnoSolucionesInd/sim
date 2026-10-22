@@ -156,7 +156,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Campos: titulo, tipo (solicitud|falla|evaluacion|deslinde|otro), fecha, dirigido, proveedor, moneda, monto, resumen, estado,
   version, archivo, versiones[], historial[], aprobacion {fecha, por, medio, nota, evidencia}, eqIds/eqCods, progId/progNombre, docs[].
 - Destinatarios (`datos/inf/config/contactos.lista`: id, nombre, cargo, correo, area, copia): "Dirigido a" se elige de esta lista.
-- Pedido Nisira en el informe (`pedidoTipo` PSR|PED, `pedidoNum`), editable en Relaciones aun después de aprobado; si no está, se toma de la aprobación
+- Pedido Nisira en el informe (`pedidoTipo` PSR|PED, `pedidoNum` con formato serie-número `0001-XXXXX`; si se escribe solo el número se antepone 0001-), editable en Relaciones aun después de aprobado; si no está, se toma de la aprobación
   o de un documento escrito como "PSR 0004521". Otros documentos (OC, OS, cotización) en `docs[]`: se agregan con Enter, botón Agregar o al salir del campo.
 - Aprobación: monto aprobado (puede diferir del solicitado), área, pedido (precargado desde el informe), resumen de lo aprobado.
   Al confirmar se abre el correo del usuario (mailto) con un resumen informativo (la aprobación se obtiene al exponer el informe):

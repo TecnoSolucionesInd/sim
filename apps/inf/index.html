@@ -407,7 +407,7 @@ async function ficha(id) {
           <div style="grid-column:1/-1"><label class="label" for="rEq">Equipos</label><input class="field" id="rEq" list="dlEq" placeholder="${EQ ? 'Buscar por código o descripción y elegir' : 'Cargando equipos…'}" ${disR}><datalist id="dlEq"></datalist><div class="chips" id="cEq"></div></div>
           <div style="grid-column:1/-1"><label class="label" for="rPr">Programa de trabajo (Plan)</label><select class="field" id="rPr" ${disR}><option value="">Sin vincular</option></select></div>
           <div><label class="label" for="rPedT">Pedido Nisira</label><select class="field" id="rPedT" ${disR}><option value="">Sin pedido</option>${PEDIDOS.map(pd => `<option value="${pd.id}" ${pd.id === ped.tipo ? 'selected' : ''}>${pd.label}</option>`).join('')}</select></div>
-          <div><label class="label" for="rPedN">N.º de pedido</label><input class="field" id="rPedN" value="${esc(ped.num)}" placeholder="Ej. 0004521" ${disR}></div>
+          <div><label class="label" for="rPedN">N.º de pedido</label><input class="field" id="rPedN" value="${esc(ped.num)}" placeholder="0001-00045" ${disR}></div>
           <div style="grid-column:1/-1"><label class="label" for="rDoc">Otros documentos (OC, OS, cotización)</label>
             <div style="display:flex;gap:8px"><input class="field" id="rDoc" placeholder="Ej. OS 0001-002345" ${disR}>${relEd ? '<button type="button" class="btn" id="bDoc" style="height:48px;flex-shrink:0">Agregar</button>' : ''}</div>
             <div class="chips" id="cDoc"></div></div>
@@ -467,7 +467,7 @@ async function ficha(id) {
   m.$('#rDoc').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); agregarDoc(); } };
   m.$('#rDoc').onblur = agregarDoc;
   if (m.$('#bDoc')) m.$('#bDoc').onclick = agregarDoc;
-  const estadoActual = () => ({ ...x, docs, pedidoTipo: m.$('#rPedT').value, pedidoNum: m.$('#rPedN').value.trim() });
+  const estadoActual = () => ({ ...x, docs, pedidoTipo: m.$('#rPedT').value, pedidoNum: fmtPedido(m.$('#rPedN').value) });
 
   // acciones de estado
   const acc = [];
@@ -500,7 +500,7 @@ async function ficha(id) {
     agregarDoc();
     const d = editable ? leerDatos(m) : {};
     if (editable && !d.titulo) return m.err('Ingrese el título.');
-    d.pedidoTipo = m.$('#rPedT').value; d.pedidoNum = m.$('#rPedN').value.trim();
+    d.pedidoTipo = m.$('#rPedT').value; d.pedidoNum = fmtPedido(m.$('#rPedN').value);
     if (d.pedidoNum && !d.pedidoTipo) return m.err('Indique si el pedido es PSR (servicio) o PED (materiales).');
     const progId = m.$('#rPr').value || null;
     const progNombre = progId ? (PROGS?.find(p => p.id === progId)?.nombre || x.progNombre || '') : '';
@@ -520,13 +520,16 @@ function contactoDe(texto) {
   return CONTACTOS.find(c => nrm(etiquetaContacto(c)) === t) || CONTACTOS.find(c => t.startsWith(nrm(c.nombre))) || null;
 }
 // Pedido Nisira del informe: campos propios, el registrado en la aprobación o el escrito como documento ("PSR 0004521")
+// Número de pedido Nisira con serie: 0001-XXXXX. Si se escribe solo el número, se antepone la serie 0001.
+const SERIE_PEDIDO = '0001';
+const fmtPedido = (n) => { const t = String(n || '').trim().replace(/^N\.?\s*[º°o]?\s*/i, ''); return /^\d+$/.test(t) ? `${SERIE_PEDIDO}-${t}` : t; };
 function pedidoDe(x, ap = x.aprobacion || {}) {
   let tipo = x.pedidoTipo || ap.pedidoTipo || '', num = x.pedidoNum || ap.pedidoNum || '';
   if (!num) for (const d of (x.docs || [])) {
     const m = String(d).match(/^\s*(PSR|PED)\b[\s.:#N°º-]*([\w-]+)/i);
     if (m) { tipo = tipo || m[1].toUpperCase(); num = m[2]; break; }
   }
-  return { tipo, num };
+  return { tipo, num: fmtPedido(num) };
 }
 const otrosDocs = (x, ped) => (x.docs || []).filter(d => !(ped.num && String(d).toUpperCase().includes(String(ped.num).toUpperCase()) && /PSR|PED/i.test(d)));
 const fmtFechaCorta = (iso) => iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
@@ -538,7 +541,7 @@ function textoCorreo(x, ap, para) {
   if (ap.area || x.area) lin.push(`Área: ${ap.area || x.area}`);
   if (x.proveedor) { const cot = (x.docs || []).find(d => /^cot/i.test(d)); lin.push(`Proveedor: ${x.proveedor}${cot ? ' (' + cot + ')' : ''}`); }
   if (ap.montoAprobado != null) lin.push(`Monto aprobado: ${money(ap.montoAprobado, ap.monedaAprobada)} sin IGV`);
-  if (ped.tipo || ped.num) lin.push(`Pedido: ${ped.tipo || ''}${ped.num ? ' N.º ' + ped.num : ' por emitir'}${ped.tipo ? ' (' + (ped.tipo === 'PSR' ? 'servicio' : 'materiales') + ')' : ''}`);
+  if (ped.tipo || ped.num) lin.push(`Pedido: ${ped.tipo || ''}${ped.num ? ' ' + ped.num : ' por emitir'}${ped.tipo ? ' (' + (ped.tipo === 'PSR' ? 'servicio' : 'materiales') + ')' : ''}`);
   if (ap.por) lin.push(`Aprobado por: ${ap.por}`);
   lin.push(`Informe: ${x.codigo}`);
   if (ap.detalle && ap.detalle !== x.titulo) lin.push('', 'Detalle: ' + (ap.detalle.length > 320 ? ap.detalle.slice(0, 317).trim() + '…' : ap.detalle));
@@ -570,7 +573,7 @@ function cambiarEstado(x, accion, mFicha) {
           <div><label class="label" for="eMto">Monto aprobado (sin IGV)</label><input class="field" id="eMto" type="number" step="0.01" min="0" value="${x.monto ?? ''}"></div></div>
         <div><label class="label" for="eArea">Área</label><select class="field" id="eArea"><option value="">Seleccione</option>${AREAS_INF.map(a => `<option ${a === (x.area || '') ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
         <div><label class="label" for="ePed">Pedido Nisira</label><select class="field" id="ePed"><option value="">Sin pedido aún</option>${PEDIDOS.map(pd => `<option value="${pd.id}" ${pd.id === pedidoDe(x).tipo ? 'selected' : ''}>${pd.label}</option>`).join('')}</select></div>
-        <div><label class="label" for="ePedN">N.º de pedido</label><input class="field" id="ePedN" value="${esc(pedidoDe(x).num)}" placeholder="Si ya fue emitido"></div>
+        <div><label class="label" for="ePedN">N.º de pedido</label><input class="field" id="ePedN" value="${esc(pedidoDe(x).num)}" placeholder="0001-00045"></div>
         <div style="grid-column:1/-1"><label class="label" for="eDet">Resumen de lo aprobado</label><textarea class="field" id="eDet" rows="3" style="height:auto;padding:12px 16px;line-height:1.5">${esc(x.resumen || x.titulo || '')}</textarea></div>` : ''}
       <div style="grid-column:1/-1"><label class="label" for="eNot">${accion === 'observar' ? 'Observaciones recibidas' : 'Nota (opcional)'}</label><textarea class="field" id="eNot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5"></textarea></div>
       ${accion === 'aprobar' ? `<div style="grid-column:1/-1" class="box">
@@ -599,7 +602,7 @@ function cambiarEstado(x, accion, mFicha) {
         if (accion === 'aprobar') {
           ap.monedaAprobada = m.$('#eMon').value;
           ap.montoAprobado = m.$('#eMto').value === '' ? null : +m.$('#eMto').value;
-          ap.area = m.$('#eArea').value; ap.pedidoTipo = m.$('#ePed').value; ap.pedidoNum = m.$('#ePedN').value.trim();
+          ap.area = m.$('#eArea').value; ap.pedidoTipo = m.$('#ePed').value; ap.pedidoNum = fmtPedido(m.$('#ePedN').value);
           ap.detalle = m.$('#eDet').value.trim();
           ap.paraId = m.$('#ePara').value || null;
           ap.ccIds = [...m.bg.querySelectorAll('.eCC:checked')].map(i => i.value);
