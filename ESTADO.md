@@ -159,8 +159,9 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Pedido Nisira en el informe (`pedidoTipo` PSR|PED, `pedidoNum`), editable en Relaciones aun después de aprobado; si no está, se toma de la aprobación
   o de un documento escrito como "PSR 0004521". Otros documentos (OC, OS, cotización) en `docs[]`: se agregan con Enter, botón Agregar o al salir del campo.
 - Aprobación: monto aprobado (puede diferir del solicitado), área, pedido (precargado desde el informe), resumen de lo aprobado.
-  Al confirmar se abre el correo del usuario (mailto) con la confirmación para el destinatario y en copia los marcados "Copia".
-  Criterio: el correo NO es la evidencia; la evidencia es la respuesta de conformidad del aprobador, que se adjunta en la ficha.
+  Al confirmar se abre el correo del usuario (mailto) con un resumen informativo (la aprobación se obtiene al exponer el informe):
+  trabajo, área, proveedor y cotización, monto aprobado, pedido PSR/PED, aprobado por, código del informe y fecha; pide a Logística
+  generar la OSR (PSR) u OCO (PED). Para = destinatario elegido; CC = marcados "Copia". Asunto: "Aprobado — PSR 0004521 · <trabajo>".
   Envío 100 % automático requeriría un intermediario (Apps Script o servicio externo); se descartó por ahora.
 - Estados: borrador → presentado → aprobado | observado | rechazado; observado → presentado (con nueva versión).
   La aprobación la registra Admin/Supervisor con la evidencia (correo o acta); Gerencia no entra al SIM.
@@ -192,3 +193,4 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-21 — Informes: autollenado y visor para PDF (pdf.js).
 - 2026-10-22 — Informes: destinatarios con correo, datos de aprobación (monto, área, PSR/PED) y correo de confirmación con un clic.
 - 2026-10-22 — Informes: corrige documentos que no se guardaban sin Enter; pedido PSR/PED propio del informe y en el correo.
+- 2026-10-22 — Informes: correo de aprobación pasa a resumen informativo para Logística (sin pedir confirmación).

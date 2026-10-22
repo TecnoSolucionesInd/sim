@@ -418,8 +418,8 @@ async function ficha(id) {
           ${ap ? `<div style="margin-top:12px;font-size:13.5px;line-height:1.6"><b>${x.estado === 'rechazado' ? 'Rechazado' : 'Aprobado'}</b> el ${fmtF(ap.fecha)}${ap.por ? ' por ' + esc(ap.por) : ''}${ap.medio ? ' · ' + esc(ap.medio) : ''}${ap.nota ? `<div class="sub">${esc(ap.nota)}</div>` : ''}
             ${ap.montoAprobado != null ? `<div>Monto aprobado: <b>${money(ap.montoAprobado, ap.monedaAprobada)}</b></div>` : ''}
             ${ap.area || ped.tipo ? `<div class="sub">${ap.area ? 'Área: ' + esc(ap.area) : ''}${ped.tipo ? `${ap.area ? ' · ' : ''}${esc(ped.tipo)}${ped.num ? ' ' + esc(ped.num) : ' por emitir'}` : ''}</div>` : ''}
-            ${ap.correo ? `<div class="sub">Correo de confirmación preparado el ${fmtF(ap.correo.preparado)}${ap.correo.para ? ' para ' + esc(ap.correo.para) : ''}</div>` : ''}
-            ${x.estado === 'aprobado' ? `<button type="button" class="btn" id="bMail" style="height:36px;margin-top:8px;font-size:13px">Preparar correo de confirmación</button>` : ''}
+            ${ap.correo ? `<div class="sub">Correo de aprobación preparado el ${fmtF(ap.correo.preparado)}${ap.correo.para ? ' para ' + esc(ap.correo.para) : ''}</div>` : ''}
+            ${x.estado === 'aprobado' ? `<button type="button" class="btn" id="bMail" style="height:36px;margin-top:8px;font-size:13px">Preparar correo de aprobación</button>` : ''}
             ${ap.evidencia ? `<button type="button" class="btn" id="bEvi" style="height:36px;margin-top:8px;font-size:13px">Ver evidencia de aprobación</button>` : ''}</div>` : ''}</div>
         <div class="box"><h4>Versiones</h4>${vers.map(v => `<div class="it"><div><b>v${v.ver}</b> <span class="sub">${fmtF(v.fecha)} · ${fmtBytes(v.bytes)}${v.retirado ? ' · retirado' : ''}</span></div>
           ${v.retirado ? '' : `<button type="button" class="btn" data-v="${v.ver}" style="height:34px;font-size:12.5px">Ver</button>`}</div>`).join('')}
@@ -512,7 +512,7 @@ async function ficha(id) {
   };
 }
 
-// ---------------- destinatarios y correo de confirmación ----------------
+// ---------------- destinatarios y correo de aprobación ----------------
 const etiquetaContacto = (c) => c.cargo ? `${c.nombre} — ${c.cargo}` : c.nombre;
 const nrm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 function contactoDe(texto) {
@@ -530,28 +530,27 @@ function pedidoDe(x, ap = x.aprobacion || {}) {
 }
 const otrosDocs = (x, ped) => (x.docs || []).filter(d => !(ped.num && String(d).toUpperCase().includes(String(ped.num).toUpperCase()) && /PSR|PED/i.test(d)));
 const fmtFechaCorta = (iso) => iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
+const ORDEN = { PSR: 'OSR (orden de servicio)', PED: 'OCO (orden de compra)' };
 function textoCorreo(x, ap, para) {
-  const lin = [];
-  lin.push(`Estimado(a) ${para ? para.nombre : (ap.por || '')}:`, '');
-  lin.push('Se registra la aprobación del siguiente requerimiento:', '');
-  lin.push(`Informe: ${x.codigo} — ${x.titulo}`);
-  lin.push(`Fecha de aprobación: ${fmtFechaCorta(ap.fecha)}${ap.medio ? ' (' + ap.medio.toLowerCase() + ')' : ''}`);
-  if (ap.area) lin.push(`Área: ${ap.area}`);
   const ped = pedidoDe(x, ap);
-  if (ped.tipo || ped.num) lin.push(`Pedido: ${ped.tipo || 'Pedido'}${ped.num ? ' N.º ' + ped.num : ' (por emitir)'}${ped.tipo ? ' — ' + (ped.tipo === 'PSR' ? 'servicio' : 'materiales') : ''}`);
-  if (x.proveedor) lin.push(`Proveedor: ${x.proveedor}`);
-  const otros = otrosDocs(x, ped); if (otros.length) lin.push(`Documentos: ${otros.join(', ')}`);
+  const lin = ['Estimados:', '', `Se comunica la aprobación del siguiente requerimiento, expuesto y aprobado el ${fmtFechaCorta(ap.fecha)}:`, ''];
+  lin.push(`Trabajo: ${x.titulo}`);
+  if (ap.area || x.area) lin.push(`Área: ${ap.area || x.area}`);
+  if (x.proveedor) { const cot = (x.docs || []).find(d => /^cot/i.test(d)); lin.push(`Proveedor: ${x.proveedor}${cot ? ' (' + cot + ')' : ''}`); }
   if (ap.montoAprobado != null) lin.push(`Monto aprobado: ${money(ap.montoAprobado, ap.monedaAprobada)} sin IGV`);
-  if (ap.detalle) lin.push('', 'Detalle:', ap.detalle);
-  if (ap.nota) lin.push('', 'Observaciones:', ap.nota);
-  lin.push('', 'Se solicita confirmar por este medio la conformidad con lo indicado.', '', 'Atentamente,', quien(), 'Departamento de Mantenimiento');
+  if (ped.tipo || ped.num) lin.push(`Pedido: ${ped.tipo || ''}${ped.num ? ' N.º ' + ped.num : ' por emitir'}${ped.tipo ? ' (' + (ped.tipo === 'PSR' ? 'servicio' : 'materiales') + ')' : ''}`);
+  if (ap.por) lin.push(`Aprobado por: ${ap.por}`);
+  lin.push(`Informe: ${x.codigo}`);
+  if (ap.detalle && ap.detalle !== x.titulo) lin.push('', 'Detalle: ' + (ap.detalle.length > 320 ? ap.detalle.slice(0, 317).trim() + '…' : ap.detalle));
+  lin.push('', `Se solicita a Logística generar la ${ORDEN[ped.tipo] || 'orden'} correspondiente.`, '', 'Atentamente,', quien(), 'Departamento de Mantenimiento');
   return lin.join('\n');
 }
 function abrirCorreo(x, ap) {
   const para = CONTACTOS.find(c => c.id === ap.paraId) || contactoDe(ap.por) || contactoDe(x.dirigido);
   const cc = CONTACTOS.filter(c => (ap.ccIds || []).includes(c.id) && c.correo).map(c => c.correo);
   if (!para?.correo) { toast('El destinatario no tiene correo registrado. Agréguelo en Destinatarios.', 'err'); return false; }
-  const asunto = `Aprobación registrada — ${x.codigo} · ${x.titulo}`;
+  const pd = pedidoDe(x, ap);
+  const asunto = `Aprobado${pd.tipo && pd.num ? ' — ' + pd.tipo + ' ' + pd.num : ''} · ${x.titulo}`;
   const url = `mailto:${encodeURIComponent(para.correo)}?${cc.length ? 'cc=' + encodeURIComponent(cc.join(',')) + '&' : ''}subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(textoCorreo(x, ap, para))}`;
   const a = document.createElement('a'); a.href = url; document.body.appendChild(a); a.click(); a.remove();
   return true;
@@ -575,10 +574,10 @@ function cambiarEstado(x, accion, mFicha) {
         <div style="grid-column:1/-1"><label class="label" for="eDet">Resumen de lo aprobado</label><textarea class="field" id="eDet" rows="3" style="height:auto;padding:12px 16px;line-height:1.5">${esc(x.resumen || x.titulo || '')}</textarea></div>` : ''}
       <div style="grid-column:1/-1"><label class="label" for="eNot">${accion === 'observar' ? 'Observaciones recibidas' : 'Nota (opcional)'}</label><textarea class="field" id="eNot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5"></textarea></div>
       ${accion === 'aprobar' ? `<div style="grid-column:1/-1" class="box">
-        <label class="check"><input type="checkbox" id="eMail" checked>Preparar correo de confirmación al confirmar</label>
+        <label class="check"><input type="checkbox" id="eMail" checked>Preparar correo de aprobación (resumen para el destinatario y Logística)</label>
         <div class="g2" style="margin-top:10px"><div><label class="label" for="ePara">Para</label><select class="field" id="ePara"><option value="">— Elija destinatario —</option>${CONTACTOS.map(c => `<option value="${c.id}" ${c.correo ? '' : 'disabled'}>${esc(etiquetaContacto(c))}${c.correo ? '' : ' (sin correo)'}</option>`).join('')}</select></div>
           <div><span class="label">Con copia</span><div style="display:flex;flex-direction:column;gap:6px;max-height:110px;overflow:auto">${CONTACTOS.filter(c => c.correo).map(c => `<label class="check" style="font-size:13px"><input type="checkbox" class="eCC" value="${c.id}" ${c.copia ? 'checked' : ''}>${esc(c.nombre)}</label>`).join('') || '<span class="sub">Sin destinatarios con correo</span>'}</div></div></div>
-        <div class="sub" style="margin-top:8px">Se abre su correo con el mensaje listo para enviar. Adjunte después la respuesta de conformidad como evidencia. <a href="#destinatarios">Gestionar destinatarios</a></div></div>` : ''}
+        <div class="sub" style="margin-top:8px">Se abre su correo con el resumen listo para enviar: trabajo, área, proveedor, monto, pedido y fecha de aprobación, con el pedido a Logística de generar la OSR u OCO. <a href="#destinatarios">Gestionar destinatarios</a></div></div>` : ''}
       ${conAprob ? `<div style="grid-column:1/-1"><label class="label" for="eEv">Evidencia (correo o acta en PDF/imagen, opcional)</label><input class="field" id="eEv" type="file" accept=".pdf,image/*,.html" style="padding-top:11px"></div>` : ''}
     </div><div class="bar" id="bar" hidden><div></div></div>`,
     pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="eOk">Confirmar</button>` });
@@ -627,7 +626,7 @@ function vistaDestinatarios(main) {
   main.innerHTML = `
     <div class="pagehead"><div><div class="eyebrow rise">Informes técnicos</div><h1 class="h-display rise d1">Destinatarios</h1></div>
       ${ed ? '<button class="btn btn-primary rise d2" id="bNC"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo destinatario</button>' : ''}</div>
-    <p class="muted rise d2" style="margin:-6px 0 18px;line-height:1.6;max-width:760px">Personas a quienes se dirigen los informes. Su correo se usa para preparar la confirmación de aprobación. Los marcados con "Copia" se incluyen en copia por defecto (por ejemplo, Logística).</p>
+    <p class="muted rise d2" style="margin:-6px 0 18px;line-height:1.6;max-width:760px">Personas a quienes se dirigen los informes. Su correo se usa para preparar el correo de aprobación. Los marcados con "Copia" se incluyen en copia por defecto (por ejemplo, Logística).</p>
     <div class="glass rise d3 tbl-wrap"><table class="table" style="min-width:720px">
       <thead><tr><th>Nombre</th><th>Cargo</th><th>Correo</th><th>Área</th><th>Copia</th><th></th></tr></thead>
       <tbody>${CONTACTOS.map(c => `<tr><td style="font-weight:500">${esc(c.nombre)}</td><td style="font-size:13.5px">${esc(c.cargo || '')}</td><td class="mono" style="font-size:12.5px">${esc(c.correo || '—')}</td>
@@ -645,7 +644,7 @@ function editarContacto(c) {
       <div><label class="label" for="cCar">Cargo</label><input class="field" id="cCar" value="${esc(v.cargo)}" placeholder="Jefe de Operaciones"></div>
       <div><label class="label" for="cMail">Correo</label><input class="field" id="cMail" type="email" value="${esc(v.correo)}"></div>
       <div><label class="label" for="cArea">Área</label><input class="field" id="cArea" value="${esc(v.area)}" placeholder="Operaciones"></div>
-      <div style="grid-column:1/-1"><label class="check"><input type="checkbox" id="cCopia" ${v.copia ? 'checked' : ''}>Incluir en copia por defecto en las confirmaciones de aprobación</label></div></div>`,
+      <div style="grid-column:1/-1"><label class="check"><input type="checkbox" id="cCopia" ${v.copia ? 'checked' : ''}>Incluir en copia por defecto en los correos de aprobación</label></div></div>`,
     pie: `${nuevo ? '' : '<button type="button" class="btn btn-danger" id="cDel" style="margin-right:auto">Eliminar</button>'}<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button>` });
   const guardar = async (lista) => { await setDoc(docContactos(), { lista, actualizado: serverTimestamp() }); };
   if (m.$('#cDel')) m.$('#cDel').onclick = async () => { await guardar(CONTACTOS.filter(k => k.id !== c.id)); m.cerrar(); toast('Destinatario eliminado.'); };
