@@ -155,6 +155,11 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Código `IPSMSA/MMTO/INF-AA-NNN`, correlativo anual en `datos/inf/config/contador` (transacción). Se asigna al registrar.
 - Campos: titulo, tipo (solicitud|falla|evaluacion|deslinde|otro), fecha, dirigido, proveedor, moneda, monto, resumen, estado,
   version, archivo, versiones[], historial[], aprobacion {fecha, por, medio, nota, evidencia}, eqIds/eqCods, progId/progNombre, docs[].
+- Destinatarios (`datos/inf/config/contactos.lista`: id, nombre, cargo, correo, area, copia): "Dirigido a" se elige de esta lista.
+- Aprobación: monto aprobado (puede diferir del solicitado), área, pedido Nisira (PSR servicio / PED materiales) y número, resumen de lo aprobado.
+  Al confirmar se abre el correo del usuario (mailto) con la confirmación para el destinatario y en copia los marcados "Copia".
+  Criterio: el correo NO es la evidencia; la evidencia es la respuesta de conformidad del aprobador, que se adjunta en la ficha.
+  Envío 100 % automático requeriría un intermediario (Apps Script o servicio externo); se descartó por ahora.
 - Estados: borrador → presentado → aprobado | observado | rechazado; observado → presentado (con nueva versión).
   La aprobación la registra Admin/Supervisor con la evidencia (correo o acta); Gerencia no entra al SIM.
 - Al cargar un HTML o PDF, se autollenan título, tipo, fecha, dirigido, proveedor, monto y cotización. PDF: pdf.js 3.11.174 (cdnjs, carga bajo demanda),
@@ -183,3 +188,4 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-21 — Informes técnicos (F9): registro con código, estados, versiones, relaciones con Plan y Equipos, Storage con medidor y retiro. Nuevo `storage.rules`.
 - 2026-10-21 — Informes: archivos pasan a Firestore por partes (sin Blaze), 500 MB reservados.
 - 2026-10-21 — Informes: autollenado y visor para PDF (pdf.js).
+- 2026-10-22 — Informes: destinatarios con correo, datos de aprobación (monto, área, PSR/PED) y correo de confirmación con un clic.

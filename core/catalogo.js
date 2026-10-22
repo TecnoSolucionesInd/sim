@@ -119,6 +119,7 @@ export const APPS = [
     icon: 'M6 3h9l4 4v14H6zM15 3v4h4M9 11h7M9 15h4M14 17l1.6 1.6L19 15.2',
     modulos: [
       { id: 'informes', nombre: 'Informes' },
+      { id: 'destinatarios', nombre: 'Destinatarios' },
       { id: 'almacenamiento', nombre: 'Almacenamiento' }
     ]
   },

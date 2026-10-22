@@ -17,6 +17,13 @@ export const ESTADOS_INF = {
   rechazado:  { label: 'Rechazado',  bg: 'rgba(255,143,143,.14)', fg: '#FFB3B3' }
 };
 
+export const AREAS_INF = ['Congelado', 'Planta de hielo', 'Refrigeración', 'Calderos', 'Ósmosis', 'Eléctrico', 'Infraestructura', 'General de Mantenimiento'];
+
+export const PEDIDOS = [
+  { id: 'PSR', label: 'PSR — pedido de servicio' },
+  { id: 'PED', label: 'PED — pedido de materiales' }
+];
+
 export const TIPOS_INF = [
   { id: 'solicitud',  label: 'Solicitud de aprobación' },
   { id: 'falla',      label: 'Informe de falla' },

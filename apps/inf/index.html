@@ -49,7 +49,7 @@
 <script type="module">
 import { iniciarApp, toast, db, RAIZ } from '../../core/core.js';
 import { listarEquipos, etiquetaEquipo } from '../../core/equipos.js';
-import { LIMITE_STORAGE, UMBRAL_AVISO, UMBRAL_CRITICO, MAX_ARCHIVO, ESTADOS_INF, TIPOS_INF, fmtBytes } from '../../core/informes.js';
+import { LIMITE_STORAGE, UMBRAL_AVISO, UMBRAL_CRITICO, MAX_ARCHIVO, ESTADOS_INF, TIPOS_INF, AREAS_INF, PEDIDOS, fmtBytes } from '../../core/informes.js';
 import {
   collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, runTransaction, serverTimestamp, increment, arrayUnion
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -60,6 +60,7 @@ const PREFIJO = 'IPSMSA/MMTO/INF';
 const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
 const colInf = () => collection(db, 'datos', 'inf', 'informes');
 const docUso = () => doc(db, 'datos', 'inf', 'config', 'uso');
+const docContactos = () => doc(db, 'datos', 'inf', 'config', 'contactos');
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 const ahora = () => new Date().toISOString();
 const fmtF = (iso) => iso ? new Date(iso.length <= 10 ? iso + 'T12:00:00' : iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -67,7 +68,7 @@ const money = (m, mon) => m || m === 0 ? `${mon || 'S/'} ${(+m).toLocaleString('
 const tipoLbl = (id) => (TIPOS_INF.find(t => t.id === id) || TIPOS_INF[TIPOS_INF.length - 1]).label;
 const pill = (e) => { const s = ESTADOS_INF[e] || ESTADOS_INF.borrador; return `<span class="pill" style="background:${s.bg};color:${s.fg}">${s.label}</span>`; };
 
-let CTX = null, L = [], USO = { bytes: 0 }, EQ = null, PROGS = null, FIL = { estado: 'all', tipo: 'all', q: '' };
+let CTX = null, L = [], USO = { bytes: 0 }, CONTACTOS = [], EQ = null, PROGS = null, FIL = { estado: 'all', tipo: 'all', q: '' };
 const escribe = () => CTX.puedeEscribir;
 const gestor = () => ['admin', 'supervisor'].includes(CTX.rol);
 const quien = () => CTX.perfil?.nombre || CTX.user.email;
@@ -313,7 +314,8 @@ function camposDatos(v, dis = '') {
     <div style="grid-column:1/-1"><label class="label" for="iTit">Título</label><input class="field" id="iTit" value="${esc(v.titulo || '')}" ${dis}></div>
     <div><label class="label" for="iTip">Tipo</label><select class="field" id="iTip" ${dis}>${TIPOS_INF.map(t => `<option value="${t.id}" ${t.id === (v.tipo || 'solicitud') ? 'selected' : ''}>${t.label}</option>`).join('')}</select></div>
     <div><label class="label" for="iFec">Fecha del informe</label><input class="field" id="iFec" type="date" value="${esc(v.fecha || hoyISO())}" ${dis}></div>
-    <div style="grid-column:1/-1"><label class="label" for="iDir">Dirigido a</label><input class="field" id="iDir" value="${esc(v.dirigido || '')}" placeholder="Nombre — cargo" ${dis}></div>
+    <div style="grid-column:1/-1"><label class="label" for="iDir">Dirigido a</label><input class="field" id="iDir" list="dlDest" value="${esc(v.dirigido || '')}" placeholder="Elija de Destinatarios o escriba nombre — cargo" ${dis}>
+      <datalist id="dlDest">${CONTACTOS.map(c => `<option value="${esc(etiquetaContacto(c))}">`).join('')}</datalist></div>
     <div><label class="label" for="iPro">Proveedor (si aplica)</label><input class="field" id="iPro" value="${esc(v.proveedor || '')}" ${dis}></div>
     <div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px"><div><label class="label" for="iMon">Moneda</label><select class="field" id="iMon" ${dis}>${['S/', 'US$'].map(m => `<option ${m === (v.moneda || 'S/') ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
       <div><label class="label" for="iMto">Monto (sin IGV)</label><input class="field" id="iMto" type="number" step="0.01" min="0" value="${v.monto ?? ''}" ${dis}></div></div>
@@ -407,6 +409,10 @@ async function ficha(id) {
       <div class="side">
         <div class="box"><h4>Estado</h4><div id="acc" style="display:flex;gap:8px;flex-wrap:wrap"></div>
           ${ap ? `<div style="margin-top:12px;font-size:13.5px;line-height:1.6"><b>${x.estado === 'rechazado' ? 'Rechazado' : 'Aprobado'}</b> el ${fmtF(ap.fecha)}${ap.por ? ' por ' + esc(ap.por) : ''}${ap.medio ? ' · ' + esc(ap.medio) : ''}${ap.nota ? `<div class="sub">${esc(ap.nota)}</div>` : ''}
+            ${ap.montoAprobado != null ? `<div>Monto aprobado: <b>${money(ap.montoAprobado, ap.monedaAprobada)}</b></div>` : ''}
+            ${ap.area ? `<div class="sub">Área: ${esc(ap.area)}${ap.pedidoTipo ? ` · ${esc(ap.pedidoTipo)}${ap.pedidoNum ? ' ' + esc(ap.pedidoNum) : ' por emitir'}` : ''}</div>` : ''}
+            ${ap.correo ? `<div class="sub">Correo de confirmación preparado el ${fmtF(ap.correo.preparado)}${ap.correo.para ? ' para ' + esc(ap.correo.para) : ''}</div>` : ''}
+            ${x.estado === 'aprobado' ? `<button type="button" class="btn" id="bMail" style="height:36px;margin-top:8px;font-size:13px">Preparar correo de confirmación</button>` : ''}
             ${ap.evidencia ? `<button type="button" class="btn" id="bEvi" style="height:36px;margin-top:8px;font-size:13px">Ver evidencia de aprobación</button>` : ''}</div>` : ''}</div>
         <div class="box"><h4>Versiones</h4>${vers.map(v => `<div class="it"><div><b>v${v.ver}</b> <span class="sub">${fmtF(v.fecha)} · ${fmtBytes(v.bytes)}${v.retirado ? ' · retirado' : ''}</span></div>
           ${v.retirado ? '' : `<button type="button" class="btn" data-v="${v.ver}" style="height:34px;font-size:12.5px">Ver</button>`}</div>`).join('')}
@@ -419,6 +425,9 @@ async function ficha(id) {
   m.$('#bVer').onclick = () => verArchivo(x.archivo, x.titulo);
   m.bg.querySelectorAll('[data-v]').forEach(b => b.onclick = () => verArchivo(vers.find(v => String(v.ver) === b.dataset.v), `${x.titulo} — v${b.dataset.v}`));
   if (m.$('#bEvi')) m.$('#bEvi').onclick = () => verArchivo(ap.evidencia, 'Evidencia de aprobación');
+  if (m.$('#bMail')) m.$('#bMail').onclick = async () => {
+    if (abrirCorreo(x, ap) && !ap.correo) await updateDoc(doc(colInf(), x.id), { 'aprobacion.correo': { preparado: ahora(), para: (CONTACTOS.find(c => c.id === ap.paraId) || contactoDe(ap.por) || contactoDe(x.dirigido) || {}).correo || '' } }).catch(() => {});
+  };
 
   // relaciones
   let eqIds = [...(x.eqIds || [])], eqCods = [...(x.eqCods || [])], docs = [...(x.docs || [])];
@@ -488,20 +497,70 @@ async function ficha(id) {
   };
 }
 
+// ---------------- destinatarios y correo de confirmación ----------------
+const etiquetaContacto = (c) => c.cargo ? `${c.nombre} — ${c.cargo}` : c.nombre;
+const nrm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+function contactoDe(texto) {
+  const t = nrm(texto); if (!t) return null;
+  return CONTACTOS.find(c => nrm(etiquetaContacto(c)) === t) || CONTACTOS.find(c => t.startsWith(nrm(c.nombre))) || null;
+}
+const fmtFechaCorta = (iso) => iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
+function textoCorreo(x, ap, para) {
+  const lin = [];
+  lin.push(`Estimado(a) ${para ? para.nombre : (ap.por || '')}:`, '');
+  lin.push('Se registra la aprobación del siguiente requerimiento:', '');
+  lin.push(`Informe: ${x.codigo} — ${x.titulo}`);
+  lin.push(`Fecha de aprobación: ${fmtFechaCorta(ap.fecha)}${ap.medio ? ' (' + ap.medio.toLowerCase() + ')' : ''}`);
+  if (ap.area) lin.push(`Área: ${ap.area}`);
+  if (ap.pedidoTipo) lin.push(`Pedido: ${ap.pedidoTipo}${ap.pedidoNum ? ' N.º ' + ap.pedidoNum : ' (por emitir)'} — ${ap.pedidoTipo === 'PSR' ? 'servicio' : 'materiales'}`);
+  if (x.proveedor) lin.push(`Proveedor: ${x.proveedor}${(x.docs || []).length ? ' (' + x.docs.join(', ') + ')' : ''}`);
+  if (ap.montoAprobado != null) lin.push(`Monto aprobado: ${money(ap.montoAprobado, ap.monedaAprobada)} sin IGV`);
+  if (ap.detalle) lin.push('', 'Detalle:', ap.detalle);
+  if (ap.nota) lin.push('', 'Observaciones:', ap.nota);
+  lin.push('', 'Se solicita confirmar por este medio la conformidad con lo indicado.', '', 'Atentamente,', quien(), 'Departamento de Mantenimiento');
+  return lin.join('\n');
+}
+function abrirCorreo(x, ap) {
+  const para = CONTACTOS.find(c => c.id === ap.paraId) || contactoDe(ap.por) || contactoDe(x.dirigido);
+  const cc = CONTACTOS.filter(c => (ap.ccIds || []).includes(c.id) && c.correo).map(c => c.correo);
+  if (!para?.correo) { toast('El destinatario no tiene correo registrado. Agréguelo en Destinatarios.', 'err'); return false; }
+  const asunto = `Aprobación registrada — ${x.codigo} · ${x.titulo}`;
+  const url = `mailto:${encodeURIComponent(para.correo)}?${cc.length ? 'cc=' + encodeURIComponent(cc.join(',')) + '&' : ''}subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(textoCorreo(x, ap, para))}`;
+  const a = document.createElement('a'); a.href = url; document.body.appendChild(a); a.click(); a.remove();
+  return true;
+}
+
 function cambiarEstado(x, accion, mFicha) {
   const T = { presentar: ['Presentar informe', 'presentado'], aprobar: ['Registrar aprobación', 'aprobado'], observar: ['Registrar observación', 'observado'], rechazar: ['Registrar rechazo', 'rechazado'] }[accion];
   const conAprob = accion === 'aprobar' || accion === 'rechazar';
   let evid = null;
-  const m = modal({ titulo: T[0], ancho: 560,
+  const m = modal({ titulo: T[0], ancho: accion === 'aprobar' ? 720 : 560,
     cuerpo: `<div class="g2">
       <div><label class="label" for="eFec">Fecha</label><input class="field" id="eFec" type="date" value="${hoyISO()}"></div>
       ${conAprob ? `<div><label class="label" for="eMed">Medio</label><select class="field" id="eMed"><option>Correo</option><option>Acta / documento firmado</option><option>Reunión</option><option>Verbal</option></select></div>
         <div style="grid-column:1/-1"><label class="label" for="ePor">${accion === 'aprobar' ? 'Aprobado por' : 'Rechazado por'}</label><input class="field" id="ePor" value="${esc(x.dirigido || '')}"></div>` : ''}
+      ${accion === 'aprobar' ? `
+        <div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px"><div><label class="label" for="eMon">Moneda</label><select class="field" id="eMon">${['S/', 'US$'].map(mo => `<option ${mo === (x.moneda || 'S/') ? 'selected' : ''}>${mo}</option>`).join('')}</select></div>
+          <div><label class="label" for="eMto">Monto aprobado (sin IGV)</label><input class="field" id="eMto" type="number" step="0.01" min="0" value="${x.monto ?? ''}"></div></div>
+        <div><label class="label" for="eArea">Área</label><select class="field" id="eArea"><option value="">Seleccione</option>${AREAS_INF.map(a => `<option ${a === (x.area || '') ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
+        <div><label class="label" for="ePed">Pedido Nisira</label><select class="field" id="ePed"><option value="">Sin pedido aún</option>${PEDIDOS.map(pd => `<option value="${pd.id}">${pd.label}</option>`).join('')}</select></div>
+        <div><label class="label" for="ePedN">N.º de pedido</label><input class="field" id="ePedN" placeholder="Si ya fue emitido"></div>
+        <div style="grid-column:1/-1"><label class="label" for="eDet">Resumen de lo aprobado</label><textarea class="field" id="eDet" rows="3" style="height:auto;padding:12px 16px;line-height:1.5">${esc(x.resumen || x.titulo || '')}</textarea></div>` : ''}
       <div style="grid-column:1/-1"><label class="label" for="eNot">${accion === 'observar' ? 'Observaciones recibidas' : 'Nota (opcional)'}</label><textarea class="field" id="eNot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5"></textarea></div>
+      ${accion === 'aprobar' ? `<div style="grid-column:1/-1" class="box">
+        <label class="check"><input type="checkbox" id="eMail" checked>Preparar correo de confirmación al confirmar</label>
+        <div class="g2" style="margin-top:10px"><div><label class="label" for="ePara">Para</label><select class="field" id="ePara"><option value="">— Elija destinatario —</option>${CONTACTOS.map(c => `<option value="${c.id}" ${c.correo ? '' : 'disabled'}>${esc(etiquetaContacto(c))}${c.correo ? '' : ' (sin correo)'}</option>`).join('')}</select></div>
+          <div><span class="label">Con copia</span><div style="display:flex;flex-direction:column;gap:6px;max-height:110px;overflow:auto">${CONTACTOS.filter(c => c.correo).map(c => `<label class="check" style="font-size:13px"><input type="checkbox" class="eCC" value="${c.id}" ${c.copia ? 'checked' : ''}>${esc(c.nombre)}</label>`).join('') || '<span class="sub">Sin destinatarios con correo</span>'}</div></div></div>
+        <div class="sub" style="margin-top:8px">Se abre su correo con el mensaje listo para enviar. Adjunte después la respuesta de conformidad como evidencia. <a href="#destinatarios">Gestionar destinatarios</a></div></div>` : ''}
       ${conAprob ? `<div style="grid-column:1/-1"><label class="label" for="eEv">Evidencia (correo o acta en PDF/imagen, opcional)</label><input class="field" id="eEv" type="file" accept=".pdf,image/*,.html" style="padding-top:11px"></div>` : ''}
     </div><div class="bar" id="bar" hidden><div></div></div>`,
     pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="eOk">Confirmar</button>` });
   if (m.$('#eEv')) m.$('#eEv').onchange = (e) => { evid = e.target.files[0] || null; };
+  if (m.$('#ePara')) {
+    const c0 = contactoDe(x.dirigido); if (c0 && c0.correo) m.$('#ePara').value = c0.id;
+    m.$('#ePara').onchange = () => { const c = CONTACTOS.find(k => k.id === m.$('#ePara').value); if (c) m.$('#ePor').value = etiquetaContacto(c); };
+    m.bg.querySelectorAll('a[href="#destinatarios"]').forEach(a => a.onclick = () => { m.cerrar(); mFicha.cerrar(); });
+  }
   m.form.onsubmit = async (ev) => {
     ev.preventDefault(); m.err('');
     const fecha = m.$('#eFec').value || hoyISO(), nota = m.$('#eNot').value.trim();
@@ -511,14 +570,65 @@ function cambiarEstado(x, accion, mFicha) {
       const upd = { estado: T[1], actualizado: serverTimestamp() };
       if (conAprob) {
         const ap = { fecha, por: m.$('#ePor').value.trim(), medio: m.$('#eMed').value, nota };
+        if (accion === 'aprobar') {
+          ap.monedaAprobada = m.$('#eMon').value;
+          ap.montoAprobado = m.$('#eMto').value === '' ? null : +m.$('#eMto').value;
+          ap.area = m.$('#eArea').value; ap.pedidoTipo = m.$('#ePed').value; ap.pedidoNum = m.$('#ePedN').value.trim();
+          ap.detalle = m.$('#eDet').value.trim();
+          ap.paraId = m.$('#ePara').value || null;
+          ap.ccIds = [...m.bg.querySelectorAll('.eCC:checked')].map(i => i.value);
+          if (m.$('#eMail').checked && !ap.paraId) { b.disabled = false; return m.err('Elija el destinatario del correo o desmarque "Preparar correo".'); }
+          if (m.$('#eMail').checked) ap.correo = { preparado: ahora(), para: (CONTACTOS.find(c => c.id === ap.paraId) || {}).correo || '' };
+        }
         if (evid) { m.$('#bar').hidden = false; ap.evidencia = await subirArchivo(x.id, 'aprobacion', evid, (p) => m.$('#bar div').style.width = Math.round(p * 100) + '%'); }
         upd.aprobacion = ap;
       }
       const notaH = accion === 'presentar' ? (x.dirigido ? 'Presentado a ' + x.dirigido : 'Presentado') : (nota || (conAprob ? `${m.$('#eMed').value}${m.$('#ePor').value ? ' · ' + m.$('#ePor').value : ''}` : ''));
       upd.historial = arrayUnion({ fecha: fecha + 'T12:00:00', estado: T[1], nota: notaH, por: quien() });
+      if (upd.aprobacion?.area) upd.area = upd.aprobacion.area;
+      if (upd.aprobacion?.pedidoTipo && upd.aprobacion?.pedidoNum) upd.docs = arrayUnion(`${upd.aprobacion.pedidoTipo} ${upd.aprobacion.pedidoNum}`);
       await updateDoc(doc(colInf(), x.id), upd);
+      if (upd.aprobacion?.correo) abrirCorreo(x, upd.aprobacion);
       m.cerrar(); mFicha.cerrar(); toast(`${x.codigo}: ${ESTADOS_INF[T[1]].label.toLowerCase()}.`); setTimeout(() => ficha(x.id), 300);
     } catch (er) { m.err('No se pudo registrar: ' + (er.code || er.message)); b.disabled = false; }
+  };
+}
+
+// ---------------- vista Destinatarios ----------------
+function vistaDestinatarios(main) {
+  const ed = gestor();
+  main.innerHTML = `
+    <div class="pagehead"><div><div class="eyebrow rise">Informes técnicos</div><h1 class="h-display rise d1">Destinatarios</h1></div>
+      ${ed ? '<button class="btn btn-primary rise d2" id="bNC"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo destinatario</button>' : ''}</div>
+    <p class="muted rise d2" style="margin:-6px 0 18px;line-height:1.6;max-width:760px">Personas a quienes se dirigen los informes. Su correo se usa para preparar la confirmación de aprobación. Los marcados con "Copia" se incluyen en copia por defecto (por ejemplo, Logística).</p>
+    <div class="glass rise d3 tbl-wrap"><table class="table" style="min-width:720px">
+      <thead><tr><th>Nombre</th><th>Cargo</th><th>Correo</th><th>Área</th><th>Copia</th><th></th></tr></thead>
+      <tbody>${CONTACTOS.map(c => `<tr><td style="font-weight:500">${esc(c.nombre)}</td><td style="font-size:13.5px">${esc(c.cargo || '')}</td><td class="mono" style="font-size:12.5px">${esc(c.correo || '—')}</td>
+        <td style="font-size:13.5px">${esc(c.area || '')}</td><td>${c.copia ? '<span class="pill" style="background:rgba(111,227,207,.16);color:#8FF0DE">Copia</span>' : ''}</td>
+        <td style="text-align:right">${ed ? `<button class="btn" data-ec="${c.id}" style="height:36px;font-size:12.5px">Editar</button>` : ''}</td></tr>`).join('')
+        || '<tr><td colspan="6" class="muted" style="padding:28px 20px">Aún no hay destinatarios registrados.</td></tr>'}</tbody></table></div>`;
+  if (main.querySelector('#bNC')) main.querySelector('#bNC').onclick = () => editarContacto(null);
+  main.querySelectorAll('[data-ec]').forEach(b => b.onclick = () => editarContacto(CONTACTOS.find(c => c.id === b.dataset.ec)));
+}
+function editarContacto(c) {
+  const nuevo = !c; const v = c || { nombre: '', cargo: '', correo: '', area: '', copia: false };
+  const m = modal({ titulo: nuevo ? 'Nuevo destinatario' : 'Editar destinatario', ancho: 620,
+    cuerpo: `<div class="g2">
+      <div><label class="label" for="cNom">Nombre</label><input class="field" id="cNom" value="${esc(v.nombre)}"></div>
+      <div><label class="label" for="cCar">Cargo</label><input class="field" id="cCar" value="${esc(v.cargo)}" placeholder="Jefe de Operaciones"></div>
+      <div><label class="label" for="cMail">Correo</label><input class="field" id="cMail" type="email" value="${esc(v.correo)}"></div>
+      <div><label class="label" for="cArea">Área</label><input class="field" id="cArea" value="${esc(v.area)}" placeholder="Operaciones"></div>
+      <div style="grid-column:1/-1"><label class="check"><input type="checkbox" id="cCopia" ${v.copia ? 'checked' : ''}>Incluir en copia por defecto en las confirmaciones de aprobación</label></div></div>`,
+    pie: `${nuevo ? '' : '<button type="button" class="btn btn-danger" id="cDel" style="margin-right:auto">Eliminar</button>'}<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button>` });
+  const guardar = async (lista) => { await setDoc(docContactos(), { lista, actualizado: serverTimestamp() }); };
+  if (m.$('#cDel')) m.$('#cDel').onclick = async () => { await guardar(CONTACTOS.filter(k => k.id !== c.id)); m.cerrar(); toast('Destinatario eliminado.'); };
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault(); m.err('');
+    const d = { id: v.id || ('c' + Date.now().toString(36)), nombre: m.$('#cNom').value.trim(), cargo: m.$('#cCar').value.trim(), correo: m.$('#cMail').value.trim().toLowerCase(), area: m.$('#cArea').value.trim(), copia: m.$('#cCopia').checked };
+    if (!d.nombre) return m.err('Ingrese el nombre.');
+    if (d.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.correo)) return m.err('El correo no es válido.');
+    try { await guardar(nuevo ? CONTACTOS.concat([d]) : CONTACTOS.map(k => k.id === d.id ? d : k)); m.cerrar(); toast('Destinatario guardado.'); }
+    catch (e) { m.err('No se pudo guardar: ' + (e.code || e.message)); }
   };
 }
 
@@ -598,7 +708,7 @@ function retirar(z) {
 // ---------------- arranque ----------------
 function render(mod) {
   if (!CTX?.main) return;
-  if (mod === 'almacenamiento') vistaAlmacen(CTX.main); else vistaInformes(CTX.main);
+  if (mod === 'almacenamiento') vistaAlmacen(CTX.main); else if (mod === 'destinatarios') vistaDestinatarios(CTX.main); else vistaInformes(CTX.main);
 }
 CTX = await iniciarApp({ appId: 'inf', alCambiarModulo: (mod, ctx) => { CTX = ctx; render(mod); } });
 let primera = true;
@@ -607,6 +717,7 @@ onSnapshot(colInf(), (s) => {
   if (!document.querySelector('.modal-bg')) render(CTX.modulo);
   if (primera) { primera = false; const id = new URLSearchParams(location.search).get('i'); if (id) ficha(id); }
 }, (e) => toast('No se pudieron leer los informes: ' + (e.code || e.message), 'err'));
+onSnapshot(docContactos(), (s) => { CONTACTOS = (s.exists() ? s.data().lista || [] : []).slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')); if (!document.querySelector('.modal-bg')) render(CTX.modulo); }, () => {});
 onSnapshot(docUso(), (s) => { USO = s.exists() ? s.data() : { bytes: 0 }; if (!document.querySelector('.modal-bg')) render(CTX.modulo); }, () => {});
 </script>
 </body>
