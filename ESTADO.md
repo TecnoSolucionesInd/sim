@@ -156,7 +156,9 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Campos: titulo, tipo (solicitud|falla|evaluacion|deslinde|otro), fecha, dirigido, proveedor, moneda, monto, resumen, estado,
   version, archivo, versiones[], historial[], aprobacion {fecha, por, medio, nota, evidencia}, eqIds/eqCods, progId/progNombre, docs[].
 - Destinatarios (`datos/inf/config/contactos.lista`: id, nombre, cargo, correo, area, copia): "Dirigido a" se elige de esta lista.
-- Aprobación: monto aprobado (puede diferir del solicitado), área, pedido Nisira (PSR servicio / PED materiales) y número, resumen de lo aprobado.
+- Pedido Nisira en el informe (`pedidoTipo` PSR|PED, `pedidoNum`), editable en Relaciones aun después de aprobado; si no está, se toma de la aprobación
+  o de un documento escrito como "PSR 0004521". Otros documentos (OC, OS, cotización) en `docs[]`: se agregan con Enter, botón Agregar o al salir del campo.
+- Aprobación: monto aprobado (puede diferir del solicitado), área, pedido (precargado desde el informe), resumen de lo aprobado.
   Al confirmar se abre el correo del usuario (mailto) con la confirmación para el destinatario y en copia los marcados "Copia".
   Criterio: el correo NO es la evidencia; la evidencia es la respuesta de conformidad del aprobador, que se adjunta en la ficha.
   Envío 100 % automático requeriría un intermediario (Apps Script o servicio externo); se descartó por ahora.
@@ -189,3 +191,4 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-21 — Informes: archivos pasan a Firestore por partes (sin Blaze), 500 MB reservados.
 - 2026-10-21 — Informes: autollenado y visor para PDF (pdf.js).
 - 2026-10-22 — Informes: destinatarios con correo, datos de aprobación (monto, área, PSR/PED) y correo de confirmación con un clic.
+- 2026-10-22 — Informes: corrige documentos que no se guardaban sin Enter; pedido PSR/PED propio del informe y en el correo.

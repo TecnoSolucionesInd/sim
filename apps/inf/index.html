@@ -299,7 +299,7 @@ function pintarTabla(main) {
   const tb = main.querySelector('#tb'); if (!tb) return;
   const q = FIL.q.toLowerCase();
   const lista = L.filter(x => (FIL.estado === 'all' || x.estado === FIL.estado) && (FIL.tipo === 'all' || x.tipo === FIL.tipo)
-    && (!q || [x.codigo, x.titulo, x.proveedor, x.dirigido, (x.docs || []).join(' '), (x.eqCods || []).join(' ')].join(' ').toLowerCase().includes(q)));
+    && (!q || [x.codigo, x.titulo, x.proveedor, x.dirigido, x.pedidoTipo, x.pedidoNum, (x.docs || []).join(' '), (x.eqCods || []).join(' ')].join(' ').toLowerCase().includes(q)));
   tb.innerHTML = lista.map((x, i) => `<tr class="rowbtn slide" data-id="${x.id}" style="animation-delay:${Math.min(i * 0.04, .6).toFixed(2)}s">
     <td><div class="cod">${esc(x.codigo)}${x.version > 1 ? ` · v${x.version}` : ''}</div><div class="ttl">${esc(x.titulo)}</div>${x.proveedor ? `<div class="sub">${esc(x.proveedor)}</div>` : ''}</td>
     <td style="font-size:13.5px">${esc(tipoLbl(x.tipo))}</td><td style="font-size:13.5px">${esc(x.dirigido || '—')}</td>
@@ -391,6 +391,9 @@ async function ficha(id) {
   const cerrado = ['aprobado', 'rechazado'].includes(x.estado);
   const editable = escribe() && (!cerrado || CTX.rol === 'admin');
   const dis = editable ? '' : 'disabled';
+  const relEd = escribe();                       // las relaciones y el pedido se pueden completar aun después de aprobado
+  const disR = relEd ? '' : 'disabled';
+  const ped = pedidoDe(x);
   const vers = (x.versiones || []).slice().sort((a, b) => b.ver - a.ver);
   const ap = x.aprobacion;
   const m = modal({ titulo: `<span class="cod" style="font-size:13px">${esc(x.codigo)}</span><div>${esc(x.titulo)}</div>`, ancho: 1040,
@@ -401,16 +404,20 @@ async function ficha(id) {
         <h4 style="font-family:var(--f-display);font-size:15px;margin:22px 0 4px">Relaciones</h4>
         <div class="sub" style="margin-bottom:10px">Vincule el informe con los equipos, el programa de trabajo y las órdenes que correspondan.</div>
         <div class="g2">
-          <div style="grid-column:1/-1"><label class="label" for="rEq">Equipos</label><input class="field" id="rEq" list="dlEq" placeholder="${EQ ? 'Buscar por código o descripción y pulsar Enter' : 'Cargando equipos…'}" ${dis}><datalist id="dlEq"></datalist><div class="chips" id="cEq"></div></div>
-          <div><label class="label" for="rPr">Programa de trabajo (Plan)</label><select class="field" id="rPr" ${dis}><option value="">Sin vincular</option></select></div>
-          <div><label class="label" for="rDoc">OC / OS / cotización</label><input class="field" id="rDoc" placeholder="Escriba y pulse Enter" ${dis}><div class="chips" id="cDoc"></div></div>
+          <div style="grid-column:1/-1"><label class="label" for="rEq">Equipos</label><input class="field" id="rEq" list="dlEq" placeholder="${EQ ? 'Buscar por código o descripción y elegir' : 'Cargando equipos…'}" ${disR}><datalist id="dlEq"></datalist><div class="chips" id="cEq"></div></div>
+          <div style="grid-column:1/-1"><label class="label" for="rPr">Programa de trabajo (Plan)</label><select class="field" id="rPr" ${disR}><option value="">Sin vincular</option></select></div>
+          <div><label class="label" for="rPedT">Pedido Nisira</label><select class="field" id="rPedT" ${disR}><option value="">Sin pedido</option>${PEDIDOS.map(pd => `<option value="${pd.id}" ${pd.id === ped.tipo ? 'selected' : ''}>${pd.label}</option>`).join('')}</select></div>
+          <div><label class="label" for="rPedN">N.º de pedido</label><input class="field" id="rPedN" value="${esc(ped.num)}" placeholder="Ej. 0004521" ${disR}></div>
+          <div style="grid-column:1/-1"><label class="label" for="rDoc">Otros documentos (OC, OS, cotización)</label>
+            <div style="display:flex;gap:8px"><input class="field" id="rDoc" placeholder="Ej. OS 0001-002345" ${disR}>${relEd ? '<button type="button" class="btn" id="bDoc" style="height:48px;flex-shrink:0">Agregar</button>' : ''}</div>
+            <div class="chips" id="cDoc"></div></div>
         </div>
       </div>
       <div class="side">
         <div class="box"><h4>Estado</h4><div id="acc" style="display:flex;gap:8px;flex-wrap:wrap"></div>
           ${ap ? `<div style="margin-top:12px;font-size:13.5px;line-height:1.6"><b>${x.estado === 'rechazado' ? 'Rechazado' : 'Aprobado'}</b> el ${fmtF(ap.fecha)}${ap.por ? ' por ' + esc(ap.por) : ''}${ap.medio ? ' · ' + esc(ap.medio) : ''}${ap.nota ? `<div class="sub">${esc(ap.nota)}</div>` : ''}
             ${ap.montoAprobado != null ? `<div>Monto aprobado: <b>${money(ap.montoAprobado, ap.monedaAprobada)}</b></div>` : ''}
-            ${ap.area ? `<div class="sub">Área: ${esc(ap.area)}${ap.pedidoTipo ? ` · ${esc(ap.pedidoTipo)}${ap.pedidoNum ? ' ' + esc(ap.pedidoNum) : ' por emitir'}` : ''}</div>` : ''}
+            ${ap.area || ped.tipo ? `<div class="sub">${ap.area ? 'Área: ' + esc(ap.area) : ''}${ped.tipo ? `${ap.area ? ' · ' : ''}${esc(ped.tipo)}${ped.num ? ' ' + esc(ped.num) : ' por emitir'}` : ''}</div>` : ''}
             ${ap.correo ? `<div class="sub">Correo de confirmación preparado el ${fmtF(ap.correo.preparado)}${ap.correo.para ? ' para ' + esc(ap.correo.para) : ''}</div>` : ''}
             ${x.estado === 'aprobado' ? `<button type="button" class="btn" id="bMail" style="height:36px;margin-top:8px;font-size:13px">Preparar correo de confirmación</button>` : ''}
             ${ap.evidencia ? `<button type="button" class="btn" id="bEvi" style="height:36px;margin-top:8px;font-size:13px">Ver evidencia de aprobación</button>` : ''}</div>` : ''}</div>
@@ -420,20 +427,21 @@ async function ficha(id) {
           <div class="bar" id="barNV" hidden><div></div></div></div>
         <div class="box"><h4>Historial</h4><div class="tl">${(x.historial || []).slice().reverse().map(h => `<div class="e" style="--c:${(ESTADOS_INF[h.estado] || ESTADOS_INF.borrador).fg}"><b>${esc((ESTADOS_INF[h.estado] || {}).label || h.estado)}</b> · ${fmtF(h.fecha)}<div class="sub">${esc(h.nota || '')}${h.por ? ' — ' + esc(h.por) : ''}</div></div>`).join('')}</div></div>
       </div></div>`,
-    pie: editable ? `<button type="button" class="btn" data-x>Cerrar</button><button type="submit" class="btn btn-primary" id="bG">Guardar cambios</button>` : `<button type="button" class="btn" data-x>Cerrar</button>` });
+    pie: relEd ? `<button type="button" class="btn" data-x>Cerrar</button><button type="submit" class="btn btn-primary" id="bG">Guardar cambios</button>` : `<button type="button" class="btn" data-x>Cerrar</button>` });
 
   m.$('#bVer').onclick = () => verArchivo(x.archivo, x.titulo);
   m.bg.querySelectorAll('[data-v]').forEach(b => b.onclick = () => verArchivo(vers.find(v => String(v.ver) === b.dataset.v), `${x.titulo} — v${b.dataset.v}`));
   if (m.$('#bEvi')) m.$('#bEvi').onclick = () => verArchivo(ap.evidencia, 'Evidencia de aprobación');
   if (m.$('#bMail')) m.$('#bMail').onclick = async () => {
-    if (abrirCorreo(x, ap) && !ap.correo) await updateDoc(doc(colInf(), x.id), { 'aprobacion.correo': { preparado: ahora(), para: (CONTACTOS.find(c => c.id === ap.paraId) || contactoDe(ap.por) || contactoDe(x.dirigido) || {}).correo || '' } }).catch(() => {});
+    agregarDoc();
+    if (abrirCorreo(estadoActual(), ap) && !ap.correo) await updateDoc(doc(colInf(), x.id), { 'aprobacion.correo': { preparado: ahora(), para: (CONTACTOS.find(c => c.id === ap.paraId) || contactoDe(ap.por) || contactoDe(x.dirigido) || {}).correo || '' } }).catch(() => {});
   };
 
   // relaciones
   let eqIds = [...(x.eqIds || [])], eqCods = [...(x.eqCods || [])], docs = [...(x.docs || [])];
   const pintarChips = () => {
-    m.$('#cEq').innerHTML = eqCods.map((c, i) => `<span class="chip2">${esc(c)}${editable ? `<button type="button" data-qe="${i}" aria-label="Quitar">×</button>` : ''}</span>`).join('') || '<span class="sub">Sin equipos vinculados</span>';
-    m.$('#cDoc').innerHTML = docs.map((c, i) => `<span class="chip2">${esc(c)}${editable ? `<button type="button" data-qd="${i}" aria-label="Quitar">×</button>` : ''}</span>`).join('') || '<span class="sub">Sin documentos</span>';
+    m.$('#cEq').innerHTML = eqCods.map((c, i) => `<span class="chip2">${esc(c)}${relEd ? `<button type="button" data-qe="${i}" aria-label="Quitar">×</button>` : ''}</span>`).join('') || '<span class="sub">Sin equipos vinculados</span>';
+    m.$('#cDoc').innerHTML = docs.map((c, i) => `<span class="chip2">${esc(c)}${relEd ? `<button type="button" data-qd="${i}" aria-label="Quitar">×</button>` : ''}</span>`).join('') || '<span class="sub">Sin documentos</span>';
     m.bg.querySelectorAll('[data-qe]').forEach(b => b.onclick = () => { eqIds.splice(+b.dataset.qe, 1); eqCods.splice(+b.dataset.qe, 1); pintarChips(); });
     m.bg.querySelectorAll('[data-qd]').forEach(b => b.onclick = () => { docs.splice(+b.dataset.qd, 1); pintarChips(); });
   };
@@ -455,7 +463,11 @@ async function ficha(id) {
     e.target.value = ''; pintarChips();
   };
   m.$('#rEq').onchange = (e) => { if (EQ && EQ.find(q => etiquetaEquipo(q) === e.target.value)) m.$('#rEq').onkeydown({ key: 'Enter', preventDefault() {}, target: e.target }); };
-  m.$('#rDoc').onkeydown = (e) => { if (e.key !== 'Enter') return; e.preventDefault(); const v = e.target.value.trim(); if (v && !docs.includes(v)) docs.push(v); e.target.value = ''; pintarChips(); };
+  const agregarDoc = () => { const i = m.$('#rDoc'); const v = i.value.trim(); if (v && !docs.includes(v)) docs.push(v); i.value = ''; pintarChips(); };
+  m.$('#rDoc').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); agregarDoc(); } };
+  m.$('#rDoc').onblur = agregarDoc;
+  if (m.$('#bDoc')) m.$('#bDoc').onclick = agregarDoc;
+  const estadoActual = () => ({ ...x, docs, pedidoTipo: m.$('#rPedT').value, pedidoNum: m.$('#rPedN').value.trim() });
 
   // acciones de estado
   const acc = [];
@@ -482,11 +494,14 @@ async function ficha(id) {
     };
   }
 
-  if (!editable) return;
+  if (!relEd) return;
   m.form.onsubmit = async (ev) => {
     ev.preventDefault(); m.err('');
-    const d = leerDatos(m);
-    if (!d.titulo) return m.err('Ingrese el título.');
+    agregarDoc();
+    const d = editable ? leerDatos(m) : {};
+    if (editable && !d.titulo) return m.err('Ingrese el título.');
+    d.pedidoTipo = m.$('#rPedT').value; d.pedidoNum = m.$('#rPedN').value.trim();
+    if (d.pedidoNum && !d.pedidoTipo) return m.err('Indique si el pedido es PSR (servicio) o PED (materiales).');
     const progId = m.$('#rPr').value || null;
     const progNombre = progId ? (PROGS?.find(p => p.id === progId)?.nombre || x.progNombre || '') : '';
     const b = m.$('#bG'); b.disabled = true; b.textContent = 'Guardando…';
@@ -504,6 +519,16 @@ function contactoDe(texto) {
   const t = nrm(texto); if (!t) return null;
   return CONTACTOS.find(c => nrm(etiquetaContacto(c)) === t) || CONTACTOS.find(c => t.startsWith(nrm(c.nombre))) || null;
 }
+// Pedido Nisira del informe: campos propios, el registrado en la aprobación o el escrito como documento ("PSR 0004521")
+function pedidoDe(x, ap = x.aprobacion || {}) {
+  let tipo = x.pedidoTipo || ap.pedidoTipo || '', num = x.pedidoNum || ap.pedidoNum || '';
+  if (!num) for (const d of (x.docs || [])) {
+    const m = String(d).match(/^\s*(PSR|PED)\b[\s.:#N°º-]*([\w-]+)/i);
+    if (m) { tipo = tipo || m[1].toUpperCase(); num = m[2]; break; }
+  }
+  return { tipo, num };
+}
+const otrosDocs = (x, ped) => (x.docs || []).filter(d => !(ped.num && String(d).toUpperCase().includes(String(ped.num).toUpperCase()) && /PSR|PED/i.test(d)));
 const fmtFechaCorta = (iso) => iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
 function textoCorreo(x, ap, para) {
   const lin = [];
@@ -512,8 +537,10 @@ function textoCorreo(x, ap, para) {
   lin.push(`Informe: ${x.codigo} — ${x.titulo}`);
   lin.push(`Fecha de aprobación: ${fmtFechaCorta(ap.fecha)}${ap.medio ? ' (' + ap.medio.toLowerCase() + ')' : ''}`);
   if (ap.area) lin.push(`Área: ${ap.area}`);
-  if (ap.pedidoTipo) lin.push(`Pedido: ${ap.pedidoTipo}${ap.pedidoNum ? ' N.º ' + ap.pedidoNum : ' (por emitir)'} — ${ap.pedidoTipo === 'PSR' ? 'servicio' : 'materiales'}`);
-  if (x.proveedor) lin.push(`Proveedor: ${x.proveedor}${(x.docs || []).length ? ' (' + x.docs.join(', ') + ')' : ''}`);
+  const ped = pedidoDe(x, ap);
+  if (ped.tipo || ped.num) lin.push(`Pedido: ${ped.tipo || 'Pedido'}${ped.num ? ' N.º ' + ped.num : ' (por emitir)'}${ped.tipo ? ' — ' + (ped.tipo === 'PSR' ? 'servicio' : 'materiales') : ''}`);
+  if (x.proveedor) lin.push(`Proveedor: ${x.proveedor}`);
+  const otros = otrosDocs(x, ped); if (otros.length) lin.push(`Documentos: ${otros.join(', ')}`);
   if (ap.montoAprobado != null) lin.push(`Monto aprobado: ${money(ap.montoAprobado, ap.monedaAprobada)} sin IGV`);
   if (ap.detalle) lin.push('', 'Detalle:', ap.detalle);
   if (ap.nota) lin.push('', 'Observaciones:', ap.nota);
@@ -543,8 +570,8 @@ function cambiarEstado(x, accion, mFicha) {
         <div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px"><div><label class="label" for="eMon">Moneda</label><select class="field" id="eMon">${['S/', 'US$'].map(mo => `<option ${mo === (x.moneda || 'S/') ? 'selected' : ''}>${mo}</option>`).join('')}</select></div>
           <div><label class="label" for="eMto">Monto aprobado (sin IGV)</label><input class="field" id="eMto" type="number" step="0.01" min="0" value="${x.monto ?? ''}"></div></div>
         <div><label class="label" for="eArea">Área</label><select class="field" id="eArea"><option value="">Seleccione</option>${AREAS_INF.map(a => `<option ${a === (x.area || '') ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
-        <div><label class="label" for="ePed">Pedido Nisira</label><select class="field" id="ePed"><option value="">Sin pedido aún</option>${PEDIDOS.map(pd => `<option value="${pd.id}">${pd.label}</option>`).join('')}</select></div>
-        <div><label class="label" for="ePedN">N.º de pedido</label><input class="field" id="ePedN" placeholder="Si ya fue emitido"></div>
+        <div><label class="label" for="ePed">Pedido Nisira</label><select class="field" id="ePed"><option value="">Sin pedido aún</option>${PEDIDOS.map(pd => `<option value="${pd.id}" ${pd.id === pedidoDe(x).tipo ? 'selected' : ''}>${pd.label}</option>`).join('')}</select></div>
+        <div><label class="label" for="ePedN">N.º de pedido</label><input class="field" id="ePedN" value="${esc(pedidoDe(x).num)}" placeholder="Si ya fue emitido"></div>
         <div style="grid-column:1/-1"><label class="label" for="eDet">Resumen de lo aprobado</label><textarea class="field" id="eDet" rows="3" style="height:auto;padding:12px 16px;line-height:1.5">${esc(x.resumen || x.titulo || '')}</textarea></div>` : ''}
       <div style="grid-column:1/-1"><label class="label" for="eNot">${accion === 'observar' ? 'Observaciones recibidas' : 'Nota (opcional)'}</label><textarea class="field" id="eNot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5"></textarea></div>
       ${accion === 'aprobar' ? `<div style="grid-column:1/-1" class="box">
@@ -586,9 +613,9 @@ function cambiarEstado(x, accion, mFicha) {
       const notaH = accion === 'presentar' ? (x.dirigido ? 'Presentado a ' + x.dirigido : 'Presentado') : (nota || (conAprob ? `${m.$('#eMed').value}${m.$('#ePor').value ? ' · ' + m.$('#ePor').value : ''}` : ''));
       upd.historial = arrayUnion({ fecha: fecha + 'T12:00:00', estado: T[1], nota: notaH, por: quien() });
       if (upd.aprobacion?.area) upd.area = upd.aprobacion.area;
-      if (upd.aprobacion?.pedidoTipo && upd.aprobacion?.pedidoNum) upd.docs = arrayUnion(`${upd.aprobacion.pedidoTipo} ${upd.aprobacion.pedidoNum}`);
+      if (upd.aprobacion?.pedidoTipo || upd.aprobacion?.pedidoNum) { upd.pedidoTipo = upd.aprobacion.pedidoTipo; upd.pedidoNum = upd.aprobacion.pedidoNum; }
       await updateDoc(doc(colInf(), x.id), upd);
-      if (upd.aprobacion?.correo) abrirCorreo(x, upd.aprobacion);
+      if (upd.aprobacion?.correo) abrirCorreo({ ...x, pedidoTipo: upd.pedidoTipo ?? x.pedidoTipo, pedidoNum: upd.pedidoNum ?? x.pedidoNum }, upd.aprobacion);
       m.cerrar(); mFicha.cerrar(); toast(`${x.codigo}: ${ESTADOS_INF[T[1]].label.toLowerCase()}.`); setTimeout(() => ficha(x.id), 300);
     } catch (er) { m.err('No se pudo registrar: ' + (er.code || er.message)); b.disabled = false; }
   };
