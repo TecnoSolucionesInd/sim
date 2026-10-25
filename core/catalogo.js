@@ -92,6 +92,7 @@ export const APPS = [
     icon: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1',
     modulos: [
       { id: 'equipos', nombre: 'Base de equipos' },
+      { id: 'tipos', nombre: 'Tipos de equipo' },
       { id: 'carga', nombre: 'Carga masiva' }
     ]
   },

@@ -48,6 +48,16 @@
   .st{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
   .st.n{background:rgba(111,227,207,.16);color:#8FF0DE}.st.u{background:rgba(169,180,255,.16);color:#C5CCFF}.st.e{background:rgba(255,143,143,.14);color:#FFB3B3}.st.o{background:rgba(255,255,255,.08);color:#C3CDD8}
   .resumen{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0;font-size:13.5px}
+  .codbox{display:flex;align-items:center;font-family:var(--f-mono);font-size:17px;letter-spacing:.5px;color:var(--mint-2);background:rgba(14,22,30,.22);cursor:default}
+  .codbox.vac{color:var(--tx-3);font-size:14px;letter-spacing:0}
+  .hint{font-size:12px;color:var(--tx-3);margin-top:6px;line-height:1.45}
+  .sigrow{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--amber-2)}
+  .sigrow input{width:86px;height:36px;font-size:14px;padding:0 10px;border-radius:9px;text-transform:uppercase}
+  .tabla{width:100%;border-collapse:collapse;font-size:14px}
+  .tabla th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--tx-3);text-align:left;padding:12px 16px;font-weight:500}
+  .tabla td{padding:11px 16px;border-top:1px solid rgba(255,255,255,.06)}
+  .tabla td.mono{font-family:var(--f-mono);color:var(--mint-2)}
+  .tabla tr.sin td{color:var(--amber-2)}
   @media (max-width:1100px){
     .fila{grid-template-columns:110px minmax(0,1fr) 44px;grid-template-areas:"c d k" "c m e";row-gap:4px}
     .fila>:nth-child(1){grid-area:c}.fila>:nth-child(2){grid-area:d}.fila>:nth-child(6){grid-area:k;justify-self:end}.fila>:nth-child(7){grid-area:e;justify-self:end}
@@ -69,7 +79,7 @@ import { iniciarApp, toast, db } from '../../core/core.js';
 import { SISTEMAS, sistemaPorId, ESTADOS_EQUIPO, CRITICIDAD, norm } from '../../core/maestros.js';
 import { colEquipos, listarEquipos, ordenEquipos, valoresDe } from '../../core/equipos.js';
 import { informesVinculados, ESTADOS_INF } from '../../core/informes.js';
-import { doc, getDoc, getDocs, collection, query, where, writeBatch, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { doc, getDoc, getDocs, collection, query, where, writeBatch, deleteDoc, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const I = (d, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -81,6 +91,63 @@ const puede = () => CTX?.puedeEscribir;
 
 const pillEstado = (id) => { const e = ESTADOS_EQUIPO.find(x => x.id === id) || ESTADOS_EQUIPO[0]; return `<span class="pill" style="background:${e.bg};color:${e.fg}">${e.label}</span>`; };
 const sisNom = (id) => sistemaPorId(id)?.nombre || '—';
+const sisDe = (v) => v === '' || v == null ? null : sistemaPorId(v);
+
+// =====================================================================
+// CODIFICACIÓN AUTOMÁTICA: <SISTEMA>-<SIGLA DEL TIPO>-<N°>  (REF-CMP-01)
+// El número es correlativo por sistema y tipo. El código queda fijo aunque luego cambie el sistema o el tipo,
+// y los números de equipos eliminados no se reutilizan (contador en datos/eq/config/contadores).
+// =====================================================================
+const TIPOS_BASE = [
+  ['Compresor', 'CMP'], ['Condensador', 'CND'], ['Evaporador', 'EVA'], ['Recibidor de líquido', 'REC'], ['Separador de líquido', 'SEP'],
+  ['Intercambiador de calor', 'ITC'], ['Chiller', 'CHI'], ['Congelador de placas', 'CPL'], ['Túnel de congelamiento', 'TUN'],
+  ['Cámara frigorífica', 'CAM'], ['Puerta de cámara', 'PTA'], ['Fabricadora de hielo', 'FHI'], ['Torre de enfriamiento', 'TEN'],
+  ['Caldero', 'CAL'], ['Quemador', 'QUE'], ['Bomba', 'BBA'], ['Motor eléctrico', 'MOT'], ['Ventilador', 'VEN'], ['Tanque', 'TNQ'],
+  ['Ablandador', 'ABL'], ['Filtro', 'FLT'], ['Unidad de ósmosis inversa', 'UOI'], ['Compresor de aire', 'CAI'], ['Secador de aire', 'SEC'],
+  ['Tablero eléctrico', 'TAB'], ['Transformador', 'TRF'], ['Grupo electrógeno', 'GEL'], ['Variador de frecuencia', 'VDF'],
+  ['Banco de condensadores', 'BCO'], ['Faja transportadora', 'FAJ'], ['Balanza', 'BAL'], ['Válvula', 'VAL']
+].map(([nombre, sigla]) => ({ nombre, sigla }));
+let TIPOS = [], CONT = {};
+const refTipos = () => doc(db, 'datos', 'eq', 'config', 'tipos');
+const refCont = () => doc(db, 'datos', 'eq', 'config', 'contadores');
+const tipoPorNombre = (n) => n ? TIPOS.find(t => norm(t.nombre) === norm(n)) || null : null;
+const siglaValida = (s) => /^[A-Z]{2,4}$/.test(s || '');
+const siglaLibre = (s, salvo = null) => !TIPOS.some(t => t !== salvo && t.sigla === s);
+const NO_SIG = ['DE', 'DEL', 'LA', 'EL', 'LOS', 'LAS', 'Y', 'PARA', 'CON', 'A', 'EN', 'N'];
+function siglaSugerida(nombre, extra = []) {
+  const w = norm(nombre).toUpperCase().replace(/[^A-Z ]/g, ' ').split(/\s+/).filter(x => x && !NO_SIG.includes(x));
+  if (!w.length) return '';
+  const p = w[0], cons = p.slice(1).replace(/[AEIOU]/g, '');
+  const cand = [(p[0] + cons).slice(0, 3), w.length > 2 ? w[0][0] + w[1][0] + w[2][0] : '', w[1] ? p[0] + (cons[0] || p[1] || '') + w[1][0] : '', p.slice(0, 3)];
+  const libre = (s) => s.length === 3 && siglaLibre(s) && !extra.includes(s);
+  const c = cand.find(libre);
+  if (c) return c;
+  for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') { const s = p.slice(0, 2).padEnd(2, 'X') + l; if (libre(s)) return s; }
+  return '';
+}
+const reCod = (p) => new RegExp(`^${p}-(\\d+)$`, 'i');
+const maxLocal = (p) => EQ.reduce((m, e) => { const x = String(e.codigo || '').match(reCod(p)); return x ? Math.max(m, +x[1]) : m; }, 0);
+const fmtCod = (p, n) => `${p}-${String(n).padStart(2, '0')}`;
+const prefijo = (sistema, sigla) => { const s = sisDe(sistema); return s && siglaValida(sigla) ? `${s.corto}-${sigla}` : null; };
+const prefijoEq = (e) => prefijo(e.sistema, tipoPorNombre(e.tipo)?.sigla);
+const proximo = (p) => fmtCod(p, Math.max(+CONT[p] || 0, maxLocal(p)) + 1);
+const sigueFormato = (e) => { const p = prefijoEq(e); return !!p && reCod(p).test(e.codigo || ''); };
+const usaSigla = (s) => EQ.some(e => new RegExp(`^[A-Z]+-${s}-\\d+$`).test(e.codigo || '')) || Object.keys(CONT).some(k => k.endsWith('-' + s));
+
+// Asigna códigos en lote (importaciones): parte del contador y de lo ya registrado
+function planificador() {
+  const loc = {};
+  const sig = (p) => { const n = (loc[p] ?? Math.max(+CONT[p] || 0, maxLocal(p))) + 1; loc[p] = n; return fmtCod(p, n); };
+  return { sig, loc };
+}
+async function cargarCodificacion() {
+  try {
+    const [t, c] = await Promise.all([getDoc(refTipos()), getDoc(refCont())]);
+    TIPOS = t.exists() && Array.isArray(t.data().lista) ? t.data().lista : TIPOS_BASE.map(x => ({ ...x }));
+    CONT = c.exists() ? c.data() : {};
+  } catch (e) { TIPOS = TIPOS_BASE.map(x => ({ ...x })); CONT = {}; }
+}
+const listaTipos = () => [...TIPOS].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
 // ---------------- modal ----------------
 function modal({ titulo, cuerpo, pie, ancho = 640 }) {
@@ -186,21 +253,27 @@ function pintarLista(main) {
 }
 
 // ---------------- ficha del equipo ----------------
-function ficha(e) {
+function ficha(e, base = null) {
   const nuevo = !e;
   const ro = !puede();
   const dis = ro ? 'disabled' : '';
-  const v = e || { codigo: '', descripcion: '', sistema: FIL.sistema === 'all' ? '' : FIL.sistema, ubicacion: FIL.ubicacion, tipo: FIL.tipo, marca: '', modelo: '', serie: '', potencia: '', criticidad: '', estado: 'operativo', notas: '' };
+  const v = e || { codigo: '', descripcion: '', sistema: base?.sistema ?? (FIL.sistema === 'all' ? '' : FIL.sistema), ubicacion: base?.ubicacion ?? FIL.ubicacion, tipo: base?.tipo ?? FIL.tipo, marca: base?.marca || '', modelo: base?.modelo || '', serie: '', potencia: base?.potencia || '', criticidad: base?.criticidad || '', estado: 'operativo', notas: '' };
   const dl = (id, campo) => `<datalist id="${id}">${valoresDe(EQ, campo).map(x => `<option value="${esc(x)}">`).join('')}</datalist>`;
+  const nombresTipo = [...new Map([...listaTipos().map(t => t.nombre), ...valoresDe(EQ, 'tipo')].map(x => [norm(x), x])).values()];
+  const recodificable = !nuevo && !ro && CTX.rol === 'admin' && !sigueFormato(v);
   const m = modal({
     titulo: nuevo ? 'Nuevo equipo' : esc(v.codigo), ancho: nuevo ? 720 : 980,
     cuerpo: `<div class="${nuevo ? '' : 'ficha'}"><div>
       <div class="g2">
-        <div><label class="label" for="eCod">Código</label><input class="field mono" id="eCod" value="${esc(v.codigo)}" placeholder="CP-01" ${dis}></div>
-        <div><label class="label" for="eSis">Sistema</label><select class="field" id="eSis" ${dis}><option value="">Seleccione</option>${SISTEMAS.map(s => `<option value="${s.id}" ${String(s.id) === String(v.sistema) ? 'selected' : ''}>${esc(s.nombre)}</option>`).join('')}</select></div>
-        <div style="grid-column:1/-1"><label class="label" for="eDes">Descripción</label><input class="field" id="eDes" value="${esc(v.descripcion)}" placeholder="Compresor de tornillo N° 1" ${dis}></div>
+        <div><span class="label">Código</span><div class="field codbox" id="eCod" aria-live="polite">${nuevo ? '' : esc(v.codigo)}</div>
+          <div class="hint" id="eCodH"></div>
+          ${recodificable ? '<button type="button" class="btn sm" id="eRec" style="margin-top:8px" hidden>Asignar código automático</button>' : ''}</div>
+        <div><label class="label" for="eSis">Sistema</label><select class="field" id="eSis" ${dis}><option value="">Seleccione</option>${SISTEMAS.map(s => `<option value="${s.id}" ${String(s.id) === String(v.sistema) ? 'selected' : ''}>${esc(s.nombre)} · ${s.corto}</option>`).join('')}</select></div>
+        <div><label class="label" for="eTip">Tipo de equipo</label><input class="field" id="eTip" list="dlTip" value="${esc(v.tipo)}" placeholder="Compresor" autocomplete="off" ${dis}>
+          <datalist id="dlTip">${nombresTipo.map(x => `<option value="${esc(x)}">${esc(tipoPorNombre(x)?.sigla || 'sin sigla')}</option>`).join('')}</datalist>
+          <div class="sigrow" id="eSigBox" hidden><label for="eSig">Tipo nuevo · sigla</label><input class="field mono" id="eSig" maxlength="4" autocomplete="off"></div></div>
         <div><label class="label" for="eUbi">Ubicación</label><input class="field" id="eUbi" list="dlUbi" value="${esc(v.ubicacion)}" placeholder="Sala de máquinas" ${dis}>${dl('dlUbi', 'ubicacion')}</div>
-        <div><label class="label" for="eTip">Tipo de equipo</label><input class="field" id="eTip" list="dlTip" value="${esc(v.tipo)}" placeholder="Compresor" ${dis}>${dl('dlTip', 'tipo')}</div>
+        <div style="grid-column:1/-1"><label class="label" for="eDes">Descripción</label><input class="field" id="eDes" value="${esc(v.descripcion)}" placeholder="Compresor de tornillo N° 1" ${dis}></div>
         <div><label class="label" for="eMar">Marca</label><input class="field" id="eMar" list="dlMar" value="${esc(v.marca)}" ${dis}>${dl('dlMar', 'marca')}</div>
         <div><label class="label" for="eMod">Modelo</label><input class="field" id="eMod" value="${esc(v.modelo)}" ${dis}></div>
         <div><label class="label" for="eSer">N° de serie</label><input class="field" id="eSer" value="${esc(v.serie)}" ${dis}></div>
@@ -216,41 +289,122 @@ function ficha(e) {
       </div>`}
     </div>`,
     pie: ro ? '<button type="button" class="btn" data-x>Cerrar</button>'
-      : `${!nuevo && CTX.rol === 'admin' ? '<button type="button" class="btn btn-danger" id="eDel" style="margin-right:auto">Eliminar</button>' : ''}<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="eOk">${nuevo ? 'Registrar equipo' : 'Guardar cambios'}</button>`
+      : `${!nuevo && CTX.rol === 'admin' ? '<button type="button" class="btn btn-danger" id="eDel" style="margin-right:auto">Eliminar</button>' : ''}<button type="button" class="btn" data-x>Cancelar</button>${nuevo ? '<button type="submit" class="btn" id="eOtro" data-otro="1">Registrar y agregar otro</button>' : ''}<button type="submit" class="btn btn-primary" id="eOk">${nuevo ? 'Registrar equipo' : 'Guardar cambios'}</button>`
   });
   if (!nuevo) relacionados(v, m);
-  if (nuevo) setTimeout(() => m.$('#eCod').focus(), 50);
+
+  // tipo y sigla vigentes según lo escrito en pantalla
+  const tipoPantalla = () => {
+    const nombre = m.$('#eTip').value.trim();
+    const t = tipoPorNombre(nombre);
+    return { nombre: t ? t.nombre : nombre, t, sigla: t ? t.sigla : m.$('#eSig').value.trim().toUpperCase() };
+  };
+  const actCod = () => {
+    const tp = tipoPantalla();
+    const sigBox = m.$('#eSigBox'), sig = m.$('#eSig');
+    sigBox.hidden = ro || !tp.nombre || !!tp.t;
+    if (!sigBox.hidden && !sig.dataset.edit) { sig.value = siglaSugerida(tp.nombre); tp.sigla = sig.value; }
+    const cod = m.$('#eCod'), h = m.$('#eCodH');
+    if (nuevo) {
+      const p = prefijo(m.$('#eSis').value, tp.sigla);
+      cod.textContent = p ? proximo(p) : 'Se genera con el sistema y el tipo';
+      cod.classList.toggle('vac', !p);
+      h.textContent = p ? 'Se asigna al registrar.' : '';
+    } else {
+      const p = prefijo(m.$('#eSis').value, tp.sigla);
+      const ok = p && reCod(p).test(v.codigo || '');
+      h.textContent = ok || !p ? 'El código es fijo: no cambia aunque luego se modifique el sistema o el tipo.'
+        : `No coincide con el sistema y tipo actuales (le correspondería ${proximo(p)}).`;
+      const r = m.$('#eRec'); if (r) r.hidden = !p || ok;
+    }
+  };
+  if (!ro) {
+    m.$('#eSis').onchange = actCod;
+    m.$('#eTip').oninput = actCod;
+    m.$('#eSig').oninput = (ev) => { ev.target.dataset.edit = '1'; ev.target.value = ev.target.value.toUpperCase().replace(/[^A-Z]/g, ''); actCod(); };
+  }
+  actCod();
+  if (nuevo) setTimeout(() => m.$(v.sistema === '' ? '#eSis' : v.tipo ? '#eDes' : '#eTip').focus(), 50);
+
   if (m.$('#eDel')) m.$('#eDel').onclick = async () => {
-    if (!confirm(`¿Eliminar ${v.codigo} de la base? Los registros ya llenados conservan sus datos. Para retirarlo del uso, se recomienda marcarlo "De baja".`)) return;
+    if (!confirm(`¿Eliminar ${v.codigo} de la base? Los registros ya llenados conservan sus datos y su número no se reutiliza. Para retirarlo del uso, se recomienda marcarlo "De baja".`)) return;
     try { await deleteDoc(doc(colEquipos(), v.id)); EQ = EQ.filter(x => x.id !== v.id); m.cerrar(); toast('Equipo eliminado.'); render(); }
     catch (er) { m.err('No se pudo eliminar: ' + (er.code || er.message)); }
   };
+  if (m.$('#eRec')) m.$('#eRec').onclick = async () => {
+    const tp = tipoPantalla();
+    if (!tp.t) return m.err('Guarde primero el tipo nuevo con su sigla.');
+    if (String(m.$('#eSis').value) !== String(v.sistema) || norm(tp.nombre) !== norm(v.tipo)) return m.err('Guarde primero los cambios de sistema o tipo.');
+    if (!confirm(`Se reemplazará el código ${v.codigo} por uno automático. Los registros de formatos e informes ya vinculados conservan el código anterior (queda guardado en la ficha). ¿Continuar?`)) return;
+    try {
+      const p = prefijoEq(v); let cod = '';
+      await runTransaction(db, async (tx) => {
+        const cs = await tx.get(refCont());
+        const n = Math.max(+(cs.exists() ? cs.data()[p] : 0) || 0, maxLocal(p)) + 1;
+        cod = fmtCod(p, n);
+        tx.set(refCont(), { [p]: n }, { merge: true });
+        tx.set(doc(colEquipos(), v.id), { codigo: cod, codigoAnterior: v.codigo, actualizado: serverTimestamp(), actualizadoPor: nombreUsuario() }, { merge: true });
+      });
+      CONT[p] = Math.max(+CONT[p] || 0, +cod.split('-').pop());
+      const ant = v.codigo; v.codigoAnterior = ant; v.codigo = cod; EQ.sort(ordenEquipos);
+      m.cerrar(); toast(`${ant} → ${cod}`); render();
+    } catch (er) { m.err('No se pudo asignar: ' + (er.code || er.message)); }
+  };
   if (ro) return;
+
   m.form.onsubmit = async (ev) => {
     ev.preventDefault(); m.err('');
+    const otro = ev.submitter?.dataset.otro === '1';
+    const tp = tipoPantalla();
     const d = {
-      codigo: m.$('#eCod').value.trim().toUpperCase(), descripcion: m.$('#eDes').value.trim(),
+      descripcion: m.$('#eDes').value.trim(),
       sistema: m.$('#eSis').value === '' ? '' : Number(m.$('#eSis').value),
-      ubicacion: m.$('#eUbi').value.trim(), tipo: m.$('#eTip').value.trim(), marca: m.$('#eMar').value.trim(),
+      ubicacion: m.$('#eUbi').value.trim(), tipo: tp.nombre, marca: m.$('#eMar').value.trim(),
       modelo: m.$('#eMod').value.trim(), serie: m.$('#eSer').value.trim(), potencia: m.$('#ePot').value.trim(),
       criticidad: m.$('#eCri').value, estado: m.$('#eEst').value, notas: m.$('#eNot').value.trim()
     };
-    if (!d.codigo) return m.err('Ingrese el código del equipo.');
-    if (!d.descripcion) return m.err('Ingrese la descripción.');
     if (d.sistema === '') return m.err('Seleccione el sistema.');
-    if (EQ.some(x => x.id !== v.id && norm(x.codigo) === norm(d.codigo))) return m.err(`El código ${d.codigo} ya está registrado.`);
-    // respeta la forma ya escrita de ubicación y tipo para no duplicar por tildes o mayúsculas
-    ['ubicacion', 'tipo', 'marca'].forEach(k => { const ya = valoresDe(EQ, k).find(x => norm(x) === norm(d[k])); if (ya) d[k] = ya; });
-    const b = m.$('#eOk'); b.disabled = true; b.textContent = 'Guardando…';
+    if (!d.tipo) return m.err('Ingrese el tipo de equipo.');
+    let tipoNuevo = null;
+    if (!tp.t) {
+      if (!siglaValida(tp.sigla)) return m.err('La sigla del tipo nuevo debe tener de 2 a 4 letras.');
+      const usada = TIPOS.find(t => t.sigla === tp.sigla);
+      if (usada) return m.err(`La sigla ${tp.sigla} ya corresponde a "${usada.nombre}". Elija otra o use ese tipo.`);
+      tipoNuevo = { nombre: d.tipo, sigla: tp.sigla };
+    }
+    if (!d.descripcion) return m.err('Ingrese la descripción.');
+    // respeta la forma ya escrita de ubicación y marca para no duplicar por tildes o mayúsculas
+    ['ubicacion', 'marca'].forEach(k => { const ya = valoresDe(EQ, k).find(x => norm(x) === norm(d[k])); if (ya) d[k] = ya; });
+    const bs = m.form.querySelectorAll('button[type=submit]'); bs.forEach(b => b.disabled = true);
+    const b = otro ? m.$('#eOtro') : m.$('#eOk'); const txt = b.textContent; b.textContent = 'Guardando…';
+    const tiposDespues = tipoNuevo ? [...TIPOS, tipoNuevo] : TIPOS;
     try {
-      const ref = nuevo ? doc(colEquipos()) : doc(colEquipos(), v.id);
-      const batch = writeBatch(db);
-      batch.set(ref, { ...d, ...(nuevo ? { creado: serverTimestamp() } : {}), actualizado: serverTimestamp(), actualizadoPor: nombreUsuario() }, { merge: true });
-      await batch.commit();
-      if (nuevo) EQ.push({ id: ref.id, ...d }); else Object.assign(v, d);
+      const meta = { actualizado: serverTimestamp(), actualizadoPor: nombreUsuario() };
+      if (nuevo) {
+        const p = prefijo(d.sistema, tp.sigla);
+        const ref = doc(colEquipos());
+        await runTransaction(db, async (tx) => {
+          const cs = await tx.get(refCont());
+          const n = Math.max(+(cs.exists() ? cs.data()[p] : 0) || 0, maxLocal(p)) + 1;
+          d.codigo = fmtCod(p, n);
+          tx.set(refCont(), { [p]: n }, { merge: true });
+          if (tipoNuevo) tx.set(refTipos(), { lista: tiposDespues });
+          tx.set(ref, { ...d, creado: serverTimestamp(), ...meta });
+        });
+        CONT[p] = Math.max(+CONT[p] || 0, +d.codigo.split('-').pop());
+        EQ.push({ id: ref.id, ...d });
+      } else {
+        const batch = writeBatch(db);
+        if (tipoNuevo) batch.set(refTipos(), { lista: tiposDespues });
+        batch.set(doc(colEquipos(), v.id), { ...d, ...meta }, { merge: true });
+        await batch.commit();
+        Object.assign(v, d);
+      }
+      TIPOS = tiposDespues;
       EQ.sort(ordenEquipos);
       m.cerrar(); toast(nuevo ? `${d.codigo} registrado.` : 'Cambios guardados.'); render();
-    } catch (er) { m.err('No se pudo guardar: ' + (er.code || er.message)); b.disabled = false; b.textContent = nuevo ? 'Registrar equipo' : 'Guardar cambios'; }
+      if (otro) ficha(null, d);
+    } catch (er) { m.err('No se pudo guardar: ' + (er.code || er.message)); bs.forEach(x => x.disabled = false); b.textContent = txt; }
   };
 }
 
@@ -308,17 +462,17 @@ function vistaCarga(main) {
     <div class="cards">
       <div class="panel rise d2">
         <h3>1. Plantilla Excel</h3>
-        <p>Descargue la plantilla, complete un equipo por fila y súbala. Si el código ya existe, se actualizan los datos que vengan llenos.</p>
+        <p>Descargue la plantilla y complete un equipo por fila, con la columna Código vacía: el código se asigna automáticamente. Para actualizar equipos ya registrados, use su código.</p>
         <button class="btn" id="cPlant">${IC.down}Descargar plantilla</button>
       </div>
       <div class="panel rise d2">
         <h3>2. Subir Excel</h3>
-        <p>Se revisa cada fila antes de importar: código, descripción y sistema son obligatorios.</p>
+        <p>Se revisa cada fila antes de importar. Para equipos nuevos son obligatorios descripción, sistema y tipo.</p>
         <label class="btn btn-primary" style="cursor:pointer">${IC.up}Seleccionar archivo<input type="file" id="cFile" accept=".xlsx,.xls,.csv" hidden></label>
       </div>
       <div class="panel rise d3">
         <h3>Importar desde Costos</h3>
-        <p>Toma el catálogo de equipos del aplicativo Costos de mantenimiento. Se les asigna un código provisional por sistema, que puede editar después.</p>
+        <p>Toma el catálogo de equipos del aplicativo Costos de mantenimiento y les asigna su código automático. El tipo se reconoce por la descripción.</p>
         <button class="btn" id="cCost">Revisar catálogo de Costos</button>
       </div>
       <div class="panel rise d3">
@@ -326,6 +480,11 @@ function vistaCarga(main) {
         <p>Descarga la base completa en Excel, con el mismo formato de la plantilla, para editarla y volver a subirla.</p>
         <button class="btn" id="cExp" ${EQ.length ? '' : 'disabled'}>${IC.xls}Exportar ${EQ.length} equipos</button>
       </div>
+      ${recodificables().length && CTX.rol === 'admin' ? `<div class="panel rise d3" style="border-color:rgba(245,185,74,.35)">
+        <h3>Códigos fuera de formato</h3>
+        <p>${recodificables().length} equipo${recodificables().length === 1 ? '' : 's'} con código manual o provisional. Se les puede asignar el código automático; el anterior queda guardado en la ficha.</p>
+        <button class="btn" id="cRec">Revisar y asignar códigos</button>
+      </div>` : ''}
     </div>
     <div id="cPrev" style="margin-top:22px"></div>`;
   const $ = (s) => main.querySelector(s);
@@ -333,7 +492,61 @@ function vistaCarga(main) {
   $('#cExp').onclick = () => exportar(EQ);
   $('#cFile').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) leerExcel(f, $('#cPrev')); };
   $('#cCost').onclick = () => desdeCostos($('#cPrev'));
+  if ($('#cRec')) $('#cRec').onclick = () => recodificar($('#cPrev'));
 }
+
+const recodificables = () => EQ.filter(e => !sigueFormato(e));
+
+function recodificar(box) {
+  const pl = planificador();
+  const items = recodificables().map(e => {
+    const p = prefijoEq(e);
+    return { e, p, nuevo: p ? pl.sig(p) : '', motivo: !sisDe(e.sistema) ? 'sin sistema' : !e.tipo ? 'sin tipo' : !tipoPorNombre(e.tipo) ? `el tipo "${e.tipo}" no tiene sigla (ver Tipos de equipo)` : '' };
+  });
+  const ok = items.filter(x => x.p);
+  box.innerHTML = `<div class="panel rise">
+    <h3>Asignación de códigos automáticos</h3>
+    <div class="resumen"><span><span class="st n">${ok.length}</span> se recodifican</span>${items.length - ok.length ? `<span><span class="st e">${items.length - ok.length}</span> requieren completar datos</span>` : ''}</div>
+    <div class="alert warn" style="margin-bottom:14px">Los registros de formatos e informes ya vinculados conservan el código anterior. Conviene hacerlo antes de empezar a usar los códigos en el plan y en las placas.</div>
+    <div class="prev"><table>
+      <thead><tr><th>Código actual</th><th>Nuevo código</th><th>Descripción</th><th>Sistema</th><th>Tipo</th></tr></thead>
+      <tbody>${items.map(x => `<tr><td class="mono">${esc(x.e.codigo)}</td><td class="mono">${x.p ? `<span style="color:var(--mint-2)">${esc(x.nuevo)}</span>` : `<span style="color:#FFB3B3;font-family:var(--f-body);font-size:12px">${esc(x.motivo)}</span>`}</td><td>${esc(x.e.descripcion)}</td><td>${esc(sisNom(x.e.sistema))}</td><td>${esc(x.e.tipo || '—')}</td></tr>`).join('')}</tbody></table></div>
+    <div class="acciones" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn" id="rCan">Cancelar</button>
+      <button class="btn btn-primary" id="rOk" ${ok.length ? '' : 'disabled'}>Asignar ${ok.length} código${ok.length === 1 ? '' : 's'}</button>
+    </div></div>`;
+  box.querySelector('#rCan').onclick = () => { box.innerHTML = ''; };
+  box.querySelector('#rOk').onclick = async (ev) => {
+    const b = ev.currentTarget; b.disabled = true; b.textContent = 'Asignando…';
+    try {
+      for (let i = 0; i < ok.length; i += 400) {
+        const batch = writeBatch(db);
+        if (i === 0) batch.set(refCont(), pl.loc, { merge: true });
+        ok.slice(i, i + 400).forEach(x => batch.set(doc(colEquipos(), x.e.id), { codigo: x.nuevo, codigoAnterior: x.e.codigo, actualizado: serverTimestamp(), actualizadoPor: nombreUsuario() }, { merge: true }));
+        await batch.commit();
+      }
+      Object.entries(pl.loc).forEach(([k, n]) => CONT[k] = Math.max(+CONT[k] || 0, n));
+      ok.forEach(x => { x.e.codigoAnterior = x.e.codigo; x.e.codigo = x.nuevo; });
+      EQ.sort(ordenEquipos);
+      toast(`${ok.length} códigos asignados.`);
+      render();
+    } catch (e) { toast('No se pudo asignar: ' + (e.code || e.message), 'err'); b.disabled = false; b.textContent = `Asignar ${ok.length} códigos`; }
+  };
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Resuelve el tipo de una fila importada: del catálogo, o tipo nuevo con sigla sugerida (única dentro del lote)
+function resolverTipo(nombre, nuevos) {
+  if (!nombre) return null;
+  const t = tipoPorNombre(nombre);
+  if (t) return { nombre: t.nombre, sigla: t.sigla, nuevo: false };
+  const k = norm(nombre);
+  if (!nuevos.has(k)) nuevos.set(k, { nombre, sigla: siglaSugerida(nombre, [...nuevos.values()].map(x => x.sigla)) });
+  const n = nuevos.get(k);
+  return { nombre: n.nombre, sigla: n.sigla, nuevo: true };
+}
+// Reconoce el tipo por la descripción (el nombre de tipo más largo contenido en ella)
+const tipoPorDescripcion = (txt) => { const d = norm(txt); return [...TIPOS].sort((a, b) => b.nombre.length - a.nombre.length).find(t => (' ' + d + ' ').includes(' ' + norm(t.nombre) + ' ') || d.startsWith(norm(t.nombre))) || null; };
 
 let xlsxCarga = null;
 function XLSXlib() {
@@ -352,10 +565,11 @@ const filaExcel = (e) => [e.codigo, e.descripcion, sisNom(e.sistema), e.ubicacio
 async function plantillaExcel() {
   try {
     const X = await XLSXlib();
-    const ws = X.utils.aoa_to_sheet([COLS.map(c => c[1]), ['CP-01', 'Compresor de tornillo N° 1', 'Refrigeración', 'Sala de máquinas', 'Compresor', 'Frick', 'RWB II 222', '', '250 HP', 'A', 'Operativo', '']]);
+    const ws = X.utils.aoa_to_sheet([COLS.map(c => c[1]), ['', 'Compresor de tornillo N° 1', 'Refrigeración', 'Sala de máquinas', 'Compresor', 'Frick', 'RWB II 222', '', '250 HP', 'A', 'Operativo', '']]);
     ws['!cols'] = [12, 34, 22, 20, 18, 14, 14, 14, 12, 10, 16, 30].map(w => ({ wch: w }));
-    const listas = X.utils.aoa_to_sheet([['Sistema', 'Criticidad', 'Estado'], ...SISTEMAS.map((s, i) => [s.nombre, ['A', 'B', 'C'][i] || '', ESTADOS_EQUIPO[i]?.label || ''])]);
-    listas['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 18 }];
+    const tl = listaTipos(), nf = Math.max(SISTEMAS.length, tl.length);
+    const listas = X.utils.aoa_to_sheet([['Sistema', 'Prefijo', 'Criticidad', 'Estado', '', 'Tipo de equipo', 'Sigla'], ...Array.from({ length: nf }, (_, i) => [SISTEMAS[i]?.nombre || '', SISTEMAS[i]?.corto || '', ['A', 'B', 'C'][i] || '', ESTADOS_EQUIPO[i]?.label || '', '', tl[i]?.nombre || '', tl[i]?.sigla || ''])]);
+    listas['!cols'] = [{ wch: 26 }, { wch: 9 }, { wch: 12 }, { wch: 18 }, { wch: 3 }, { wch: 28 }, { wch: 8 }];
     const wb = X.utils.book_new();
     X.utils.book_append_sheet(wb, ws, 'Equipos');
     X.utils.book_append_sheet(wb, listas, 'Listas');
@@ -406,24 +620,28 @@ async function leerExcel(file, box) {
     COLS.forEach(([k, l]) => { const i = cab.indexOf(norm(l)); if (i >= 0) idx[k] = i; });
     if (idx.serie == null) { const i = cab.findIndex(c => c.includes('serie')); if (i >= 0) idx.serie = i; }
     const datos = filas.slice(hi + 1).filter(r => r.some(c => String(c).trim()));
-    const vistos = new Set();
+    const vistos = new Set(), nuevosT = new Map(), pl = planificador();
     const items = datos.map((r, n) => {
       const g = (k) => idx[k] == null ? '' : String(r[idx[k]] ?? '').trim();
       const d = { codigo: g('codigo').toUpperCase(), descripcion: g('descripcion'), sistemaTxt: g('sistema'), ubicacion: g('ubicacion'), tipo: g('tipo'), marca: g('marca'), modelo: g('modelo'), serie: g('serie'), potencia: g('potencia'), criticidad: g('criticidad').slice(0, 1).toUpperCase(), estadoTxt: g('estado'), notas: g('notas') };
       const errs = [];
-      if (!d.codigo) errs.push('sin código');
-      const ex = EQ.find(e => norm(e.codigo) === norm(d.codigo));
+      const ex = d.codigo ? EQ.find(e => norm(e.codigo) === norm(d.codigo)) : null;
+      if (d.codigo && !ex) errs.push(`el código ${d.codigo} no existe (para un equipo nuevo deje el código vacío)`);
       if (!d.descripcion && !ex) errs.push('sin descripción');
+      if (!d.tipo && !ex) errs.push('sin tipo');
       d.sistema = leerSistema(d.sistemaTxt);
       if (d.sistema === null && !(ex && !d.sistemaTxt)) errs.push(d.sistemaTxt ? `sistema "${d.sistemaTxt}" no reconocido` : 'sin sistema');
       d.estado = leerEstado(d.estadoTxt);
       if (d.estado === null) errs.push(`estado "${d.estadoTxt}" no reconocido`);
       if (d.criticidad && !['A', 'B', 'C'].includes(d.criticidad)) errs.push('criticidad debe ser A, B o C');
       if (d.codigo && vistos.has(norm(d.codigo))) errs.push('código repetido en el archivo');
-      vistos.add(norm(d.codigo));
+      if (d.codigo) vistos.add(norm(d.codigo));
+      const tr = resolverTipo(d.tipo, nuevosT);
+      if (tr) { d.tipo = tr.nombre; if (tr.nuevo) d.tipoNuevo = { nombre: tr.nombre, sigla: tr.sigla }; if (tr.nuevo && !siglaValida(tr.sigla)) errs.push('no se pudo generar la sigla del tipo'); }
+      if (!ex && !errs.length) d.codigo = pl.sig(prefijo(d.sistema, tr.sigla));
       return { fila: hi + n + 2, d, ex, errs };
     });
-    previa(box, items, 'excel');
+    previa(box, items, 'excel', pl, nuevosT);
   } catch (e) { box.innerHTML = `<div class="alert err">${esc(e.message)}</div>`; }
 }
 
@@ -439,27 +657,26 @@ async function desdeCostos(box) {
       cat = cat.concat(st.catNew || []).map(c => ({ ...c, ...((st.catEdit || {})[c.id] || {}) }));
     }
     const AREA = { 'congelado': 5, 'planta de hielo': 4, 'planta de osmosis': 3, 'calderos': 2, 'resto de planta': 0 };
-    const usados = new Set(EQ.map(e => norm(e.codigo)));
-    const sec = {};
-    const sig = (s) => {
-      const p = sistemaPorId(s).corto;
-      let n = sec[p] || 0, c;
-      do { n++; c = `${p}-${String(n).padStart(3, '0')}`; } while (usados.has(norm(c)));
-      sec[p] = n; usados.add(norm(c)); return c;
-    };
+    const pl = planificador(), nuevosT = new Map();
     const items = cat.filter(c => c.n && norm(c.a) !== 'sin asignar').map((c, i) => {
       const sistema = AREA[norm(c.a)] ?? 0;
       const ex = EQ.find(e => e.origenCosto === c.id) || EQ.find(e => Number(e.sistema) === sistema && norm(e.descripcion) === norm(c.n));
-      const d = { codigo: ex ? ex.codigo : '', descripcion: c.n, sistema, sistemaTxt: sisNom(sistema), ubicacion: '', tipo: c.tp && norm(c.tp) !== 'equipo' ? c.tp : '', marca: '', modelo: '', serie: '', potencia: '', criticidad: '', estado: 'operativo', notas: '', origenCosto: c.id };
-      return { fila: i + 1, d, ex, errs: [], omitir: !!ex };
+      const tipoTxt = c.tp && norm(c.tp) !== 'equipo' ? c.tp : (tipoPorDescripcion(c.n)?.nombre || '');
+      const d = { codigo: ex ? ex.codigo : '', descripcion: c.n, sistema, sistemaTxt: sisNom(sistema), ubicacion: '', tipo: tipoTxt, marca: '', modelo: '', serie: '', potencia: '', criticidad: '', estado: 'operativo', notas: '', origenCosto: c.id };
+      const errs = [];
+      if (!ex) {
+        const tr = resolverTipo(d.tipo, nuevosT);
+        if (!tr) errs.push('no se reconoce el tipo por la descripción: regístrelo uno por uno o por Excel');
+        else { d.tipo = tr.nombre; if (tr.nuevo) d.tipoNuevo = { nombre: tr.nombre, sigla: tr.sigla }; d.codigo = pl.sig(prefijo(sistema, tr.sigla)); }
+      }
+      return { fila: i + 1, d, ex, errs, omitir: !!ex };
     });
-    items.filter(x => !x.omitir).forEach(x => x.d.codigo = sig(x.d.sistema));
     if (!items.length) throw new Error('El catálogo de Costos no tiene equipos.');
-    previa(box, items, 'costos');
+    previa(box, items, 'costos', pl, nuevosT);
   } catch (e) { box.innerHTML = `<div class="alert err">${esc(e.code === 'permission-denied' ? 'Su usuario no tiene acceso de lectura al aplicativo Costos.' : e.message)}</div>`; }
 }
 
-function previa(box, items, origen) {
+function previa(box, items, origen, pl, nuevosT) {
   const ok = items.filter(x => !x.errs.length && !x.omitir);
   const nuevos = ok.filter(x => !x.ex).length, act = ok.length - nuevos;
   const errs = items.filter(x => x.errs.length).length, omit = items.filter(x => x.omitir).length;
@@ -476,8 +693,9 @@ function previa(box, items, origen) {
       <tbody>${items.map(x => `<tr>
         <td class="mono" style="color:var(--tx-3)">${x.fila}</td>
         <td>${x.errs.length ? `<span class="st e">Error</span><div style="font-size:12px;color:#FFB3B3;margin-top:4px">${esc(x.errs.join('; '))}</div>` : x.omitir ? '<span class="st o">Ya existe</span>' : x.ex ? '<span class="st u">Actualiza</span>' : '<span class="st n">Nuevo</span>'}</td>
-        <td class="mono">${esc(x.d.codigo)}</td><td>${esc(x.d.descripcion || x.ex?.descripcion || '')}</td><td>${esc(x.d.sistema != null ? sisNom(x.d.sistema) : x.d.sistemaTxt)}</td><td>${esc(x.d.ubicacion)}</td><td>${esc(x.d.tipo)}</td>
+        <td class="mono">${esc(x.d.codigo)}</td><td>${esc(x.d.descripcion || x.ex?.descripcion || '')}</td><td>${esc(x.d.sistema != null ? sisNom(x.d.sistema) : x.d.sistemaTxt)}</td><td>${esc(x.d.ubicacion)}</td><td>${esc(x.d.tipo)}${x.d.tipoNuevo && !x.errs.length ? ` <span class="st u" title="Tipo nuevo: se agrega al catálogo">nuevo · ${esc(x.d.tipoNuevo.sigla)}</span>` : ''}</td>
       </tr>`).join('')}</tbody></table></div>
+    ${[...nuevosT.values()].length ? `<p class="hint" style="margin-top:10px">Los tipos marcados "nuevo" se agregan al catálogo con la sigla indicada. Si prefiere otra sigla, créelo antes en Tipos de equipo y vuelva a revisar.</p>` : ''}
     <div class="acciones" style="margin-top:16px;justify-content:flex-end">
       <button class="btn" id="pCan">Cancelar</button>
       <button class="btn btn-primary" id="pOk" ${ok.length ? '' : 'disabled'}>Importar ${ok.length} equipo${ok.length === 1 ? '' : 's'}</button>
@@ -488,21 +706,29 @@ function previa(box, items, origen) {
     const b = ev.currentTarget; b.disabled = true; b.textContent = 'Importando…';
     // misma forma escrita para ubicación, tipo y marca (sin duplicar por tildes o mayúsculas)
     const canon = {};
-    ['ubicacion', 'tipo', 'marca'].forEach(k => { canon[k] = new Map(valoresDe(EQ, k).map(v => [norm(v), v])); });
+    ['ubicacion', 'marca'].forEach(k => { canon[k] = new Map(valoresDe(EQ, k).map(v => [norm(v), v])); });
+    const usados = new Set(ok.map(x => x.d.tipoNuevo && norm(x.d.tipoNuevo.nombre)).filter(Boolean));
+    const tiposDespues = [...TIPOS, ...[...nuevosT.values()].filter(t => usados.has(norm(t.nombre)))];
     const forma = (k, v) => { if (!v) return v; const n = norm(v); if (!canon[k].has(n)) canon[k].set(n, v); return canon[k].get(n); };
     try {
       for (let i = 0; i < ok.length; i += 400) {
         const batch = writeBatch(db);
+        if (i === 0) {
+          batch.set(refCont(), pl.loc, { merge: true });
+          if (tiposDespues.length > TIPOS.length) batch.set(refTipos(), { lista: tiposDespues });
+        }
         ok.slice(i, i + 400).forEach(x => {
           const d = {};
           ['codigo', 'descripcion', 'sistema', 'ubicacion', 'tipo', 'marca', 'modelo', 'serie', 'potencia', 'criticidad', 'notas', 'origenCosto'].forEach(k => { if (x.d[k] !== '' && x.d[k] != null) d[k] = x.d[k]; });
           if (x.d.estadoTxt || !x.ex) d.estado = x.d.estado || 'operativo';
-          ['ubicacion', 'tipo', 'marca'].forEach(k => { if (d[k]) d[k] = forma(k, d[k]); });
+          ['ubicacion', 'marca'].forEach(k => { if (d[k]) d[k] = forma(k, d[k]); });
           const ref = x.ex ? doc(colEquipos(), x.ex.id) : doc(colEquipos());
           batch.set(ref, { ...d, ...(x.ex ? {} : { creado: serverTimestamp() }), actualizado: serverTimestamp(), actualizadoPor: nombreUsuario() }, { merge: true });
         });
         await batch.commit();
       }
+      Object.entries(pl.loc).forEach(([k, n]) => CONT[k] = Math.max(+CONT[k] || 0, n));
+      TIPOS = tiposDespues;
       EQ = await listarEquipos();
       toast(`${ok.length} equipos importados.`);
       box.innerHTML = `<div class="alert ok">Importación completada: ${nuevos} nuevos${act ? `, ${act} actualizados` : ''}. <a href="#equipos">Ver la base de equipos</a></div>`;
@@ -513,10 +739,89 @@ function previa(box, items, origen) {
 }
 
 // =====================================================================
+// TIPOS DE EQUIPO (catálogo de siglas para la codificación)
+// =====================================================================
+function vistaTipos(main) {
+  const cuenta = (t) => EQ.filter(e => norm(e.tipo) === norm(t.nombre)).length;
+  const sinSigla = valoresDe(EQ, 'tipo').filter(x => !tipoPorNombre(x));
+  main.innerHTML = `
+    <div class="pagehead">
+      <div><div class="eyebrow rise">Equipos</div><h1 class="h-display rise d1">Tipos de equipo</h1></div>
+      <div class="acciones rise d2">${puede() ? `<button class="btn btn-primary" id="tNuevo">${IC.mas}Nuevo tipo</button>` : ''}</div>
+    </div>
+    <div class="panel rise d2" style="margin-bottom:18px">
+      <p style="margin:0">Código del equipo: <b class="mono" style="color:var(--mint-2)">SISTEMA-SIGLA-N°</b>, por ejemplo <span class="mono">REF-CMP-01</span>.
+      Prefijos de sistema: ${SISTEMAS.map(x => `<span class="mono">${x.corto}</span> ${esc(x.nombre)}`).join(' · ')}.
+      La sigla de un tipo ya usado en códigos no se puede cambiar.</p>
+    </div>
+    ${sinSigla.length ? `<div class="alert warn rise d2" style="margin-bottom:18px">${sinSigla.length} tipo${sinSigla.length === 1 ? '' : 's'} en uso sin sigla: ${sinSigla.map(esc).join(', ')}. Asígneles una sigla para poder codificar esos equipos.</div>` : ''}
+    <div class="lista rise d3" style="overflow-x:auto"><table class="tabla">
+      <thead><tr><th>Tipo</th><th>Sigla</th><th>Equipos</th><th></th></tr></thead>
+      <tbody>
+        ${sinSigla.map(x => `<tr class="sin"><td>${esc(x)}</td><td>sin sigla</td><td>${EQ.filter(e => norm(e.tipo) === norm(x)).length}</td><td style="text-align:right">${puede() ? `<button class="btn sm" data-sin="${esc(x)}">Asignar sigla</button>` : ''}</td></tr>`).join('')}
+        ${listaTipos().map(t => `<tr><td>${esc(t.nombre)}</td><td class="mono">${esc(t.sigla)}</td><td>${cuenta(t) || '<span style="color:var(--tx-3)">0</span>'}</td><td style="text-align:right">${puede() ? `<button class="btn sm" data-t="${esc(t.sigla)}">Editar</button>` : ''}</td></tr>`).join('')}
+      </tbody></table></div>`;
+  const $ = (q) => main.querySelector(q);
+  if ($('#tNuevo')) $('#tNuevo').onclick = () => editarTipo(null);
+  main.querySelectorAll('[data-t]').forEach(b => b.onclick = () => editarTipo(TIPOS.find(t => t.sigla === b.dataset.t)));
+  main.querySelectorAll('[data-sin]').forEach(b => b.onclick = () => editarTipo(null, b.dataset.sin));
+}
+
+function editarTipo(t, nombreIni = '') {
+  const fija = t ? usaSigla(t.sigla) : false;
+  const n = t ? EQ.filter(e => norm(e.tipo) === norm(t.nombre)).length : 0;
+  const m = modal({
+    titulo: t ? 'Editar tipo' : 'Nuevo tipo de equipo', ancho: 520,
+    cuerpo: `<div class="g2">
+      <div style="grid-column:1/-1"><label class="label" for="tNom">Nombre</label><input class="field" id="tNom" value="${esc(t ? t.nombre : nombreIni)}" placeholder="Compresor" ${nombreIni ? 'readonly' : ''}></div>
+      <div><label class="label" for="tSig">Sigla (2 a 4 letras)</label><input class="field mono" id="tSig" maxlength="4" value="${esc(t ? t.sigla : siglaSugerida(nombreIni))}" ${fija ? 'disabled' : ''} style="text-transform:uppercase"></div>
+      <div class="hint" style="align-self:end;padding-bottom:12px">${fija ? 'Ya se usa en códigos asignados.' : 'Se usará en los códigos nuevos.'}</div>
+      ${t && n ? `<div class="hint" style="grid-column:1/-1">Si cambia el nombre, se actualiza en los ${n} equipo${n === 1 ? '' : 's'} de este tipo.</div>` : ''}
+    </div>`,
+    pie: `${t && !n && !fija && CTX.rol === 'admin' ? '<button type="button" class="btn btn-danger" id="tDel" style="margin-right:auto">Eliminar</button>' : ''}<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="tOk">Guardar</button>`
+  });
+  const sig = m.$('#tSig');
+  let editada = !!t;
+  sig.oninput = () => { editada = true; sig.value = sig.value.toUpperCase().replace(/[^A-Z]/g, ''); };
+  m.$('#tNom').oninput = () => { if (!editada) sig.value = siglaSugerida(m.$('#tNom').value); };
+  setTimeout(() => (nombreIni ? sig : m.$('#tNom')).focus(), 50);
+  if (m.$('#tDel')) m.$('#tDel').onclick = async () => {
+    try { const l = TIPOS.filter(x => x !== t); await writeBatch(db).set(refTipos(), { lista: l }).commit(); TIPOS = l; m.cerrar(); toast('Tipo eliminado.'); render(); }
+    catch (e) { m.err('No se pudo eliminar: ' + (e.code || e.message)); }
+  };
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault(); m.err('');
+    const nombre = m.$('#tNom').value.trim(), sigla = sig.value.trim().toUpperCase();
+    if (!nombre) return m.err('Ingrese el nombre.');
+    if (TIPOS.some(x => x !== t && norm(x.nombre) === norm(nombre))) return m.err('Ese tipo ya existe.');
+    if (!siglaValida(sigla)) return m.err('La sigla debe tener de 2 a 4 letras.');
+    if (!siglaLibre(sigla, t)) return m.err(`La sigla ${sigla} ya corresponde a "${TIPOS.find(x => x.sigla === sigla).nombre}".`);
+    if ((!t || t.sigla !== sigla) && usaSigla(sigla)) return m.err(`La sigla ${sigla} ya aparece en códigos asignados. Elija otra.`);
+    const b = m.$('#tOk'); b.disabled = true; b.textContent = 'Guardando…';
+    try {
+      const nuevoT = { nombre, sigla };
+      const lista = t ? TIPOS.map(x => x === t ? nuevoT : x) : [...TIPOS, nuevoT];
+      const antes = t ? t.nombre : nombreIni;
+      const afect = antes && antes !== nombre ? EQ.filter(e => norm(e.tipo) === norm(antes)) : [];
+      for (let i = 0; i < Math.max(afect.length, 1); i += 400) {
+        const batch = writeBatch(db);
+        if (i === 0) batch.set(refTipos(), { lista });
+        afect.slice(i, i + 400).forEach(e => batch.set(doc(colEquipos(), e.id), { tipo: nombre, actualizado: serverTimestamp(), actualizadoPor: nombreUsuario() }, { merge: true }));
+        await batch.commit();
+      }
+      afect.forEach(e => e.tipo = nombre);
+      TIPOS = lista;
+      m.cerrar(); toast('Tipo guardado.'); render();
+    } catch (e) { m.err('No se pudo guardar: ' + (e.code || e.message)); b.disabled = false; b.textContent = 'Guardar'; }
+  };
+}
+
+// =====================================================================
 function render() {
   if (!CTX) return;
   CTX.main.innerHTML = '';
   if (CTX.modulo === 'carga') vistaCarga(CTX.main);
+  else if (CTX.modulo === 'tipos') vistaTipos(CTX.main);
   else vistaBase(CTX.main);
 }
 
@@ -529,6 +834,7 @@ CTX = await iniciarApp({
     render();
   }
 });
+await cargarCodificacion();
 try { EQ = await listarEquipos(); } catch (e) { toast('No se pudo leer la base de equipos: ' + (e.code || e.message), 'err'); }
 listo = true;
 render();

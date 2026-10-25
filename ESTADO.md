@@ -98,7 +98,14 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Base maestra única del SIM en `datos/eq/equipos/{id}`: codigo (único), descripcion, sistema (id de `core/maestros.js`), ubicacion, tipo,
   marca, modelo, serie, potencia, criticidad (A/B/C), estado (operativo | fuera | baja), notas, origenCosto.
 - La leen todos los usuarios activos (la usan los formatos); la escriben los roles con escritura en Equipos.
-- Carga: uno por uno, Excel (plantilla descargable; actualiza por código) o importación del catálogo de Costos (código provisional por sistema: REF-001, CAL-001…).
+- Código automático `<SISTEMA>-<SIGLA TIPO>-<N°>` (REF-CMP-01): prefijo = `corto` del sistema (core/maestros.js), sigla del catálogo
+  `datos/eq/config/tipos.lista` [{nombre, sigla}] (módulo Tipos de equipo; semilla TIPOS_BASE en apps/eq), correlativo por prefijo
+  en `datos/eq/config/contadores` {"REF-CMP": n} con transacción. El código es fijo (no cambia si cambia sistema/tipo) y los números
+  de equipos eliminados no se reutilizan. Tipo nuevo → pide sigla (sugerida) y se agrega al catálogo. Sigla usada en códigos = bloqueada.
+- Códigos manuales/provisionales anteriores: "Asignar código automático" (ficha, admin) o "Códigos fuera de formato" (Carga masiva);
+  el anterior queda en `codigoAnterior`. Registros de formatos e informes ya vinculados conservan el código anterior.
+- Carga: uno por uno ("Registrar y agregar otro" conserva sistema, tipo y ubicación), Excel (Código vacío = nuevo con código automático;
+  con código existente = actualiza) o importación de Costos (tipo reconocido por la descripción).
 - La ficha muestra los formatos vigentes que incluyen al equipo y sus últimos registros.
 
 ## Registro de formatos (F8)
@@ -190,6 +197,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-25: Equipos — código automático SISTEMA-TIPO-N° (catálogo de tipos y siglas, contador por prefijo, recodificación de provisionales).
 - 2026-10-02 — Repositorio creado. Portal, núcleo, Administración, plantilla y reglas (F0).
 - 2026-10-02 — F0 configurado en consola y probado por el administrador. Congelamiento integrado + herramienta de copia de datos (F1).
 - 2026-10-02 — Copia de datos de Congelamiento completada por el administrador. Costos integrado sin datos en el código + herramienta de carga (F2).
