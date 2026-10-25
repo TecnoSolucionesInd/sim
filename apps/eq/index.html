@@ -53,6 +53,8 @@
   .hint{font-size:12px;color:var(--tx-3);margin-top:6px;line-height:1.45}
   .sigrow{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--amber-2)}
   .sigrow input{width:86px;height:36px;font-size:14px;padding:0 10px;border-radius:9px;text-transform:uppercase}
+  details.motor{border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px 16px;background:rgba(14,22,30,.14)}
+  details.motor summary{cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:14px}
   .tabla{width:100%;border-collapse:collapse;font-size:14px}
   .tabla th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--tx-3);text-align:left;padding:12px 16px;font-weight:500}
   .tabla td{padding:11px 16px;border-top:1px solid rgba(255,255,255,.06)}
@@ -91,6 +93,13 @@ const puede = () => CTX?.puedeEscribir;
 
 const pillEstado = (id) => { const e = ESTADOS_EQUIPO.find(x => x.id === id) || ESTADOS_EQUIPO[0]; return `<span class="pill" style="background:${e.bg};color:${e.fg}">${e.label}</span>`; };
 const sisNom = (id) => sistemaPorId(id)?.nombre || '—';
+// Datos de placa del motor (campos planos para Excel y filtros)
+const MOTOR = [
+  ['mTension', 'Tensión', 'V', '440'], ['mCorriente', 'Corriente nominal', 'A', '92'], ['mRpm', 'Velocidad', 'RPM', '1780'],
+  ['mFs', 'Factor de servicio', '', '1.15'], ['mCarcasa', 'Carcasa (frame)', '', '365T'], ['mRodLA', 'Rodamiento lado acople', '', '6316 C3'], ['mRodLOA', 'Rodamiento lado opuesto', '', '6313 C3']
+];
+const tieneMotor = (v) => MOTOR.some(([k]) => String(v?.[k] ?? '').trim());
+const pideMotor = (tipo) => /motor|bomba|ventilador|compresor|agitador|faja/.test(norm(tipo));
 const sisDe = (v) => v === '' || v == null ? null : sistemaPorId(v);
 
 // =====================================================================
@@ -257,7 +266,7 @@ function ficha(e, base = null) {
   const nuevo = !e;
   const ro = !puede();
   const dis = ro ? 'disabled' : '';
-  const v = e || { codigo: '', descripcion: '', sistema: base?.sistema ?? (FIL.sistema === 'all' ? '' : FIL.sistema), ubicacion: base?.ubicacion ?? FIL.ubicacion, tipo: base?.tipo ?? FIL.tipo, marca: base?.marca || '', modelo: base?.modelo || '', serie: '', potencia: base?.potencia || '', criticidad: base?.criticidad || '', estado: 'operativo', notas: '' };
+  const v = e || { codigo: '', descripcion: '', sistema: base?.sistema ?? (FIL.sistema === 'all' ? '' : FIL.sistema), ubicacion: base?.ubicacion ?? FIL.ubicacion, tipo: base?.tipo ?? FIL.tipo, marca: base?.marca || '', modelo: base?.modelo || '', serie: '', potencia: base?.potencia || '', criticidad: base?.criticidad || '', estado: 'operativo', notas: '', ...Object.fromEntries(MOTOR.map(([k]) => [k, base?.[k] || ''])) };
   const dl = (id, campo) => `<datalist id="${id}">${valoresDe(EQ, campo).map(x => `<option value="${esc(x)}">`).join('')}</datalist>`;
   const nombresTipo = [...new Map([...listaTipos().map(t => t.nombre), ...valoresDe(EQ, 'tipo')].map(x => [norm(x), x])).values()];
   const recodificable = !nuevo && !ro && CTX.rol === 'admin' && !sigueFormato(v);
@@ -280,6 +289,11 @@ function ficha(e, base = null) {
         <div><label class="label" for="ePot">Potencia / capacidad</label><input class="field" id="ePot" value="${esc(v.potencia)}" placeholder="250 HP" ${dis}></div>
         <div><label class="label" for="eCri">Criticidad</label><select class="field" id="eCri" ${dis}><option value="">Sin definir</option>${CRITICIDAD.map(c => `<option value="${c.id}" ${c.id === v.criticidad ? 'selected' : ''} title="${esc(c.desc)}">${c.label}</option>`).join('')}</select></div>
         <div><label class="label" for="eEst">Estado</label><select class="field" id="eEst" ${dis}>${ESTADOS_EQUIPO.map(s => `<option value="${s.id}" ${s.id === (v.estado || 'operativo') ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+        <details class="motor" id="eMot" style="grid-column:1/-1" ${tieneMotor(v) || pideMotor(v.tipo) ? 'open' : ''}>
+          <summary>Datos de placa del motor</summary>
+          <div class="g3" style="margin-top:12px">${MOTOR.map(([k, l, u, ph]) => `<div><label class="label" for="${k}">${l}${u ? ` (${u})` : ''}</label><input class="field" id="${k}" value="${esc(v[k] || '')}" placeholder="${ph}" ${k === 'mTension' || k === 'mCorriente' || k === 'mRpm' || k === 'mFs' ? 'inputmode="decimal"' : ''} ${dis}></div>`).join('')}</div>
+          <div class="hint">La corriente nominal sirve para regular el relé térmico y comparar con la medida en operación (% de carga).</div>
+        </details>
         <div style="grid-column:1/-1"><label class="label" for="eNot">Notas</label><textarea class="field" id="eNot" rows="2" style="height:auto;padding:12px 16px;line-height:1.5" ${dis}>${esc(v.notas)}</textarea></div>
       </div></div>
       ${nuevo ? '' : `<div class="lado">
@@ -320,7 +334,7 @@ function ficha(e, base = null) {
   };
   if (!ro) {
     m.$('#eSis').onchange = actCod;
-    m.$('#eTip').oninput = actCod;
+    m.$('#eTip').oninput = () => { actCod(); if (pideMotor(m.$('#eTip').value)) m.$('#eMot').open = true; };
     m.$('#eSig').oninput = (ev) => { ev.target.dataset.edit = '1'; ev.target.value = ev.target.value.toUpperCase().replace(/[^A-Z]/g, ''); actCod(); };
   }
   actCod();
@@ -363,6 +377,7 @@ function ficha(e, base = null) {
       modelo: m.$('#eMod').value.trim(), serie: m.$('#eSer').value.trim(), potencia: m.$('#ePot').value.trim(),
       criticidad: m.$('#eCri').value, estado: m.$('#eEst').value, notas: m.$('#eNot').value.trim()
     };
+    MOTOR.forEach(([k]) => { d[k] = m.$('#' + k).value.trim().replace(',', k === 'mCarcasa' || k.startsWith('mRod') ? ',' : '.'); });
     if (d.sistema === '') return m.err('Seleccione el sistema.');
     if (!d.tipo) return m.err('Ingrese el tipo de equipo.');
     let tipoNuevo = null;
@@ -452,8 +467,10 @@ const aplica = (e, f) => {
 // =====================================================================
 const COLS = [
   ['codigo', 'Código'], ['descripcion', 'Descripción'], ['sistema', 'Sistema'], ['ubicacion', 'Ubicación'], ['tipo', 'Tipo'],
-  ['marca', 'Marca'], ['modelo', 'Modelo'], ['serie', 'N° serie'], ['potencia', 'Potencia'], ['criticidad', 'Criticidad'], ['estado', 'Estado'], ['notas', 'Notas']
+  ['marca', 'Marca'], ['modelo', 'Modelo'], ['serie', 'N° serie'], ['potencia', 'Potencia'], ['criticidad', 'Criticidad'], ['estado', 'Estado'], ['notas', 'Notas'],
+  ...MOTOR.map(([k, l, u]) => [k, `Motor ${l.toLowerCase()}${u ? ` (${u})` : ''}`])
 ];
+const ANCHOS = [12, 34, 22, 20, 18, 14, 14, 14, 12, 10, 16, 30, 12, 14, 12, 12, 14, 18, 18];
 
 function vistaCarga(main) {
   if (!puede()) { main.innerHTML = '<div class="alert warn">Su rol en Equipos es de solo consulta.</div>'; return; }
@@ -560,13 +577,13 @@ function XLSXlib() {
   return xlsxCarga;
 }
 
-const filaExcel = (e) => [e.codigo, e.descripcion, sisNom(e.sistema), e.ubicacion || '', e.tipo || '', e.marca || '', e.modelo || '', e.serie || '', e.potencia || '', e.criticidad || '', (ESTADOS_EQUIPO.find(s => s.id === (e.estado || 'operativo')) || {}).label, e.notas || ''];
+const filaExcel = (e) => [e.codigo, e.descripcion, sisNom(e.sistema), e.ubicacion || '', e.tipo || '', e.marca || '', e.modelo || '', e.serie || '', e.potencia || '', e.criticidad || '', (ESTADOS_EQUIPO.find(s => s.id === (e.estado || 'operativo')) || {}).label, e.notas || '', ...MOTOR.map(([k]) => e[k] || '')];
 
 async function plantillaExcel() {
   try {
     const X = await XLSXlib();
-    const ws = X.utils.aoa_to_sheet([COLS.map(c => c[1]), ['', 'Compresor de tornillo N° 1', 'Refrigeración', 'Sala de máquinas', 'Compresor', 'Frick', 'RWB II 222', '', '250 HP', 'A', 'Operativo', '']]);
-    ws['!cols'] = [12, 34, 22, 20, 18, 14, 14, 14, 12, 10, 16, 30].map(w => ({ wch: w }));
+    const ws = X.utils.aoa_to_sheet([COLS.map(c => c[1]), ['', 'Compresor de tornillo N° 1', 'Refrigeración', 'Sala de máquinas', 'Compresor', 'Frick', 'RWB II 222', '', '250 HP', 'A', 'Operativo', '', '440', '290', '3570', '1.15', '445TS', '6318 C3', '6316 C3']]);
+    ws['!cols'] = ANCHOS.map(w => ({ wch: w }));
     const tl = listaTipos(), nf = Math.max(SISTEMAS.length, tl.length);
     const listas = X.utils.aoa_to_sheet([['Sistema', 'Prefijo', 'Criticidad', 'Estado', '', 'Tipo de equipo', 'Sigla'], ...Array.from({ length: nf }, (_, i) => [SISTEMAS[i]?.nombre || '', SISTEMAS[i]?.corto || '', ['A', 'B', 'C'][i] || '', ESTADOS_EQUIPO[i]?.label || '', '', tl[i]?.nombre || '', tl[i]?.sigla || ''])]);
     listas['!cols'] = [{ wch: 26 }, { wch: 9 }, { wch: 12 }, { wch: 18 }, { wch: 3 }, { wch: 28 }, { wch: 8 }];
@@ -581,7 +598,7 @@ async function exportar(lista) {
   try {
     const X = await XLSXlib();
     const ws = X.utils.aoa_to_sheet([COLS.map(c => c[1]), ...lista.map(filaExcel)]);
-    ws['!cols'] = [12, 34, 22, 20, 18, 14, 14, 14, 12, 10, 16, 30].map(w => ({ wch: w }));
+    ws['!cols'] = ANCHOS.map(w => ({ wch: w }));
     const wb = X.utils.book_new();
     X.utils.book_append_sheet(wb, ws, 'Equipos');
     const d = new Date();
@@ -623,7 +640,7 @@ async function leerExcel(file, box) {
     const vistos = new Set(), nuevosT = new Map(), pl = planificador();
     const items = datos.map((r, n) => {
       const g = (k) => idx[k] == null ? '' : String(r[idx[k]] ?? '').trim();
-      const d = { codigo: g('codigo').toUpperCase(), descripcion: g('descripcion'), sistemaTxt: g('sistema'), ubicacion: g('ubicacion'), tipo: g('tipo'), marca: g('marca'), modelo: g('modelo'), serie: g('serie'), potencia: g('potencia'), criticidad: g('criticidad').slice(0, 1).toUpperCase(), estadoTxt: g('estado'), notas: g('notas') };
+      const d = { codigo: g('codigo').toUpperCase(), descripcion: g('descripcion'), sistemaTxt: g('sistema'), ubicacion: g('ubicacion'), tipo: g('tipo'), marca: g('marca'), modelo: g('modelo'), serie: g('serie'), potencia: g('potencia'), criticidad: g('criticidad').slice(0, 1).toUpperCase(), estadoTxt: g('estado'), notas: g('notas'), ...Object.fromEntries(MOTOR.map(([k]) => [k, g(k)])) };
       const errs = [];
       const ex = d.codigo ? EQ.find(e => norm(e.codigo) === norm(d.codigo)) : null;
       if (d.codigo && !ex) errs.push(`el código ${d.codigo} no existe (para un equipo nuevo deje el código vacío)`);
@@ -719,7 +736,7 @@ function previa(box, items, origen, pl, nuevosT) {
         }
         ok.slice(i, i + 400).forEach(x => {
           const d = {};
-          ['codigo', 'descripcion', 'sistema', 'ubicacion', 'tipo', 'marca', 'modelo', 'serie', 'potencia', 'criticidad', 'notas', 'origenCosto'].forEach(k => { if (x.d[k] !== '' && x.d[k] != null) d[k] = x.d[k]; });
+          ['codigo', 'descripcion', 'sistema', 'ubicacion', 'tipo', 'marca', 'modelo', 'serie', 'potencia', 'criticidad', 'notas', 'origenCosto', ...MOTOR.map(([k]) => k)].forEach(k => { if (x.d[k] !== '' && x.d[k] != null) d[k] = x.d[k]; });
           if (x.d.estadoTxt || !x.ex) d.estado = x.d.estado || 'operativo';
           ['ubicacion', 'marca'].forEach(k => { if (d[k]) d[k] = forma(k, d[k]); });
           const ref = x.ex ? doc(colEquipos(), x.ex.id) : doc(colEquipos());

@@ -106,6 +106,9 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   el anterior queda en `codigoAnterior`. Registros de formatos e informes ya vinculados conservan el código anterior.
 - Carga: uno por uno ("Registrar y agregar otro" conserva sistema, tipo y ubicación), Excel (Código vacío = nuevo con código automático;
   con código existente = actualiza) o importación de Costos (tipo reconocido por la descripción).
+- Datos de placa del motor (campos planos): mTension, mCorriente, mRpm, mFs, mCarcasa, mRodLA, mRodLOA. Sección plegable en la ficha,
+  abierta si el tipo es motor/bomba/ventilador/compresor/agitador/faja o si ya tiene datos. También en la plantilla y exportación Excel.
+- Sistema 8 "Servicios" (SRV, formatos R-801–899): agua de mar, agua dulce, aire comprimido, desagüe — lo que abastece a varias plantas.
 - La ficha muestra los formatos vigentes que incluyen al equipo y sus últimos registros.
 
 ## Registro de formatos (F8)
@@ -197,6 +200,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-25: Sistema Servicios (SRV) y datos de placa del motor en Equipos.
 - 2026-10-25: Equipos — código automático SISTEMA-TIPO-N° (catálogo de tipos y siglas, contador por prefijo, recodificación de provisionales).
 - 2026-10-02 — Repositorio creado. Portal, núcleo, Administración, plantilla y reglas (F0).
 - 2026-10-02 — F0 configurado en consola y probado por el administrador. Congelamiento integrado + herramienta de copia de datos (F1).

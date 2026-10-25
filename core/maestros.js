@@ -9,7 +9,8 @@ export const SISTEMAS = [
   { id: 4, nombre: 'Planta de hielo',          corto: 'HIE', desde: 401, hasta: 499 },
   { id: 5, nombre: 'Congelado',                corto: 'CON', desde: 501, hasta: 599 },
   { id: 6, nombre: 'Eléctrico',                corto: 'ELE', desde: 601, hasta: 699 },
-  { id: 7, nombre: 'Infraestructura',          corto: 'INF', desde: 701, hasta: 799 }
+  { id: 7, nombre: 'Infraestructura',          corto: 'INF', desde: 701, hasta: 799 },
+  { id: 8, nombre: 'Servicios',                corto: 'SRV', desde: 801, hasta: 899 }  // agua de mar, agua dulce, aire comprimido, desagüe: abastecen a varias plantas
 ];
 export const sistemaPorId = (id) => SISTEMAS.find(s => s.id === Number(id)) || null;
 
