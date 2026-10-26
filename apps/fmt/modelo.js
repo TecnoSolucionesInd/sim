@@ -16,6 +16,8 @@ export const TIPOS_CAMPO = [
   { id: 'hora',      nombre: 'Hora' },
   { id: 'fechaHora', nombre: 'Fecha y hora' },
   { id: 'duracion',  nombre: 'Duración calculada' },
+  { id: 'diferencia',nombre: 'Diferencia calculada (A − B)' },
+  { id: 'porcentaje',nombre: 'Porcentaje calculado (A ÷ B)' },
   { id: 'equipo',    nombre: 'Equipo' },
   { id: 'referencia',nombre: 'Registro relacionado' },
   { id: 'foto',      nombre: 'Foto' }
@@ -164,6 +166,7 @@ export function validarDef(def) {
       s.campos.forEach((c, j) => {
         if (!c.etiqueta.trim()) err.push(`"${t}": el campo ${j + 1} no tiene nombre.`);
         if (c.tipo === 'seleccion' && !c.opciones.length) err.push(`"${t}": "${c.etiqueta || 'campo ' + (j + 1)}" no tiene opciones.`);
+        if ((c.tipo === 'diferencia' || c.tipo === 'porcentaje') && (!c.desde || !c.hasta)) err.push(`"${t}": "${c.etiqueta || 'campo ' + (j + 1)}" debe indicar los dos campos con que se calcula.`);
         if (c.tipo === 'duracion' && (!c.desde || !c.hasta)) err.push(`"${t}": "${c.etiqueta || 'campo ' + (j + 1)}" debe indicar desde y hasta qué campo se calcula.`);
         if (c.tipo === 'numero' && c.min !== '' && c.max !== '' && Number(c.min) > Number(c.max)) err.push(`"${t}": en "${c.etiqueta}" el mínimo es mayor que el máximo.`);
       });
@@ -301,5 +304,51 @@ export function pilotos() {
     }
   };
 
-  return [r001, r002, r101];
+  // R-301: viene del manual de mantenimiento (revisión 3, vigente desde junio 2026)
+  const R = (min, max) => ({ min: min ?? '', max: max ?? '' });
+  const mmE = c('Presión de entrada', 'numero', { requerido: true, unidad: 'bar' }), mmS = c('Presión de salida', 'numero', { requerido: true, unidad: 'bar' });
+  const caE = c('Presión de entrada', 'numero', { requerido: true, unidad: 'bar' }), caS = c('Presión de salida', 'numero', { requerido: true, unidad: 'bar' });
+  const alF = c('Flujo', 'numero', { requerido: true, unidad: 'm³/h' }), peF = c('Flujo', 'numero', { requerido: true, unidad: 'm³/h' });
+  const r301 = {
+    codigo: 'R-301',
+    origenManual: { revision: 3, fecha: '2026-06' },
+    def: {
+      ...defVacia('Control de operación — Planta de ósmosis inversa'),
+      frecuencia: 'Por turno',
+      datosGenerales: { turno: true, hora: true },
+      secciones: [
+        { id: uid(), tipo: 'campos', titulo: 'Identificación', columnas: 2, campos: [
+          c('Módulo de ósmosis', 'equipo', { requerido: true, ancho: 2, filtro: { sistema: 3, tipo: 'Unidad de ósmosis inversa' } })
+        ] },
+        { id: uid(), tipo: 'campos', titulo: 'Filtro multimedia', columnas: 3, campos: [
+          mmE, mmS, c('Diferencial de presión', 'diferencia', { unidad: 'bar', desde: mmE.id, hasta: mmS.id, max: '1', ayuda: 'Sobre 1 bar: programar retrolavado' })
+        ] },
+        { id: uid(), tipo: 'campos', titulo: 'Filtro cartucho', columnas: 3, campos: [
+          caE, caS, c('Diferencial de presión', 'diferencia', { unidad: 'bar', desde: caE.id, hasta: caS.id, max: '1', ayuda: 'Sobre 1 bar: cambiar cartuchos' })
+        ] },
+        { id: uid(), tipo: 'campos', titulo: 'Alimentación', columnas: 2, campos: [
+          alF, c('Presión', 'numero', { requerido: true, unidad: 'bar', max: '69' })
+        ] },
+        { id: uid(), tipo: 'campos', titulo: 'Permeado', columnas: 3, campos: [
+          peF, c('Presión', 'numero', { requerido: true, unidad: 'bar', max: '3' }),
+          c('Recuperación', 'porcentaje', { unidad: '%', desde: peF.id, hasta: alF.id, min: '35', max: '45', ayuda: 'Flujo de permeado ÷ flujo de alimentación' })
+        ] },
+        { id: uid(), tipo: 'tabla', titulo: 'Calidad del agua', fuente: 'lista', filtro: { sistema: '', tipo: '', ubicacion: '' }, estadoEquipo: false,
+          columnas: ['Alimentación', 'Permeado', 'Rechazo'], filas: [
+            f('Conductividad', 'numero', { unidad: 'µS/cm', rangos: { Permeado: R('', '1000') } }),
+            f('Dureza', 'numero', { unidad: 'ppm CaCO₃', rangos: { Permeado: R('', '50') } }),
+            f('pH', 'numero', { rangos: { 'Alimentación': R('7', '8.5'), Permeado: R('6.5', '8.5') } }),
+            f('Temperatura', 'numero', { unidad: '°C', rangos: { 'Alimentación': R('', '40') } })
+          ] },
+        { id: uid(), tipo: 'tabla', titulo: 'Permeado por housing', fuente: 'lista', filtro: { sistema: '', tipo: '', ubicacion: '' }, estadoEquipo: false,
+          columnas: ['Housing 1', 'Housing 2', 'Housing 3', 'Housing 4', 'Housing 5'], filas: [
+            f('Conductividad', 'numero', { unidad: 'µS/cm', max: '1000' }),
+            f('pH', 'numero', { min: '6.5', max: '8.5' })
+          ] }
+      ],
+      firmas: [{ nombre: 'Técnico', modo: 'usuario' }, FA]
+    }
+  };
+
+  return [r001, r002, r101, r301];
 }

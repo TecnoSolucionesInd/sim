@@ -7,7 +7,7 @@ import { IC, modal, confirmar, reducirFoto } from './ui.js';
 import { esc, clonar, firmasDe, tablaDeEquipos, pideUbicacion, rangoTxt, ESTADOS_COLUMNA, turnosDe, SISTEMAS } from './modelo.js';
 import {
   turnoActual, periodoClave, periodoTxt, inicioConsulta, FREC_PERIODICAS, columnasTabla, ubicacionesDe, etiquetaCol,
-  numero, fueraDeRango, minutosEntre, duracionTxt, evaluar, calcularDuraciones, equiposDelRegistro, estadoColumna,
+  numero, fueraDeRango, calculado, calcTxt, esCalculado, rangoCol, minutosEntre, duracionTxt, evaluar, calcularDuraciones, equiposDelRegistro, estadoColumna,
   fechaISO, horaHM, fechaHoraLocal, fechaLarga, filtrarEquiposPor
 } from './logica.js';
 
@@ -476,6 +476,7 @@ function campoHtml(c, v) {
     case 'hora': h = lab + `<div style="display:flex;gap:8px"><input class="field" type="time" id="c_${c.id}" value="${esc(x || '')}"><button type="button" class="btn" data-ahora="${c.id}" style="height:48px">Ahora</button></div>`; break;
     case 'fechaHora': h = lab + `<div style="display:flex;gap:8px"><input class="field" type="datetime-local" id="c_${c.id}" value="${esc(x || '')}"><button type="button" class="btn" data-ahora="${c.id}" style="height:48px">Ahora</button></div>`; break;
     case 'duracion': { const m = minutosEntre(v[c.desde], v[c.hasta]); h = lb + `<div class="dur ${m != null && m < 0 ? 'neg' : ''}" id="c_${c.id}">${m == null ? '<span style="color:var(--tx-3);font-family:var(--f-body);font-size:14px">Se calcula al completar las horas</span>' : esc(duracionTxt(m))}</div>`; break; }
+    case 'diferencia': case 'porcentaje': h = lb + calcHtml(c, v); break;
     case 'equipo': h = lb + `<button type="button" class="eqsel" id="c_${c.id}">${x && x.codigo ? `<b>${esc(x.codigo)}</b><span>${esc(x.descripcion || '')}</span>` : `<span class="ph">Seleccionar equipo</span>`}${IC.search}</button>`; break;
     case 'referencia': h = lab + `<input class="field mono" id="c_${c.id}" value="${esc(x || '')}" placeholder="R-001-2026-00001" autocomplete="off">`; break;
     case 'foto': h = lb + `<div class="foto">${x ? `<img src="${typeof x === 'string' ? x : ''}" alt="" id="fi_${c.id}">` : `<span class="vacia">${IC.cam}</span>`}
@@ -532,7 +533,17 @@ function enlazarCampo(box, c, s) {
   }
 }
 
+function calcHtml(c, v) {
+  const n = calculado(c, v), al = n != null && fueraDeRango(c, n);
+  return `<div class="dur ${al ? 'neg' : ''}" id="c_${c.id}">${n == null ? `<span style="color:var(--tx-3);font-family:var(--f-body);font-size:14px">Se calcula al completar los valores</span>` : `${esc(calcTxt(n))}${c.unidad ? ` <span style="font-size:14px;color:var(--tx-3)">${esc(c.unidad)}</span>` : ''}`}</div>
+    <div class="rg"><span>${rangoTxt(c) ? 'Rango ' + esc(rangoTxt(c)) : ''}</span>${al ? `<span class="alx" style="display:inline-flex">${IC.alert} Fuera de rango</span>` : ''}</div>`;
+}
+
 function refrescarDuraciones(box, s) {
+  s.campos.filter(esCalculado).forEach(c => {
+    const w = box.querySelector(`#w_${c.id}`); if (!w) return;
+    const lb = w.querySelector('.lb'); w.innerHTML = (lb ? lb.outerHTML : '') + calcHtml(c, F.reg.v);
+  });
   s.campos.filter(c => c.tipo === 'duracion').forEach(c => {
     const el = box.querySelector(`#c_${c.id}`); if (!el) return;
     const m = minutosEntre(F.reg.v[c.desde], F.reg.v[c.hasta]);
@@ -571,7 +582,7 @@ function estadoCol(s, col) {
   s.filas.forEach(fl => {
     const x = t.c?.[fl.id]?.[col.id];
     if (x == null || x === '') { if (fl.requerido !== false) fal = true; }
-    else if (fl.tipo === 'numero' && fueraDeRango(fl, x)) al = true;
+    else if (fl.tipo === 'numero' && fueraDeRango(rangoCol(fl, col), x)) al = true;
   });
   return al ? 'al' : fal ? 'fal' : 'ok';
 }
@@ -598,8 +609,8 @@ function pasoTabla(box, s) {
           if (fl.tipo === 'seleccion') return `<div class="lf-f" data-ref="${ref}"><div class="lb">${esc(fl.etiqueta)}${fl.requerido !== false ? ' <sup>*</sup>' : ''}</div><div class="chs" data-tf="${fl.id}">${fl.opciones.map(o => `<button type="button" data-v="${esc(o)}" class="${o === x ? 'on' : ''}">${esc(o)}</button>`).join('')}</div><span class="falta">Dato obligatorio</span></div>`;
           if (fl.tipo === 'texto') return `<div class="lf-f" data-ref="${ref}"><label for="tf_${fl.id}">${esc(fl.etiqueta)}${fl.requerido !== false ? ' <sup>*</sup>' : ''}</label><input class="field" id="tf_${fl.id}" data-tf="${fl.id}" value="${esc(x || '')}"><span class="falta">Dato obligatorio</span></div>`;
           return `<div class="lf-f" data-ref="${ref}"><label for="tf_${fl.id}">${esc(fl.etiqueta)}${fl.requerido !== false ? ' <sup>*</sup>' : ''}</label>
-            <div class="num ${fueraDeRango(fl, x) ? 'al' : ''}"><input id="tf_${fl.id}" data-tf="${fl.id}" inputmode="decimal" autocomplete="off" value="${esc(x ?? '')}" placeholder="—">${fl.unidad ? `<span class="u">${esc(fl.unidad)}</span>` : ''}</div>
-            <div class="rg"><span>${rangoTxt(fl) ? 'Rango ' + esc(rangoTxt(fl)) : ''}</span><span class="alx">${IC.alert} Fuera de rango</span></div><span class="falta">Dato obligatorio</span></div>`;
+            <div class="num ${fueraDeRango(rangoCol(fl, col), x) ? 'al' : ''}"><input id="tf_${fl.id}" data-tf="${fl.id}" inputmode="decimal" autocomplete="off" value="${esc(x ?? '')}" placeholder="—">${fl.unidad ? `<span class="u">${esc(fl.unidad)}</span>` : ''}</div>
+            <div class="rg"><span>${rangoTxt(rangoCol(fl, col)) ? 'Rango ' + esc(rangoTxt(rangoCol(fl, col))) : ''}</span><span class="alx">${IC.alert} Fuera de rango</span></div><span class="falta">Dato obligatorio</span></div>`;
         }).join('') : `<div class="muted" style="font-size:14px;padding:4px 0 8px">Sin lecturas: el equipo no está operando.</div>`}
         <div class="tnav">
           <button type="button" class="btn" id="tAnt" ${i === 0 ? 'disabled' : ''}>${IC.back}</button>
@@ -617,7 +628,7 @@ function pasoTabla(box, s) {
     if (est) est.querySelectorAll('button').forEach(b => b.onclick = () => { t.est = t.est || {}; t.est[col.id] = b.dataset.v; cambio(); pintar(); });
     s.filas.forEach(fl => {
       const inp = box.querySelector(`input[data-tf="${fl.id}"]`);
-      if (inp && fl.tipo === 'numero') inp.oninput = () => { const val = inp.value.replace(/[^\d.,-]/g, ''); if (val !== inp.value) inp.value = val; setC(fl.id, val); inp.parentElement.classList.toggle('al', fueraDeRango(fl, val)); };
+      if (inp && fl.tipo === 'numero') inp.oninput = () => { const val = inp.value.replace(/[^\d.,-]/g, ''); if (val !== inp.value) inp.value = val; setC(fl.id, val); inp.parentElement.classList.toggle('al', fueraDeRango(rangoCol(fl, col), val)); };
       else if (inp) inp.oninput = () => setC(fl.id, inp.value);
       const chs = box.querySelector(`.chs[data-tf="${fl.id}"]`);
       if (chs) chs.querySelectorAll('button').forEach(b => b.onclick = () => { const ya = t.c?.[fl.id]?.[col.id] === b.dataset.v; setC(fl.id, ya ? '' : b.dataset.v); chs.querySelectorAll('button').forEach(x => x.classList.toggle('on', !ya && x === b)); });

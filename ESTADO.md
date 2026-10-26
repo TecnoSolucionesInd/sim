@@ -142,6 +142,16 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   `registros/{id}/fotos/{campoId}` (Firestore, sin Storage), número `R-XXX-aaaa-00001` por transacción en `contadores/{codigo}-{año}`,
   pendientes en `pendientes/{id}`. Estados: enviado → aprobado | observado → (corregido) enviado. Aprobado no se modifica.
 - Impresión del registro lleno: hoja oficial con valores, fotos, firmas y QR al original (`apps/fmt/?r=<id>#registros`), ajustada a una página A4.
+- Campos calculados: `diferencia` (A − B) y `porcentaje` (A ÷ B × 100) entre dos campos numéricos (desde/hasta), con unidad y rango;
+  se muestran en vivo al llenar, generan alerta fuera de rango y se guardan en `dur` del registro (junto a las duraciones).
+- Tablas de lista fija: una fila puede tener rangos por columna `rangos: { '<nombre de columna>': {min, max} }` (p. ej. solo Permeado).
+  El editor los muestra pero no los edita (se definen en el formato predefinido).
+- Emisión de formatos que ya existen en el manual: opción "conserva su revisión y vigencia" (revisión y mes indicados; `origenManual`).
+- Formatos predefinidos (botón "Cargar formatos predefinidos"): R-001, R-002, R-101 y R-301 Control de operación — Planta de ósmosis
+  inversa (rev. 3, Jun-26, por turno; módulo OSM-UOI-xx; filtros multimedia/cartucho con ΔP; alimentación; permeado con % recuperación;
+  calidad de agua; permeado por housing 1–5). Rangos de referencia SWRO: ΔP ≤ 1 bar, alimentación ≤ 69 bar, permeado ≤ 3 bar,
+  recuperación 35–45 %, conductividad permeado/housing ≤ 1000 µS/cm, pH permeado 6.5–8.5, pH alimentación 7–8.5, dureza permeado ≤ 50,
+  temperatura alimentación ≤ 40 °C.
 - Siguiente: indicadores (cumplimiento de formatos, horas de parada, MTTR por equipo, tendencias de parámetros).
 
 ## Plan de mantenimiento (F7)
@@ -204,6 +214,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-25: Formatos — campos calculados (diferencia, porcentaje), rangos por columna, emisión con revisión del manual y R-301 ósmosis.
 - 2026-10-25: Equipos — ubicaciones como lista controlada (módulo Ubicaciones, aviso de tipeo, unificar).
 - 2026-10-25: Sistema Servicios (SRV) y datos de placa del motor en Equipos.
 - 2026-10-25: Equipos — código automático SISTEMA-TIPO-N° (catálogo de tipos y siglas, contador por prefijo, recodificación de provisionales).

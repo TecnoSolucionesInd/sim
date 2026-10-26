@@ -120,6 +120,18 @@ export const fueraDeRango = (x, v) => {
   return (x.min !== '' && x.min != null && n < Number(x.min)) || (x.max !== '' && x.max != null && n > Number(x.max));
 };
 
+// Campos calculados a partir de dos campos numéricos: diferencia (A − B) y porcentaje (A ÷ B × 100)
+export const esCalculado = (c) => c && (c.tipo === 'diferencia' || c.tipo === 'porcentaje');
+export function calculado(c, v) {
+  const a = numero(v?.[c.desde]), b = numero(v?.[c.hasta]);
+  if (a == null || b == null || Number.isNaN(a) || Number.isNaN(b)) return null;
+  if (c.tipo === 'porcentaje') return b === 0 ? null : Math.round(a / b * 1000) / 10;
+  return Math.round((a - b) * 100) / 100;
+}
+export const calcTxt = (n) => n == null ? '' : String(n).replace('.', ',');
+// Rango de una celda de tabla: la fila puede tener rangos propios por columna (rangos: { 'Permeado': {min, max} })
+export const rangoCol = (fl, col) => (fl.rangos && col ? fl.rangos[col.descripcion] || { min: '', max: '' } : fl);
+
 export function minutosEntre(a, b) {
   if (!a || !b) return null;
   const d = (new Date(b) - new Date(a)) / 60000;
@@ -162,6 +174,11 @@ export function evaluar(def, reg, cfg) {
         if (m != null && m < 0) F(paso, `${c.etiqueta}: la fecha de fin es anterior a la de inicio`, c.id);
         return;
       }
+      if (esCalculado(c)) {
+        const n = calculado(c, v);
+        if (n != null && fueraDeRango(c, n)) A(paso, `${c.etiqueta}: ${calcTxt(n)}${c.unidad ? ' ' + c.unidad : ''} (rango ${rangoTxt(c)})`, c.id);
+        return;
+      }
       if (c.tipo === 'foto') { if (c.requerido && !x) F(paso, c.etiqueta, c.id); return; }
       if (c.tipo === 'equipo') { if (c.requerido && !(x && x.codigo)) F(paso, c.etiqueta, c.id); return; }
       if (c.requerido && vacio(x)) { F(paso, c.etiqueta, c.id); return; }
@@ -182,7 +199,7 @@ export function evaluar(def, reg, cfg) {
           if (fl.requerido !== false && vacio(x)) { F(paso, `${etiquetaCol(col)} · ${fl.etiqueta}`, `${s.id}:${col.id}:${fl.id}`); return; }
           if (fl.tipo === 'numero' && !vacio(x)) {
             if (Number.isNaN(numero(x))) F(paso, `${etiquetaCol(col)} · ${fl.etiqueta}: valor no válido`, `${s.id}:${col.id}:${fl.id}`);
-            else if (fueraDeRango(fl, x)) A(paso, `${etiquetaCol(col)} · ${fl.etiqueta}: ${x}${fl.unidad ? ' ' + fl.unidad : ''} (rango ${rangoTxt(fl)})`, `${s.id}:${col.id}:${fl.id}`);
+            else if (fueraDeRango(rangoCol(fl, col), x)) A(paso, `${etiquetaCol(col)} · ${fl.etiqueta}: ${x}${fl.unidad ? ' ' + fl.unidad : ''} (rango ${rangoTxt(rangoCol(fl, col))})`, `${s.id}:${col.id}:${fl.id}`);
           }
         });
       });
@@ -220,6 +237,7 @@ export function calcularDuraciones(def, v) {
   const out = {};
   def.secciones.forEach(s => (s.campos || []).forEach(c => {
     if (c.tipo === 'duracion') { const m = minutosEntre(v[c.desde], v[c.hasta]); if (m != null && m >= 0) out[c.id] = m; }
+    if (esCalculado(c)) { const n = calculado(c, v); if (n != null) out[c.id] = n; } // también se guardan los calculados (indicadores)
   }));
   return out;
 }

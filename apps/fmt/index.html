@@ -204,7 +204,7 @@ function vistaPlantillas(main) {
   main.innerHTML = `
     <div class="pagehead">
       <div><div class="eyebrow rise">Registro de formatos</div><h1 class="h-display rise d1">Plantillas</h1></div>
-      <div class="acciones rise d2">${esAdminApp() && PLANT.length && faltanPilotos() ? `<button class="btn" id="bPilotos">Cargar pilotos faltantes</button>` : ''}${esAdminApp() && PLANT.length ? `<button class="btn btn-primary" id="bNuevo">${IC.mas}Nuevo formato</button>` : ''}</div>
+      <div class="acciones rise d2">${esAdminApp() && PLANT.length && faltanPilotos() ? `<button class="btn" id="bPilotos">Cargar formatos predefinidos</button>` : ''}${esAdminApp() && PLANT.length ? `<button class="btn btn-primary" id="bNuevo">${IC.mas}Nuevo formato</button>` : ''}</div>
     </div>
     ${PLANT.length ? `
     <div class="kpis rise d2">
@@ -253,10 +253,10 @@ async function cargarPilotos() {
     for (const pl of pilotos()) {
       if (PLANT.some(p => p.codigo === pl.codigo)) continue;
       const sistema = sistemaDeCodigo(pl.codigo).id;
-      await D.crearPlantilla({ codigo: pl.codigo, sistema, trabajo: pl.def }, usuario());
+      await D.crearPlantilla({ codigo: pl.codigo, sistema, trabajo: pl.def, origenManual: pl.origenManual || null }, usuario());
     }
     PLANT = await D.listarPlantillas();
-    toast('Formatos piloto cargados como borradores.');
+    toast('Formatos predefinidos cargados como borradores.');
   } catch (e) { toast('No se pudo cargar: ' + (e.code || e.message), 'err'); }
   render();
 }
@@ -594,8 +594,8 @@ function seccionEd(s, i, n, ro) {
         ${f.tipo === 'seleccion'
           ? `<label class="pf ops"><span>opciones</span><input data-fl="${s.id}:${j}:opciones" value="${esc(f.opciones.join(' / '))}" placeholder="Operando / Parado" ${dis}></label>`
           : `<label class="pf p-uni"><span>unidad</span><input data-fl="${s.id}:${j}:unidad" value="${esc(f.unidad)}" placeholder="—" ${dis}></label>
-             <label class="pf p-min"><span>mín</span><input data-fl="${s.id}:${j}:min" value="${esc(f.min)}" inputmode="decimal" placeholder="—" ${f.tipo !== 'numero' ? 'disabled' : dis}></label>
-             <label class="pf p-max"><span>máx</span><input data-fl="${s.id}:${j}:max" value="${esc(f.max)}" inputmode="decimal" placeholder="—" ${f.tipo !== 'numero' ? 'disabled' : dis}></label>`}
+             ${f.rangos ? `<span class="pf" title="Rangos por columna" style="font-size:12px;color:var(--tx-3);white-space:normal">${Object.entries(f.rangos).filter(([, x]) => rangoTxt(x)).map(([k, x]) => `${esc(k)} ${esc(rangoTxt(x))}`).join(' · ')}</span>` : ''}<label class="pf p-min" ${f.rangos ? 'hidden' : ''}><span>mín</span><input data-fl="${s.id}:${j}:min" value="${esc(f.min)}" inputmode="decimal" placeholder="—" ${f.tipo !== 'numero' ? 'disabled' : dis}></label>
+             <label class="pf p-max" ${f.rangos ? 'hidden' : ''}><span>máx</span><input data-fl="${s.id}:${j}:max" value="${esc(f.max)}" inputmode="decimal" placeholder="—" ${f.tipo !== 'numero' ? 'disabled' : dis}></label>`}
         ${ro ? '' : `<span class="acts"><button type="button" class="ib" data-mvf="${s.id}:${j}:-1" aria-label="Subir" ${j === 0 ? 'disabled' : ''}>${IC.up}</button><button type="button" class="ib" data-mvf="${s.id}:${j}:1" aria-label="Bajar" ${j === s.filas.length - 1 ? 'disabled' : ''}>${IC.down}</button><button type="button" class="ib del" data-delf="${s.id}:${j}" aria-label="Quitar parámetro">${IC.del}</button></span>`}
       </div>`).join('')}
       ${ro ? '' : `<div class="addrow"><button type="button" class="btn sm" data-addf="${s.id}">${IC.mas}Parámetro</button></div>`}`;
@@ -814,6 +814,18 @@ function modalCampo(sid, cid) {
       : `<div class="g2"><div><label class="label" for="cDe">Desde</label><select class="field" id="cDe"><option value="">Seleccione</option>${fechas.map(f => `<option value="${f.id}" ${f.id === c.desde ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select></div>
          <div><label class="label" for="cHa">Hasta</label><select class="field" id="cHa"><option value="">Seleccione</option>${fechas.map(f => `<option value="${f.id}" ${f.id === c.hasta ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select></div></div>
          <div class="muted" style="font-size:12.5px;margin-top:8px">Se calcula automáticamente al llenar el formato.</div>`;
+    else if (t === 'diferencia' || t === 'porcentaje') {
+      const nums = ED.trabajo.secciones.flatMap(x => (x.campos || []).filter(y => y.tipo === 'numero' && y.id !== c.id).map(y => ({ id: y.id, et: `${x.titulo || 'Sección'} › ${y.etiqueta || 'sin nombre'}` })));
+      const sel = (id, v) => `<select class="field" id="${id}"><option value="">Seleccione</option>${nums.map(f => `<option value="${f.id}" ${f.id === v ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select>`;
+      box.innerHTML = nums.length < 2 ? '<div class="alert warn">Se calcula entre dos campos de tipo "Número con rango". Agréguelos primero al formato.</div>'
+        : `<div class="g2"><div><label class="label" for="cDe">${t === 'diferencia' ? 'A (se le resta B)' : 'A (numerador)'}</label>${sel('cDe', c.desde)}</div>
+           <div><label class="label" for="cHa">${t === 'diferencia' ? 'B' : 'B (denominador)'}</label>${sel('cHa', c.hasta)}</div></div>
+           <div class="g3" style="margin-top:12px">
+           <div><label class="label" for="cUn">Unidad</label><input class="field" id="cUn" value="${esc(c.unidad || (t === 'porcentaje' ? '%' : ''))}"></div>
+           <div><label class="label" for="cMi">Mínimo</label><input class="field" id="cMi" value="${esc(c.min)}" inputmode="decimal" placeholder="—"></div>
+           <div><label class="label" for="cMa">Máximo</label><input class="field" id="cMa" value="${esc(c.max)}" inputmode="decimal" placeholder="—"></div></div>
+           <div class="muted" style="font-size:12.5px;margin-top:8px">${t === 'diferencia' ? 'Valor = A − B' : 'Valor = A ÷ B × 100'}. Se calcula al llenar; fuera de rango genera alerta.</div>`;
+    }
     else if (t === 'equipo') {
       const fl = c.filtro || {};
       box.innerHTML = `<div class="g2">
@@ -863,6 +875,16 @@ function modalCampo(sid, cid) {
       c.opciones = m.$('#cOp').value.split('\n').map(x => x.trim()).filter(Boolean);
       if (c.opciones.length < 2) return m.err('Ingrese al menos dos opciones.');
     }
+    if (c.tipo === 'diferencia' || c.tipo === 'porcentaje') {
+      if (!m.$('#cDe')) return m.err('Agregue primero dos campos numéricos.');
+      c.desde = m.$('#cDe').value; c.hasta = m.$('#cHa').value;
+      if (!c.desde || !c.hasta) return m.err('Seleccione los dos campos del cálculo.');
+      if (c.desde === c.hasta) return m.err('A y B deben ser campos distintos.');
+      c.unidad = m.$('#cUn').value.trim();
+      c.min = m.$('#cMi').value.replace(',', '.').trim();
+      c.max = m.$('#cMa').value.replace(',', '.').trim();
+      if ((c.min !== '' && isNaN(Number(c.min))) || (c.max !== '' && isNaN(Number(c.max)))) return m.err('Mínimo y máximo deben ser números.');
+    }
     if (c.tipo === 'duracion') {
       if (!m.$('#cDe')) return m.err('Agregue primero dos campos de tipo "Fecha y hora".');
       c.desde = m.$('#cDe').value; c.hasta = m.$('#cHa').value;
@@ -907,9 +929,14 @@ async function modalEmitir() {
     cuerpo: `<div class="resumen">
         <div><span>Código</span><b>${esc(codigoCompleto(CFG, p.codigo))}</b></div>
         <div><span>Versión</span><b>${esc(CFG.versionManual)}</b></div>
-        <div><span>Revisión</span><b>${revTxt(rev)}</b></div>
-        <div><span>Fecha</span><b>${mesAbrev(mesClave())}</b></div>
+        <div><span>Revisión</span><b id="eRevT">${revTxt(rev)}</b></div>
+        <div><span>Fecha</span><b id="eFecT">${mesAbrev(mesClave())}</b></div>
       </div>
+      ${tipo === 'emision' && !err.length ? `<label class="check" style="margin:4px 0 12px"><input type="checkbox" id="eMan" ${p.origenManual ? 'checked' : ''}>Formato que ya existe en el manual (conserva su revisión y vigencia)</label>
+      <div class="g2" id="eManBox" ${p.origenManual ? '' : 'hidden'} style="margin-bottom:14px">
+        <div><label class="label" for="eRev">Revisión</label><input class="field" id="eRev" inputmode="numeric" value="${esc(p.origenManual?.revision || 1)}"></div>
+        <div><label class="label" for="eFec">Vigente desde</label><input class="field" id="eFec" type="month" value="${esc(p.origenManual?.fecha || mesClave())}"></div>
+      </div>` : ''}
       ${err.length ? `<div class="alert err"><div style="font-weight:600;margin-bottom:6px">El formato no se puede emitir todavía:</div><ul style="margin:0;padding-left:18px">${err.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : `
       <label class="label" for="eMot">${tipo === 'emision' ? 'Descripción' : 'Motivo del cambio'}</label>
       <textarea class="field" id="eMot" rows="3" style="height:auto;padding:12px 16px;line-height:1.5" placeholder="${tipo === 'emision' ? '' : 'Se ajustan los rangos de presión de descarga'}">${tipo === 'emision' ? 'Emisión inicial' : ''}</textarea>
@@ -918,13 +945,28 @@ async function modalEmitir() {
   });
   if (err.length) return;
   setTimeout(() => { const t = m.$('#eMot'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 50);
+  const manual = () => m.$('#eMan') && m.$('#eMan').checked;
+  const actMan = () => {
+    if (!m.$('#eMan')) return;
+    m.$('#eManBox').hidden = !manual();
+    m.$('#eRevT').textContent = revTxt(manual() ? Number(m.$('#eRev').value) || 1 : rev);
+    m.$('#eFecT').textContent = mesAbrev(manual() ? m.$('#eFec').value || mesClave() : mesClave());
+  };
+  if (m.$('#eMan')) { m.$('#eMan').onchange = actMan; m.$('#eRev').oninput = actMan; m.$('#eFec').oninput = actMan; actMan(); }
   m.form.onsubmit = async (e) => {
     e.preventDefault(); m.err('');
     const motivo = m.$('#eMot').value.trim();
     if (!motivo) return m.err('Indique el motivo del cambio.');
+    let inicial = null;
+    if (manual()) {
+      const r = Number(m.$('#eRev').value), f = m.$('#eFec').value;
+      if (!Number.isInteger(r) || r < 1) return m.err('La revisión debe ser un número entero desde 1.');
+      if (!/^\d{4}-\d{2}$/.test(f)) return m.err('Indique el mes de vigencia.');
+      inicial = { revision: r, fecha: f };
+    }
     const b = m.$('#eOk'); b.disabled = true; b.textContent = 'Emitiendo…';
     try {
-      const cambios = await D.emitir({ ...p, trabajo: clonar(ED.trabajo) }, CFG, { motivo, usuario: usuario() });
+      const cambios = await D.emitir({ ...p, trabajo: clonar(ED.trabajo) }, CFG, { motivo, usuario: usuario(), inicial });
       Object.assign(p, cambios);
       ED.trabajo = clonar(p.def); ED.sucio = false; ED.vista = 'trabajo';
       m.cerrar();

@@ -2,7 +2,7 @@
 // renderHoja(datos) devuelve el HTML de una hoja A4 con el encabezado de control documental.
 
 import { esc, rangoTxt, revTxt, mesAbrev, codigoCompleto, turnosDe, firmasDe, tablaDeEquipos, pideUbicacion, ESTADOS_COLUMNA } from './modelo.js';
-import { columnasTabla, etiquetaCol, estadoColumna, fueraDeRango, minutosEntre, duracionTxt, fechaTxt, fechaHoraTxt } from './logica.js';
+import { columnasTabla, etiquetaCol, estadoColumna, fueraDeRango, calculado, calcTxt, rangoCol, minutosEntre, duracionTxt, fechaTxt, fechaHoraTxt } from './logica.js';
 
 export const HOJA_CSS = `
 .hoja{position:relative;box-sizing:border-box;background:#fff;color:#14202B;font-family:'IBM Plex Sans',Arial,sans-serif;font-size:9pt;line-height:1.3;padding:8mm 10mm 7mm;width:210mm;min-height:297mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
@@ -110,12 +110,10 @@ function campoHtml(cf, R) {
       cuerpo = `<div class="hj-ln"><span>${m != null ? vv(duracionTxt(m), m < 0 ? 'hj-al' : '') : ''}</span><span>${R ? '' : 'h:mm'}</span></div>`;
       break;
     }
-    case 'diferencia': {
-      const n = (k) => { const t = R ? R.v[k] : null; return t === '' || t == null || isNaN(Number(t)) ? null : Number(t); };
-      const a1 = R ? n(cf.desde) : null, b1 = R ? n(cf.hasta) : null;
-      const d = a1 != null && b1 != null ? Math.round((a1 - b1) * 100) / 100 : null;
+    case 'diferencia': case 'porcentaje': {
+      const d = R ? calculado(cf, R.v) : null;
       const al = d != null && fueraDeRango(cf, d), r = rangoTxt(cf);
-      cuerpo = `<div class="hj-ln"><span>${d != null ? vv(String(d).replace('.', ','), al ? 'hj-al' : '') : ''}</span><span>${esc(cf.unidad || '')}${r ? ` · Rango ${esc(r)}` : ''}${R ? '' : ' · calculado'}</span></div>`;
+      cuerpo = `<div class="hj-ln"><span>${d != null ? vv(calcTxt(d), al ? 'hj-al' : '') : ''}</span><span>${esc(cf.unidad || '')}${r ? ` · Rango ${esc(r)}` : ''}${R ? '' : ' · calculado'}</span></div>`;
       break;
     }
     case 'equipo': cuerpo = `<div class="hj-ln"><span>${x && x.codigo ? vv(`${x.codigo} · ${x.descripcion || ''}`) : ''}</span><span>${R ? '' : 'Código · descripción'}</span></div>`; break;
@@ -158,13 +156,13 @@ function seccionHtml(s, def, cols, R, equipos) {
       <thead><tr><th class="l" style="width:${columnas.length > 4 ? 24 : 28}%">Parámetro</th><th style="width:7%">Unidad</th><th style="width:10%">Rango</th>${head}</tr></thead>
       <tbody>${filaEstado}${filas.length ? filas.map(fl => `<tr>
         <td class="l">${esc(fl.etiqueta || 'Parámetro')}${fl.tipo === 'seleccion' && fl.opciones.length && !R ? `<small>${fl.opciones.map(esc).join(' / ')}</small>` : ''}</td>
-        <td class="c">${esc(fl.unidad || '')}</td><td class="r">${esc(fl.tipo === 'numero' ? rangoTxt(fl) : '')}</td>
+        <td class="c">${esc(fl.unidad || '')}</td><td class="r">${fl.tipo !== 'numero' ? '' : fl.rangos ? Object.entries(fl.rangos).filter(([, x]) => rangoTxt(x)).map(([k, x]) => `<small style="font-size:6.6pt;color:#4A5866;font-family:'IBM Plex Sans',Arial,sans-serif">${esc(k)}</small>${esc(rangoTxt(x))}`).join('<br>') : esc(rangoTxt(fl))}</td>
         ${columnas.map(c => {
           if (!R) return '<td></td>';
           if (estadoColumna(R, s, c) !== 'operando') return '<td class="na">—</td>';
           const x = t.c?.[fl.id]?.[c.id];
           if (x == null || x === '') return '<td class="na"></td>';
-          const al = fl.tipo === 'numero' && fueraDeRango(fl, x);
+          const al = fl.tipo === 'numero' && fueraDeRango(rangoCol(fl, c), x);
           return `<td class="vv ${al ? 'al' : ''}">${esc(fl.tipo === 'numero' ? String(x).replace('.', ',') : x)}</td>`;
         }).join('')}</tr>`).join('')
         : `<tr><td colspan="${3 + columnas.length}" class="c">Sin parámetros</td></tr>`}</tbody></table></div>`;

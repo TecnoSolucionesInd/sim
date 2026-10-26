@@ -34,11 +34,11 @@ export async function listarPlantillas() {
   return s.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-export async function crearPlantilla({ codigo, sistema, trabajo }, usuario) {
+export async function crearPlantilla({ codigo, sistema, trabajo, origenManual = null }, usuario) {
   const ref = doc(colPlantillas());
   const p = {
     codigo, sistema, estado: 'borrador', def: null, trabajo: limpio(trabajo),
-    versionManual: null, prefijo: null, revision: 0, fecha: null, historial: [],
+    versionManual: null, prefijo: null, revision: 0, fecha: null, historial: [], ...(origenManual ? { origenManual } : {}),
     creado: serverTimestamp(), actualizado: serverTimestamp(), actualizadoPor: usuario
   };
   await setDoc(ref, p);
@@ -55,13 +55,15 @@ export async function eliminarPlantilla(id) {
 
 // Emite la definición en edición como nueva revisión (o como emisión inicial).
 // Devuelve los campos actualizados de la plantilla.
-export async function emitir(p, cfg, { motivo, usuario }) {
+// inicial: { revision, fecha } para la emisión de un formato que ya existía en el manual (conserva su revisión y vigencia)
+export async function emitir(p, cfg, { motivo, usuario, inicial = null }) {
   const def = limpio(p.trabajo || p.def);
   const tipo = p.estado === 'borrador' ? 'emision' : p.estado === 'obsoleto' ? 'reactivacion' : 'revision';
   const version = cfg.versionManual;
   // si cambió la versión del manual desde la última emisión, la revisión vuelve a 1
-  const revision = p.estado === 'borrador' || p.versionManual !== version ? 1 : (p.revision || 0) + 1;
-  const fecha = mesClave();
+  const ini = p.estado === 'borrador' && inicial ? inicial : null;
+  const revision = ini ? Number(ini.revision) : p.estado === 'borrador' || p.versionManual !== version ? 1 : (p.revision || 0) + 1;
+  const fecha = ini ? ini.fecha : mesClave();
   const ahora = new Date().toISOString();
   const entrada = { tipo, version, revision, fecha, fechaHora: ahora, motivo, usuario };
   const cambios = {
