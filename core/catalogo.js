@@ -93,6 +93,7 @@ export const APPS = [
     modulos: [
       { id: 'equipos', nombre: 'Base de equipos' },
       { id: 'tipos', nombre: 'Tipos de equipo' },
+      { id: 'ubicaciones', nombre: 'Ubicaciones' },
       { id: 'carga', nombre: 'Carga masiva' }
     ]
   },

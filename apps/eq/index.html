@@ -154,8 +154,24 @@ async function cargarCodificacion() {
     const [t, c] = await Promise.all([getDoc(refTipos()), getDoc(refCont())]);
     TIPOS = t.exists() && Array.isArray(t.data().lista) ? t.data().lista : TIPOS_BASE.map(x => ({ ...x }));
     CONT = c.exists() ? c.data() : {};
-  } catch (e) { TIPOS = TIPOS_BASE.map(x => ({ ...x })); CONT = {}; }
+    const u = await getDoc(refUbic());
+    UBIC = u.exists() && Array.isArray(u.data().lista) ? u.data().lista : null;
+  } catch (e) { TIPOS = TIPOS_BASE.map(x => ({ ...x })); CONT = {}; UBIC = null; }
 }
+// ---- Ubicaciones: lista controlada (datos/eq/config/ubicaciones.lista [nombre]) para no duplicar por errores de tipeo
+let UBIC = [];
+const refUbic = () => doc(db, 'datos', 'eq', 'config', 'ubicaciones');
+const listaUbic = () => [...UBIC].sort((a, b) => a.localeCompare(b, 'es'));
+const ubicPorNombre = (n) => n ? UBIC.find(u => norm(u) === norm(n)) || null : null;
+function distancia(a, b) {
+  a = norm(a); b = norm(b);
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+// ubicación de la lista muy parecida (posible error de tipeo)
+const ubicParecida = (n, lista = UBIC) => { const t = norm(n); return lista.find(u => norm(u) !== t && distancia(u, n) <= Math.max(2, Math.floor(t.length / 10))) || null; };
 const listaTipos = () => [...TIPOS].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
 // ---------------- modal ----------------
@@ -281,7 +297,13 @@ function ficha(e, base = null) {
         <div><label class="label" for="eTip">Tipo de equipo</label><input class="field" id="eTip" list="dlTip" value="${esc(v.tipo)}" placeholder="Compresor" autocomplete="off" ${dis}>
           <datalist id="dlTip">${nombresTipo.map(x => `<option value="${esc(x)}">${esc(tipoPorNombre(x)?.sigla || 'sin sigla')}</option>`).join('')}</datalist>
           <div class="sigrow" id="eSigBox" hidden><label for="eSig">Tipo nuevo · sigla</label><input class="field mono" id="eSig" maxlength="4" autocomplete="off"></div></div>
-        <div><label class="label" for="eUbi">Ubicación</label><input class="field" id="eUbi" list="dlUbi" value="${esc(v.ubicacion)}" placeholder="Sala de máquinas" ${dis}>${dl('dlUbi', 'ubicacion')}</div>
+        <div><label class="label" for="eUbi">Ubicación</label><select class="field" id="eUbi" ${dis}>
+            <option value="">Sin ubicación</option>
+            ${v.ubicacion && !ubicPorNombre(v.ubicacion) ? `<option value="${esc(v.ubicacion)}" selected>${esc(v.ubicacion)} (fuera de la lista)</option>` : ''}
+            ${listaUbic().map(u => `<option value="${esc(u)}" ${norm(u) === norm(v.ubicacion) ? 'selected' : ''}>${esc(u)}</option>`).join('')}
+            ${ro ? '' : '<option value="__nueva">+ Nueva ubicación…</option>'}
+          </select>
+          <div id="eUbiN" hidden style="margin-top:8px"><input class="field" id="eUbiTx" placeholder="Nombre de la nueva ubicación" autocomplete="off"><div class="hint" id="eUbiH"></div></div></div>
         <div style="grid-column:1/-1"><label class="label" for="eDes">Descripción</label><input class="field" id="eDes" value="${esc(v.descripcion)}" placeholder="Compresor de tornillo N° 1" ${dis}></div>
         <div><label class="label" for="eMar">Marca</label><input class="field" id="eMar" list="dlMar" value="${esc(v.marca)}" ${dis}>${dl('dlMar', 'marca')}</div>
         <div><label class="label" for="eMod">Modelo</label><input class="field" id="eMod" value="${esc(v.modelo)}" ${dis}></div>
@@ -335,6 +357,13 @@ function ficha(e, base = null) {
   if (!ro) {
     m.$('#eSis').onchange = actCod;
     m.$('#eTip').oninput = () => { actCod(); if (pideMotor(m.$('#eTip').value)) m.$('#eMot').open = true; };
+    m.$('#eUbi').onchange = () => { const n = m.$('#eUbi').value === '__nueva'; m.$('#eUbiN').hidden = !n; if (n) m.$('#eUbiTx').focus(); };
+    m.$('#eUbiTx').oninput = () => {
+      delete m.form.dataset.ubicOk;
+      const t = m.$('#eUbiTx').value.trim(), ya = ubicPorNombre(t), par = !ya && t.length > 3 ? ubicParecida(t) : null;
+      m.$('#eUbiH').innerHTML = ya ? `Ya existe: <b>${esc(ya)}</b> (se usará esa).` : par ? `<span style="color:var(--amber-2)">¿Quiso decir <b>${esc(par)}</b>?</span> <button type="button" class="btn sm" id="eUbiUsa" style="height:28px;margin-left:6px">Usar esa</button>` : '';
+      const b = m.$('#eUbiUsa'); if (b) b.onclick = () => { m.$('#eUbi').value = par; m.$('#eUbiN').hidden = true; m.$('#eUbiTx').value = ''; m.$('#eUbiH').innerHTML = ''; };
+    };
     m.$('#eSig').oninput = (ev) => { ev.target.dataset.edit = '1'; ev.target.value = ev.target.value.toUpperCase().replace(/[^A-Z]/g, ''); actCod(); };
   }
   actCod();
@@ -373,7 +402,7 @@ function ficha(e, base = null) {
     const d = {
       descripcion: m.$('#eDes').value.trim(),
       sistema: m.$('#eSis').value === '' ? '' : Number(m.$('#eSis').value),
-      ubicacion: m.$('#eUbi').value.trim(), tipo: tp.nombre, marca: m.$('#eMar').value.trim(),
+      ubicacion: m.$('#eUbi').value === '__nueva' ? m.$('#eUbiTx').value.trim().replace(/\s+/g, ' ') : m.$('#eUbi').value, tipo: tp.nombre, marca: m.$('#eMar').value.trim(),
       modelo: m.$('#eMod').value.trim(), serie: m.$('#eSer').value.trim(), potencia: m.$('#ePot').value.trim(),
       criticidad: m.$('#eCri').value, estado: m.$('#eEst').value, notas: m.$('#eNot').value.trim()
     };
@@ -388,8 +417,19 @@ function ficha(e, base = null) {
       tipoNuevo = { nombre: d.tipo, sigla: tp.sigla };
     }
     if (!d.descripcion) return m.err('Ingrese la descripción.');
-    // respeta la forma ya escrita de ubicación y marca para no duplicar por tildes o mayúsculas
-    ['ubicacion', 'marca'].forEach(k => { const ya = valoresDe(EQ, k).find(x => norm(x) === norm(d[k])); if (ya) d[k] = ya; });
+    let ubicNueva = null;
+    if (m.$('#eUbi').value === '__nueva') {
+      if (!d.ubicacion) return m.err('Escriba el nombre de la nueva ubicación o elija una de la lista.');
+      const ya = ubicPorNombre(d.ubicacion);
+      if (ya) d.ubicacion = ya;
+      else {
+        const par = ubicParecida(d.ubicacion);
+        if (par && !m.form.dataset.ubicOk) { m.form.dataset.ubicOk = '1'; return m.err(`"${d.ubicacion}" se parece a "${par}". Si es otra ubicación, vuelva a pulsar Registrar; si es la misma, elíjala de la lista.`); }
+        ubicNueva = d.ubicacion;
+      }
+    }
+    // respeta la forma ya escrita de la marca para no duplicar por tildes o mayúsculas
+    { const ya = valoresDe(EQ, 'marca').find(x => norm(x) === norm(d.marca)); if (ya) d.marca = ya; }
     const bs = m.form.querySelectorAll('button[type=submit]'); bs.forEach(b => b.disabled = true);
     const b = otro ? m.$('#eOtro') : m.$('#eOk'); const txt = b.textContent; b.textContent = 'Guardando…';
     const tiposDespues = tipoNuevo ? [...TIPOS, tipoNuevo] : TIPOS;
@@ -404,6 +444,7 @@ function ficha(e, base = null) {
           d.codigo = fmtCod(p, n);
           tx.set(refCont(), { [p]: n }, { merge: true });
           if (tipoNuevo) tx.set(refTipos(), { lista: tiposDespues });
+          if (ubicNueva) tx.set(refUbic(), { lista: [...UBIC, ubicNueva] });
           tx.set(ref, { ...d, creado: serverTimestamp(), ...meta });
         });
         CONT[p] = Math.max(+CONT[p] || 0, +d.codigo.split('-').pop());
@@ -411,11 +452,13 @@ function ficha(e, base = null) {
       } else {
         const batch = writeBatch(db);
         if (tipoNuevo) batch.set(refTipos(), { lista: tiposDespues });
+        if (ubicNueva) batch.set(refUbic(), { lista: [...UBIC, ubicNueva] });
         batch.set(doc(colEquipos(), v.id), { ...d, ...meta }, { merge: true });
         await batch.commit();
         Object.assign(v, d);
       }
       TIPOS = tiposDespues;
+      if (ubicNueva) UBIC = [...UBIC, ubicNueva];
       EQ.sort(ordenEquipos);
       m.cerrar(); toast(nuevo ? `${d.codigo} registrado.` : 'Cambios guardados.'); render();
       if (otro) ficha(null, d);
@@ -637,7 +680,7 @@ async function leerExcel(file, box) {
     COLS.forEach(([k, l]) => { const i = cab.indexOf(norm(l)); if (i >= 0) idx[k] = i; });
     if (idx.serie == null) { const i = cab.findIndex(c => c.includes('serie')); if (i >= 0) idx.serie = i; }
     const datos = filas.slice(hi + 1).filter(r => r.some(c => String(c).trim()));
-    const vistos = new Set(), nuevosT = new Map(), pl = planificador();
+    const vistos = new Set(), nuevosT = new Map(), nuevasU = new Map(), pl = planificador();
     const items = datos.map((r, n) => {
       const g = (k) => idx[k] == null ? '' : String(r[idx[k]] ?? '').trim();
       const d = { codigo: g('codigo').toUpperCase(), descripcion: g('descripcion'), sistemaTxt: g('sistema'), ubicacion: g('ubicacion'), tipo: g('tipo'), marca: g('marca'), modelo: g('modelo'), serie: g('serie'), potencia: g('potencia'), criticidad: g('criticidad').slice(0, 1).toUpperCase(), estadoTxt: g('estado'), notas: g('notas'), ...Object.fromEntries(MOTOR.map(([k]) => [k, g(k)])) };
@@ -653,6 +696,11 @@ async function leerExcel(file, box) {
       if (d.criticidad && !['A', 'B', 'C'].includes(d.criticidad)) errs.push('criticidad debe ser A, B o C');
       if (d.codigo && vistos.has(norm(d.codigo))) errs.push('código repetido en el archivo');
       if (d.codigo) vistos.add(norm(d.codigo));
+      if (d.ubicacion) {
+        const ya = ubicPorNombre(d.ubicacion) || [...nuevasU.values()].find(u => norm(u) === norm(d.ubicacion));
+        if (ya) d.ubicacion = ya;
+        else { const par = ubicParecida(d.ubicacion, [...UBIC, ...nuevasU.values()]); if (par) errs.push(`ubicación "${d.ubicacion}" se parece a "${par}": corrija el archivo o créela antes en Ubicaciones`); else { nuevasU.set(norm(d.ubicacion), d.ubicacion); d.ubicNueva = true; } }
+      }
       const tr = resolverTipo(d.tipo, nuevosT);
       if (tr) { d.tipo = tr.nombre; if (tr.nuevo) d.tipoNuevo = { nombre: tr.nombre, sigla: tr.sigla }; if (tr.nuevo && !siglaValida(tr.sigla)) errs.push('no se pudo generar la sigla del tipo'); }
       if (!ex && !errs.length) d.codigo = pl.sig(prefijo(d.sistema, tr.sigla));
@@ -710,7 +758,7 @@ function previa(box, items, origen, pl, nuevosT) {
       <tbody>${items.map(x => `<tr>
         <td class="mono" style="color:var(--tx-3)">${x.fila}</td>
         <td>${x.errs.length ? `<span class="st e">Error</span><div style="font-size:12px;color:#FFB3B3;margin-top:4px">${esc(x.errs.join('; '))}</div>` : x.omitir ? '<span class="st o">Ya existe</span>' : x.ex ? '<span class="st u">Actualiza</span>' : '<span class="st n">Nuevo</span>'}</td>
-        <td class="mono">${esc(x.d.codigo)}</td><td>${esc(x.d.descripcion || x.ex?.descripcion || '')}</td><td>${esc(x.d.sistema != null ? sisNom(x.d.sistema) : x.d.sistemaTxt)}</td><td>${esc(x.d.ubicacion)}</td><td>${esc(x.d.tipo)}${x.d.tipoNuevo && !x.errs.length ? ` <span class="st u" title="Tipo nuevo: se agrega al catálogo">nuevo · ${esc(x.d.tipoNuevo.sigla)}</span>` : ''}</td>
+        <td class="mono">${esc(x.d.codigo)}</td><td>${esc(x.d.descripcion || x.ex?.descripcion || '')}</td><td>${esc(x.d.sistema != null ? sisNom(x.d.sistema) : x.d.sistemaTxt)}</td><td>${esc(x.d.ubicacion)}${x.d.ubicNueva && !x.errs.length ? ' <span class="st u" title="Se agrega a la lista de ubicaciones">nueva</span>' : ''}</td><td>${esc(x.d.tipo)}${x.d.tipoNuevo && !x.errs.length ? ` <span class="st u" title="Tipo nuevo: se agrega al catálogo">nuevo · ${esc(x.d.tipoNuevo.sigla)}</span>` : ''}</td>
       </tr>`).join('')}</tbody></table></div>
     ${[...nuevosT.values()].length ? `<p class="hint" style="margin-top:10px">Los tipos marcados "nuevo" se agregan al catálogo con la sigla indicada. Si prefiere otra sigla, créelo antes en Tipos de equipo y vuelva a revisar.</p>` : ''}
     <div class="acciones" style="margin-top:16px;justify-content:flex-end">
@@ -724,6 +772,7 @@ function previa(box, items, origen, pl, nuevosT) {
     // misma forma escrita para ubicación, tipo y marca (sin duplicar por tildes o mayúsculas)
     const canon = {};
     ['ubicacion', 'marca'].forEach(k => { canon[k] = new Map(valoresDe(EQ, k).map(v => [norm(v), v])); });
+    const ubicDespues = [...UBIC, ...ok.filter(x => x.d.ubicNueva).map(x => x.d.ubicacion)].filter((u, i, a) => a.findIndex(z => norm(z) === norm(u)) === i);
     const usados = new Set(ok.map(x => x.d.tipoNuevo && norm(x.d.tipoNuevo.nombre)).filter(Boolean));
     const tiposDespues = [...TIPOS, ...[...nuevosT.values()].filter(t => usados.has(norm(t.nombre)))];
     const forma = (k, v) => { if (!v) return v; const n = norm(v); if (!canon[k].has(n)) canon[k].set(n, v); return canon[k].get(n); };
@@ -733,6 +782,7 @@ function previa(box, items, origen, pl, nuevosT) {
         if (i === 0) {
           batch.set(refCont(), pl.loc, { merge: true });
           if (tiposDespues.length > TIPOS.length) batch.set(refTipos(), { lista: tiposDespues });
+          if (ubicDespues.length > UBIC.length) batch.set(refUbic(), { lista: ubicDespues });
         }
         ok.slice(i, i + 400).forEach(x => {
           const d = {};
@@ -745,7 +795,7 @@ function previa(box, items, origen, pl, nuevosT) {
         await batch.commit();
       }
       Object.entries(pl.loc).forEach(([k, n]) => CONT[k] = Math.max(+CONT[k] || 0, n));
-      TIPOS = tiposDespues;
+      TIPOS = tiposDespues; UBIC = ubicDespues;
       EQ = await listarEquipos();
       toast(`${ok.length} equipos importados.`);
       box.innerHTML = `<div class="alert ok">Importación completada: ${nuevos} nuevos${act ? `, ${act} actualizados` : ''}. <a href="#equipos">Ver la base de equipos</a></div>`;
@@ -834,11 +884,106 @@ function editarTipo(t, nombreIni = '') {
 }
 
 // =====================================================================
+// UBICACIONES (lista controlada)
+// =====================================================================
+function vistaUbicaciones(main) {
+  const cuenta = (u) => EQ.filter(e => norm(e.ubicacion) === norm(u)).length;
+  const fuera = valoresDe(EQ, 'ubicacion').filter(x => !ubicPorNombre(x));
+  main.innerHTML = `
+    <div class="pagehead">
+      <div><div class="eyebrow rise">Equipos</div><h1 class="h-display rise d1">Ubicaciones</h1></div>
+      <div class="acciones rise d2">${puede() ? `<button class="btn btn-primary" id="uNueva">${IC.mas}Nueva ubicación</button>` : ''}</div>
+    </div>
+    <div class="panel rise d2" style="margin-bottom:18px"><p style="margin:0">Lugar físico donde está el equipo. En la ficha se elige de esta lista; desde ahí también se pueden agregar ubicaciones nuevas.
+      Si renombra una, se actualiza en todos sus equipos. Para corregir duplicados, use <b>Unificar</b>.</p></div>
+    ${fuera.length ? `<div class="alert warn rise d2" style="margin-bottom:18px">${fuera.length === 1 ? 'Hay 1 ubicación en uso fuera de la lista: agréguela o unifíquela' : `Hay ${fuera.length} ubicaciones en uso fuera de la lista: agréguelas o unifíquelas`} con una existente.</div>` : ''}
+    <div class="lista rise d3" style="overflow-x:auto"><table class="tabla">
+      <thead><tr><th>Ubicación</th><th>Equipos</th><th></th></tr></thead>
+      <tbody>
+        ${fuera.map(x => `<tr class="sin"><td>${esc(x)} · fuera de la lista</td><td>${cuenta(x)}</td><td style="text-align:right;white-space:nowrap">${puede() ? `<button class="btn sm" data-add="${esc(x)}">Agregar</button> <button class="btn sm" data-uni="${esc(x)}">Unificar</button>` : ''}</td></tr>`).join('')}
+        ${listaUbic().map(u => `<tr><td>${esc(u)}</td><td>${cuenta(u) || '<span style="color:var(--tx-3)">0</span>'}</td><td style="text-align:right;white-space:nowrap">${puede() ? `<button class="btn sm" data-ed="${esc(u)}">Editar</button> <button class="btn sm" data-uni="${esc(u)}">Unificar</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Aún no hay ubicaciones.</td></tr>'}
+      </tbody></table></div>`;
+  const $ = (q) => main.querySelector(q);
+  if ($('#uNueva')) $('#uNueva').onclick = () => editarUbic(null);
+  main.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => editarUbic(b.dataset.ed));
+  main.querySelectorAll('[data-uni]').forEach(b => b.onclick = () => unificarUbic(b.dataset.uni));
+  main.querySelectorAll('[data-add]').forEach(b => b.onclick = async () => {
+    try { const l = [...UBIC, b.dataset.add]; await writeBatch(db).set(refUbic(), { lista: l }).commit(); UBIC = l; toast('Ubicación agregada.'); render(); }
+    catch (e) { toast('No se pudo agregar: ' + (e.code || e.message), 'err'); }
+  });
+}
+
+// cambia la ubicación de los equipos (renombrar o unificar) y guarda la lista
+async function aplicarUbic(lista, de, a) {
+  const afect = de && a && de !== a ? EQ.filter(e => norm(e.ubicacion) === norm(de) && e.ubicacion !== a) : [];
+  for (let i = 0; i < Math.max(afect.length, 1); i += 400) {
+    const batch = writeBatch(db);
+    if (i === 0) batch.set(refUbic(), { lista });
+    afect.slice(i, i + 400).forEach(e => batch.set(doc(colEquipos(), e.id), { ubicacion: a, actualizado: serverTimestamp(), actualizadoPor: nombreUsuario() }, { merge: true }));
+    await batch.commit();
+  }
+  afect.forEach(e => e.ubicacion = a);
+  UBIC = lista;
+  return afect.length;
+}
+
+function editarUbic(u) {
+  const n = u ? EQ.filter(e => norm(e.ubicacion) === norm(u)).length : 0;
+  const m = modal({
+    titulo: u ? 'Editar ubicación' : 'Nueva ubicación', ancho: 520,
+    cuerpo: `<label class="label" for="uNom">Nombre</label><input class="field" id="uNom" value="${esc(u || '')}" placeholder="Captación de agua de mar" autocomplete="off">
+      <div class="hint">${u && n ? `Se actualiza en los ${n} equipo${n === 1 ? '' : 's'} de esta ubicación. Si algún formato filtra por ella, actualícelo en Plantillas.` : ''}</div>`,
+    pie: `${u && !n && CTX.rol === 'admin' ? '<button type="button" class="btn btn-danger" id="uDel" style="margin-right:auto">Eliminar</button>' : ''}<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="uOk">Guardar</button>`
+  });
+  setTimeout(() => m.$('#uNom').focus(), 50);
+  if (m.$('#uDel')) m.$('#uDel').onclick = async () => {
+    try { await aplicarUbic(UBIC.filter(x => x !== u), null, null); m.cerrar(); toast('Ubicación eliminada.'); render(); }
+    catch (e) { m.err('No se pudo eliminar: ' + (e.code || e.message)); }
+  };
+  let avisado = false;
+  m.$('#uNom').oninput = () => { avisado = false; };
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault(); m.err('');
+    const nombre = m.$('#uNom').value.trim().replace(/\s+/g, ' ');
+    if (!nombre) return m.err('Ingrese el nombre.');
+    if (UBIC.some(x => x !== u && norm(x) === norm(nombre))) return m.err('Esa ubicación ya existe. Para juntar dos ubicaciones use Unificar.');
+    const par = ubicParecida(nombre, UBIC.filter(x => x !== u));
+    if (par && !avisado) { avisado = true; return m.err(`Se parece a "${par}". Si es otra ubicación, vuelva a pulsar Guardar.`); }
+    const b = m.$('#uOk'); b.disabled = true; b.textContent = 'Guardando…';
+    try {
+      const lista = u ? UBIC.map(x => x === u ? nombre : x) : [...UBIC, nombre];
+      await aplicarUbic(lista, u, nombre);
+      m.cerrar(); toast('Ubicación guardada.'); render();
+    } catch (e) { m.err('No se pudo guardar: ' + (e.code || e.message)); b.disabled = false; b.textContent = 'Guardar'; }
+  };
+}
+
+function unificarUbic(u) {
+  const n = EQ.filter(e => norm(e.ubicacion) === norm(u)).length;
+  const otras = listaUbic().filter(x => norm(x) !== norm(u));
+  if (!otras.length) return toast('No hay otra ubicación con cuál unificar.', 'err');
+  const sug = ubicParecida(u, otras);
+  const m = modal({
+    titulo: 'Unificar ubicación', ancho: 560,
+    cuerpo: `<p style="margin:0 0 14px;color:var(--tx-2);line-height:1.55">${n ? `Los ${n} equipo${n === 1 ? '' : 's'} de <b>${esc(u)}</b> pasan a la ubicación elegida` : `<b>${esc(u)}</b> no tiene equipos`} y <b>${esc(u)}</b> se retira de la lista.</p>
+      <label class="label" for="uDest">Pasar a</label><select class="field" id="uDest">${otras.map(x => `<option value="${esc(x)}" ${x === sug ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>`,
+    pie: `<button type="button" class="btn" data-x>Cancelar</button><button type="submit" class="btn btn-primary" id="uOk">Unificar</button>`
+  });
+  m.form.onsubmit = async (ev) => {
+    ev.preventDefault();
+    const a = m.$('#uDest').value, b = m.$('#uOk'); b.disabled = true; b.textContent = 'Unificando…';
+    try { const k = await aplicarUbic(UBIC.filter(x => norm(x) !== norm(u)), u, a); m.cerrar(); toast(`${k} equipo${k === 1 ? '' : 's'} pasaron a ${a}.`); render(); }
+    catch (e) { m.err('No se pudo unificar: ' + (e.code || e.message)); b.disabled = false; b.textContent = 'Unificar'; }
+  };
+}
+
+// =====================================================================
 function render() {
   if (!CTX) return;
   CTX.main.innerHTML = '';
   if (CTX.modulo === 'carga') vistaCarga(CTX.main);
   else if (CTX.modulo === 'tipos') vistaTipos(CTX.main);
+  else if (CTX.modulo === 'ubicaciones') vistaUbicaciones(CTX.main);
   else vistaBase(CTX.main);
 }
 
@@ -853,6 +998,7 @@ CTX = await iniciarApp({
 });
 await cargarCodificacion();
 try { EQ = await listarEquipos(); } catch (e) { toast('No se pudo leer la base de equipos: ' + (e.code || e.message), 'err'); }
+if (!UBIC) UBIC = valoresDe(EQ, 'ubicacion'); // primera vez: parte de las ubicaciones ya usadas
 listo = true;
 render();
 </script>

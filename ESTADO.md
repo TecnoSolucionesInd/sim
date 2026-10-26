@@ -108,6 +108,10 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   con código existente = actualiza) o importación de Costos (tipo reconocido por la descripción).
 - Datos de placa del motor (campos planos): mTension, mCorriente, mRpm, mFs, mCarcasa, mRodLA, mRodLOA. Sección plegable en la ficha,
   abierta si el tipo es motor/bomba/ventilador/compresor/agitador/faja o si ya tiene datos. También en la plantilla y exportación Excel.
+- Ubicaciones: lista controlada en `datos/eq/config/ubicaciones.lista` [nombre] (módulo Ubicaciones). La ficha usa un desplegable con
+  "+ Nueva ubicación…" y aviso de posible error de tipeo (distancia de edición). Renombrar actualiza los equipos; Unificar junta duplicados.
+  Excel: ubicación igual (sin tildes/mayúsculas) → se toma la de la lista; muy parecida → error; distinta → se agrega. Primera vez: la
+  lista parte de las ubicaciones ya usadas. Ojo: los filtros de plantillas de formatos guardan el texto de la ubicación.
 - Sistema 8 "Servicios" (SRV, formatos R-801–899): agua de mar, agua dulce, aire comprimido, desagüe — lo que abastece a varias plantas.
 - La ficha muestra los formatos vigentes que incluyen al equipo y sus últimos registros.
 
@@ -200,6 +204,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-25: Equipos — ubicaciones como lista controlada (módulo Ubicaciones, aviso de tipeo, unificar).
 - 2026-10-25: Sistema Servicios (SRV) y datos de placa del motor en Equipos.
 - 2026-10-25: Equipos — código automático SISTEMA-TIPO-N° (catálogo de tipos y siglas, contador por prefijo, recodificación de provisionales).
 - 2026-10-02 — Repositorio creado. Portal, núcleo, Administración, plantilla y reglas (F0).
