@@ -159,7 +159,16 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Siguiente: indicadores (cumplimiento de formatos, horas de parada, MTTR por equipo, tendencias de parámetros).
 
 ## Plan de mantenimiento (F7)
-- Módulos: `preventivo` Plan preventivo (estructura inicial, por construir) y `programas` Programas de trabajo (construido).
+- Módulos: `preventivo` Plan preventivo (construido) y `programas` Programas de trabajo (construido).
+- Plan preventivo (PMP): `datos/plan/pmp/config` {inicio, capacidad, biblioteca, eventos, supuestos, cargado} y `datos/plan/pmp_tareas/{id}`
+  (equipo + copia de la rutina: tarea, frec D|S|M|TRI|SEM|A, horas, resp {rol: HH}, cond, mat, reg; semanas: lunes ISO programados;
+  porHoras, conjunto, proximo; ejec { '<semana>': {estado hecho|no|reprog, a: semana nueva, fecha, por, obs|motivo} }).
+  Plan inicial en `apps/plan/pmp_semilla.js` (generado: 38 equipos, 59 rutinas en 11 tipos, 205 tareas, 52 semanas desde 2-nov-2026,
+  nivelado por especialidad; compresores por horómetro desde el overhaul; transformadores en bloque en feb; anuales con parada en
+  temporada baja). Se carga una vez con "Cargar plan inicial" (Admin/Supervisor) y corrige descripciones en Equipos (SFT 4/5, REF-MOT-05).
+  Vistas: Semana (atrasadas + programadas por equipo; Ejecutado / Reprogramar / No ejecutado; OT semanal imprimible A4 horizontal por
+  especialidad), Calendario 52 semanas, Equipos, Rutinas, Carga HH vs capacidad. Cumplimiento = ejecutadas / ocurrencias de semanas cerradas.
+  Operador registra ejecución; Admin/Supervisor reprograman, marcan no ejecutado y deshacen.
 - Programa de trabajo = conjunto de actividades con fechas, avance y cierre. Tipos: Parada de planta, Mantenimiento programado, Auditoría,
   Proyecto de mejora, Otro. Todos usan el mismo formato: Resumen (KPI + curva S), Línea de tiempo, Actividades, Evidencias y Costos.
 - Datos: `datos/plan/programas/{pid}` (nombre, tipo, planta, ref, desde, hasta, estado activa|cerrada, cierre, lineaBase {fecha, por}),
@@ -218,6 +227,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-26: Plan preventivo — módulo construido y plan inicial de 38 equipos (rutinas, calendario 52 semanas, OT semanal, cumplimiento, carga HH).
 - 2026-10-25: Formatos — visualización por área (áreas por usuario en Administración; filtra Llenar y Registros).
 - 2026-10-25: Formatos — campos calculados (diferencia, porcentaje), rangos por columna, emisión con revisión del manual y R-301 ósmosis.
 - 2026-10-25: Equipos — ubicaciones como lista controlada (módulo Ubicaciones, aviso de tipeo, unificar).

@@ -1,25 +1,517 @@
-// Plan de mantenimiento — módulo Plan preventivo (estructura inicial)
-const I = (d) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
-const BLOQUES = [
-  { c: '#3bb4e5', i: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3', t: 'Rutinas por equipo',
-    d: 'Cada equipo de la base maestra con sus rutinas: inspección, lubricación, ajuste, cambio de componentes, con su procedimiento y formato asociado.' },
-  { c: '#2ec4a6', i: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', t: 'Frecuencias y calendario anual',
-    d: 'Frecuencia por tiempo (semanal, mensual, trimestral…) u horas de operación. Calendario de 12 meses con la carga de trabajo por semana.' },
-  { c: '#f5b54a', i: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11', t: 'Ejecución y cumplimiento',
-    d: 'Registro de lo ejecutado contra lo programado, reprogramaciones y porcentaje de cumplimiento mensual por sistema y por equipo.' },
-  { c: '#a9b4ff', i: 'M4 12h16M14 6l6 6-6 6', t: 'Integración',
-    d: 'Las rutinas del periodo pasan a la programación quincenal y a los programas de trabajo; los hallazgos generan órdenes de trabajo.' }
-];
-export function montar(ctx) {
-  ctx.main.innerHTML = `<div class="pp">
-    <div class="pp-top"><div><div class="eyebrow">Plan de mantenimiento</div><h1 class="h-display">Plan de mantenimiento preventivo</h1>
-      <p class="muted" style="margin:10px 0 0;font-size:14px">Rutinas periódicas por equipo, calendario anual y cumplimiento.</p></div>
-      <span class="pill" style="background:rgba(245,185,74,.16);color:#FFCF73">En preparación</span></div>
-    <div class="pp-prev">${BLOQUES.map((b, k) => `<div class="pp-card rise d${k + 1}" style="--c:${b.c}">
-      <div class="ic" style="color:${b.c};background:${b.c}22;border:1px solid ${b.c}55">${I(b.i)}</div>
-      <h3>${b.t}</h3><p>${b.d}</p></div>`).join('')}</div>
-    <div class="pp-card rise d5" style="margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-      <div style="flex:1;min-width:240px"><b style="font-family:var(--f-display)">Base de partida</b>
-        <div class="muted" style="font-size:13.5px;margin-top:4px">Equipos registrados en el aplicativo Equipos y frecuencias del manual de mantenimiento.</div></div>
-      <a class="btn pp-btn" href="#programas">Ir a Programas de trabajo</a></div></div>`;
+// Plan de mantenimiento — módulo Plan preventivo (PMP)
+// Datos:
+//   datos/plan/pmp/config            { inicio, capacidad, biblioteca, eventos, supuestos, cargado:{fecha, por} }
+//   datos/plan/pmp_tareas/{id}       tarea por equipo y rutina (copia de la rutina) con semanas programadas (lunes ISO) y
+//                                    ejec: { '<semana>': { estado: hecho|no|reprog, a?: semana nueva, fecha, por, obs } }
+// Una ocurrencia es una semana programada de una tarea; si se reprograma, cuenta en su semana nueva.
+import { db, toast } from '../../core/core.js';
+import { listarEquipos, colEquipos } from '../../core/equipos.js';
+import { SISTEMAS } from '../../core/maestros.js';
+import { doc, getDoc, getDocs, setDoc, updateDoc, collection, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const I = (d, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+const IC = {
+  ok: I('M20 6L9 17l-5-5'), rep: I('M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5'), no: I('M18 6L6 18M6 6l12 12'), izq: I('M15 18l-6-6 6-6'), der: I('M9 18l6-6-6-6'),
+  print: I('M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z'), up: I('M12 16V4M6 10l6-6 6 6M4 20h16'), undo: I('M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8')
+};
+const FREC = {
+  D: { l: 'Diario', c: 'D', hex: '#8b9bb0' }, S: { l: 'Semanal', c: 'S', hex: '#7cc8f8' }, M: { l: 'Mensual', c: 'M', hex: '#4aa3ff' },
+  TRI: { l: 'Trimestral', c: 'T', hex: '#f5b54a' }, SEM: { l: 'Semestral', c: 'SE', hex: '#ff9f5a' }, A: { l: 'Anual', c: 'A', hex: '#ff6b8a' }
+};
+const ORD_F = ['S', 'M', 'TRI', 'SEM', 'A'];
+const ROLES = ['Frigorista', 'Mecánico', 'Electricista', 'Soldador', 'Op. calderos', 'Op. ósmosis', 'Tercero'];
+const EST = {
+  hecho: { l: 'Ejecutado', hex: '#2ec4a6' }, no: { l: 'No ejecutado', hex: '#8b9bb0' },
+  atrasada: { l: 'Atrasada', hex: '#ff6b6b' }, pendiente: { l: 'Programada', hex: '#f5b54a' }
+};
+const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+const DIA = 864e5;
+
+const refCfg = () => doc(db, 'datos', 'plan', 'pmp', 'config');
+const colTar = () => collection(db, 'datos', 'plan', 'pmp_tareas');
+
+// ---------- fechas ----------
+const isoD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const deIso = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const lunes = (d) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return isoD(x); };
+const masSem = (s, n) => { const d = deIso(s); d.setDate(d.getDate() + 7 * n); return isoD(d); };
+const numSem = (s) => { const d = deIso(s); d.setDate(d.getDate() + 3); const a = new Date(d.getFullYear(), 0, 4); return 1 + Math.round(((d - a) / DIA - 3 + ((a.getDay() + 6) % 7)) / 7); };
+const corto = (s) => { const d = deIso(s); return `${String(d.getDate()).padStart(2, '0')}-${MES[d.getMonth()]}`; };
+const rango = (s) => { const a = deIso(s), b = deIso(masSem(s, 0)); b.setDate(b.getDate() + 6); return `${a.getDate()}${a.getMonth() !== b.getMonth() ? ' ' + MES[a.getMonth()] : ''} – ${b.getDate()} ${MES[b.getMonth()]} ${b.getFullYear()}`; };
+const hoyIso = () => isoD(new Date());
+
+// ---------- estado ----------
+let CTX = null, CFG = null, TAR = [], HOY = lunes(new Date()), SEL = HOY, VISTA = 'semana';
+const FIL = { rol: '', sis: '', semanales: false, q: '' };
+const usuario = () => CTX?.perfil?.nombre || CTX?.user?.email || '';
+const gestiona = () => CTX?.esAdmin || ['admin', 'supervisor'].includes(CTX?.rol);
+const ejecuta = () => CTX?.puedeEscribir;
+const hhProp = (t) => Object.entries(t.resp || {}).filter(([k]) => k !== 'Tercero').reduce((a, [, v]) => a + v, 0);
+const respTxt = (t) => Object.entries(t.resp || {}).map(([k, v]) => `${k} ${String(v).replace('.', ',')} h`).join(' · ');
+const sisNom = (id) => SISTEMAS.find(s => s.id === Number(id))?.nombre || '';
+
+function ocurrencias(t) {
+  return (t.semanas || []).map(s => {
+    const e = (t.ejec || {})[s] || null;
+    const ef = e?.a || s;
+    const est = e?.estado === 'hecho' ? 'hecho' : e?.estado === 'no' ? 'no' : ef < HOY ? 'atrasada' : 'pendiente';
+    return { t, s, e, ef, est, reprog: !!e?.a };
+  });
+}
+const todas = () => TAR.flatMap(ocurrencias);
+const pasaFiltro = (t) => (!FIL.rol || (t.resp || {})[FIL.rol] != null) && (FIL.sis === '' || String(t.sistema) === FIL.sis)
+  && (!FIL.q || `${t.eq} ${t.eqDesc} ${t.rutina} ${t.tarea}`.toLowerCase().includes(FIL.q.toLowerCase()));
+
+// ---------- estilos ----------
+const CSS = `
+.pv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.pv-kpi{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:14px;padding:14px 16px;position:relative;overflow:hidden}
+.pv-kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,#3bb4e5)}
+.pv-kpi .l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-3);font-weight:600}
+.pv-kpi .v{font-family:var(--f-display);font-size:28px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+.pv-kpi .v small{font-size:14px;color:var(--tx-3)}
+.pv-kpi .s{font-size:12px;color:var(--tx-3);margin-top:2px}
+.pv-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.pv-nav .sem{font-family:var(--f-display);font-weight:600;font-size:16px;min-width:230px;text-align:center}
+.pv-nav .sem small{display:block;font-family:var(--f-body);font-weight:400;font-size:12px;color:var(--tx-3)}
+.pv-sec{margin:18px 0 8px;font-family:var(--f-display);font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px}
+.pv-sec span{font-family:var(--f-mono);font-size:12px;color:var(--tx-3);font-weight:400}
+.pv-eq{margin-bottom:10px;border:1px solid var(--pp-line);border-radius:14px;background:var(--pp-card);overflow:hidden}
+.pv-eqh{display:flex;align-items:baseline;gap:10px;padding:10px 14px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--pp-line);flex-wrap:wrap}
+.pv-eqh b{font-family:var(--f-mono);font-size:13px;color:var(--mint-2);font-weight:500}
+.pv-eqh span{font-size:13.5px}.pv-eqh small{margin-left:auto;font-size:12px;color:var(--tx-3)}
+.pv-it{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--pp-line)}
+.pv-it:last-child{border-bottom:0}
+.pv-f{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font:700 12px var(--f-mono);color:#14202b}
+.pv-it .t1{font-size:12px;color:var(--tx-3);font-family:var(--f-mono)}
+.pv-it .t2{font-size:14px;line-height:1.4;margin:2px 0}
+.pv-it .t3{font-size:12px;color:var(--tx-3)}
+.pv-acc{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.pv-acc .btn{height:36px;padding:0 10px;font-size:12.5px;border-radius:9px}
+.pv-st{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.pv-st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pv-meta{font-size:11.5px;color:var(--tx-3);text-align:right;margin-top:3px}
+.pv-cal{overflow:auto;border:1px solid var(--pp-line);border-radius:14px;max-height:72vh;background:var(--pp-card)}
+.pv-cal table{border-collapse:separate;border-spacing:0;font-size:12px}
+.pv-cal th,.pv-cal td{border-bottom:1px solid rgba(255,255,255,.06);padding:0;height:24px}
+.pv-cal thead th{position:sticky;top:0;background:#3E4C5D;z-index:2;font:600 10.5px var(--f-mono);color:var(--tx-3)}
+.pv-cal thead tr:nth-child(2) th{top:24px}
+.pv-cal .fx{position:sticky;left:0;background:#37444f;z-index:1;text-align:left;padding:0 10px;white-space:nowrap;min-width:250px;max-width:250px;overflow:hidden;text-overflow:ellipsis}
+.pv-cal thead .fx{z-index:3}
+.pv-cal .eqr td{background:rgba(255,255,255,.04);font-weight:600}
+.pv-cal .eqr .fx{background:#3d4b58}
+.pv-cal td.c{width:24px;min-width:24px;text-align:center;cursor:pointer}
+.pv-cal td.hoy{background:rgba(59,180,229,.12)}
+.pv-cal .m{display:inline-flex;width:20px;height:18px;border-radius:5px;align-items:center;justify-content:center;font:700 9.5px var(--f-mono);color:#14202b}
+.pv-cal .m.hecho{background:#2ec4a6!important}.pv-cal .m.atrasada{background:#ff6b6b!important;color:#fff}.pv-cal .m.no{background:#5d6b79!important;color:#cfd8e3}
+.pv-cal .m.orig{opacity:.3;outline:1px dashed #f5b54a}
+.pv-leg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--tx-3);margin:10px 0}
+.pv-leg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+.pv-eqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:12px}
+.pv-ec{text-align:left;color:var(--tx);cursor:pointer;padding:14px 16px;border-radius:14px;background:var(--pp-card);border:1px solid var(--pp-line);transition:border-color .2s,transform .2s}
+.pv-ec:hover{border-color:rgba(59,180,229,.5);transform:translateY(-2px)}
+.pv-ec b{font-family:var(--f-mono);font-size:12.5px;color:var(--mint-2);font-weight:500}
+.pv-ec h4{margin:3px 0 8px;font-family:var(--f-display);font-weight:600;font-size:15px}
+.pv-ec .n{display:flex;gap:14px;font-size:12px;color:var(--tx-3)}
+.pv-ec .n strong{display:block;font-size:17px;color:var(--tx);font-family:var(--f-display)}
+.pv-rt summary{cursor:pointer;padding:12px 14px;font-family:var(--f-display);font-weight:600;font-size:14.5px;list-style:none;display:flex;gap:10px;align-items:center}
+.pv-rt summary::-webkit-details-marker{display:none}
+.pv-rt summary small{font-family:var(--f-body);font-weight:400;color:var(--tx-3);font-size:12px}
+.pv-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.pv-tbl th{font:500 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tx-3);text-align:left;padding:9px 10px;border-bottom:1px solid var(--pp-line)}
+.pv-tbl td{padding:9px 10px;border-bottom:1px solid var(--pp-line);vertical-align:top}
+.pv-car{display:grid;gap:12px}
+.pv-bar{display:grid;grid-template-columns:120px minmax(0,1fr) 80px;gap:10px;align-items:center;font-size:12.5px}
+.pv-bars{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;align-items:end;height:90px}
+.pv-bars div{background:linear-gradient(180deg,#3bb4e5,#1e5aa8);border-radius:4px 4px 0 0;position:relative;min-height:2px}
+.pv-bars div span{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:10px;color:var(--tx-3)}
+.pv-bars div.sobre{background:linear-gradient(180deg,#ff6b6b,#b4232c)}
+.pv-mes{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;font-size:10.5px;color:var(--tx-3);text-align:center;margin-top:4px}
+.pv-cap{position:relative}
+.pv-cap .ln{position:absolute;left:0;right:0;border-top:1.5px dashed #ff6b6b}
+.pv-vacio{padding:42px 26px;text-align:center}
+.pv-vacio h2{font-family:var(--f-display);font-weight:600;font-size:22px;margin:0 0 10px}
+@media (max-width:820px){.pv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-it{grid-template-columns:34px minmax(0,1fr)}.pv-acc{grid-column:1/-1;justify-content:flex-start}.pv-meta{text-align:left}}
+`;
+
+// =====================================================================
+export async function montar(ctx) {
+  CTX = ctx;
+  if (!document.getElementById('pvcss')) document.head.insertAdjacentHTML('beforeend', `<style id="pvcss">${CSS}</style>`);
+  ctx.main.innerHTML = '<div style="display:flex;justify-content:center;padding:80px 0"><div class="spinner"></div></div>';
+  try {
+    const c = await getDoc(refCfg());
+    CFG = c.exists() ? c.data() : null;
+    TAR = CFG ? (await getDocs(colTar())).docs.map(d => ({ id: d.id, ...d.data() })) : [];
+  } catch (e) { ctx.main.innerHTML = `<div class="alert err">No se pudo leer el plan: ${esc(e.code || e.message)}</div>`; return; }
+  HOY = lunes(new Date());
+  if (!CFG) return vacio();
+  if (SEL < CFG.inicio) SEL = CFG.inicio;
+  pintar();
+}
+
+// ---------- plan sin cargar ----------
+function vacio() {
+  CTX.main.innerHTML = `<div class="pp">
+    <div class="pp-top"><div><div class="eyebrow">Plan de mantenimiento</div><h1 class="h-display">Plan de mantenimiento preventivo</h1></div></div>
+    <div class="pp-card pv-vacio">
+      <h2>El plan preventivo aún no está cargado</h2>
+      <p class="muted" style="max-width:620px;margin:0 auto 22px;line-height:1.6">Plan inicial preparado para los equipos críticos de la base: rutinas estándar por tipo de equipo, frecuencias diaria a anual y 52 semanas programadas con la carga nivelada por especialidad.</p>
+      ${gestiona() ? `<button class="btn pp-grad" id="pvCargar">${IC.up}Cargar plan inicial</button>` : '<div class="muted">Lo carga un Administrador o Supervisor del aplicativo.</div>'}
+    </div></div>`;
+  const b = CTX.main.querySelector('#pvCargar');
+  if (b) b.onclick = cargarInicial;
+}
+
+async function cargarInicial() {
+  const b = CTX.main.querySelector('#pvCargar'); b.disabled = true; b.textContent = 'Revisando la base de equipos…';
+  let S, EQ;
+  try { [S, EQ] = await Promise.all([import('./pmp_semilla.js'), listarEquipos()]); }
+  catch (e) { toast('No se pudo preparar la carga: ' + (e.code || e.message), 'err'); b.disabled = false; b.innerHTML = `${IC.up}Cargar plan inicial`; return; }
+  const porCod = new Map(EQ.map(e => [e.codigo, e]));
+  const cods = [...new Set(S.PMP_TAREAS.map(t => t.eq))];
+  const faltan = cods.filter(c => !porCod.has(c));
+  const corr = Object.entries(S.PMP_CORRECCIONES).filter(([c, d]) => porCod.has(c) && porCod.get(c).descripcion !== d);
+  const tareas = S.PMP_TAREAS.filter(t => porCod.has(t.eq));
+  const bg = modal('Cargar plan inicial', `
+    <div class="pv-kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div class="pv-kpi"><div class="l">Equipos</div><div class="v">${cods.length - faltan.length}<small> / ${cods.length}</small></div></div>
+      <div class="pv-kpi" style="--c:#2ec4a6"><div class="l">Tareas</div><div class="v">${tareas.length}</div></div>
+      <div class="pv-kpi" style="--c:#f5b54a"><div class="l">Desde</div><div class="v" style="font-size:20px">${corto(S.PMP_INICIO)}</div><div class="s">52 semanas</div></div>
+    </div>
+    ${faltan.length ? `<div class="alert warn" style="margin-bottom:12px">No están en la base de equipos y se omiten: ${faltan.map(esc).join(', ')}.</div>` : ''}
+    ${corr.length ? `<div style="font-weight:600;margin:6px 0">Correcciones en la base de equipos</div><table class="pv-tbl"><tbody>${corr.map(([c, d]) => `<tr><td class="mono" style="color:var(--mint-2)">${esc(c)}</td><td style="color:var(--tx-3)">${esc(porCod.get(c).descripcion)}</td><td>→ ${esc(d)}</td></tr>`).join('')}</tbody></table>` : ''}
+    <div style="font-weight:600;margin:14px 0 6px">Supuestos</div>
+    <ul style="margin:0;padding-left:18px;color:var(--tx-2);font-size:13px;line-height:1.55">${S.PMP_SUPUESTOS.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`,
+    `<button class="btn" data-x>Cancelar</button><button class="btn pp-grad" id="pvOk">Cargar plan</button>`, 760);
+  b.disabled = false; b.innerHTML = `${IC.up}Cargar plan inicial`;
+  bg.querySelector('#pvOk').onclick = async (ev) => {
+    const ok = ev.currentTarget; ok.disabled = true; ok.textContent = 'Cargando…';
+    try {
+      const filas = tareas.map(t => {
+        const e = porCod.get(t.eq), r = S.PMP_BIBLIOTECA[t.tipo].rutinas.find(x => x.cod === t.rutina);
+        return { eq: t.eq, eqId: e.id, eqDesc: S.PMP_CORRECCIONES[t.eq] || e.descripcion || '', sistema: e.sistema ?? '', crit: e.criticidad || '', ubicacion: e.ubicacion || '',
+          tipo: t.tipo, tipoNombre: S.PMP_BIBLIOTECA[t.tipo].nombre, rutina: r.cod, tarea: r.tarea, frec: r.frec, horas: r.horas || null, resp: r.resp, cond: r.cond, mat: r.mat || '', reg: r.reg || '',
+          semanas: t.semanas, porHoras: !!t.porHoras, conjunto: t.conjunto || '', proximo: t.proximo || '', ejec: {} };
+      });
+      for (let i = 0; i < filas.length; i += 400) {
+        const w = writeBatch(db);
+        filas.slice(i, i + 400).forEach(f => w.set(doc(colTar()), f));
+        if (i === 0) corr.forEach(([c, d]) => w.set(doc(colEquipos(), porCod.get(c).id), { descripcion: d, actualizado: serverTimestamp(), actualizadoPor: usuario() }, { merge: true }));
+        await w.commit();
+      }
+      await setDoc(refCfg(), { inicio: S.PMP_INICIO, capacidad: S.PMP_CAPACIDAD, biblioteca: S.PMP_BIBLIOTECA, eventos: S.PMP_EVENTOS, supuestos: S.PMP_SUPUESTOS,
+        cargado: { fecha: hoyIso(), por: usuario() }, creado: serverTimestamp() });
+      bg.remove(); toast(`Plan cargado: ${filas.length} tareas${corr.length ? ` · ${corr.length} correcciones en Equipos` : ''}.`);
+      montar(CTX);
+    } catch (e) { toast('No se pudo cargar: ' + (e.code || e.message), 'err'); ok.disabled = false; ok.textContent = 'Cargar plan'; }
+  };
+}
+
+// ---------- modal ----------
+function modal(titulo, cuerpo, pie, ancho = 620) {
+  const bg = document.createElement('div'); bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal" style="max-width:${ancho}px"><div class="modal-h"><div class="h-display" style="font-size:20px">${titulo}</div><button class="btn btn-icon" data-x aria-label="Cerrar">${IC.no}</button></div>
+    <div class="modal-b">${cuerpo}</div><div class="modal-f">${pie}</div></div>`;
+  document.body.appendChild(bg);
+  bg.querySelectorAll('[data-x]').forEach(b => b.onclick = () => bg.remove());
+  bg.addEventListener('mousedown', (e) => { if (e.target === bg) bg.remove(); });
+  return bg;
+}
+
+// =====================================================================
+function pintar() {
+  const oc = todas();
+  const pas = oc.filter(o => o.ef < HOY);
+  const hechas = pas.filter(o => o.est === 'hecho').length;
+  const cumpl = pas.length ? Math.round(hechas / pas.length * 100) : null;
+  const REF = HOY < CFG.inicio ? CFG.inicio : HOY;   // antes del inicio, la primera semana del plan
+  const sem = oc.filter(o => o.ef === REF);
+  const atr = oc.filter(o => o.est === 'atrasada');
+  const hhSem = sem.reduce((a, o) => a + hhProp(o.t), 0);
+  const eqs = new Set(TAR.map(t => t.eq)).size;
+  CTX.main.innerHTML = `<div class="pp">
+    <div class="pp-top"><div><div class="eyebrow">Plan de mantenimiento</div><h1 class="h-display">Plan preventivo</h1>
+      <p class="muted" style="margin:8px 0 0;font-size:13.5px">${eqs} equipos · ${TAR.length} tareas · desde ${corto(CFG.inicio)} (52 semanas)</p></div></div>
+    <div class="pv-kpis">
+      <div class="pv-kpi" style="--c:#2ec4a6"><div class="l">Cumplimiento</div><div class="v">${cumpl == null ? '—' : cumpl + '<small>%</small>'}</div><div class="s">${pas.length ? `${hechas} de ${pas.length} tareas vencidas` : 'Aún no hay semanas cerradas'}</div></div>
+      <div class="pv-kpi"><div class="l">${REF === HOY ? 'Esta semana' : 'Semana del ' + corto(REF)}</div><div class="v">${sem.length}</div><div class="s">${sem.filter(o => o.est === 'hecho').length} ejecutadas · ${hhSem.toFixed(1).replace('.', ',')} HH</div></div>
+      <div class="pv-kpi" style="--c:#ff6b6b"><div class="l">Atrasadas</div><div class="v">${atr.length}</div><div class="s">De semanas anteriores</div></div>
+      <div class="pv-kpi" style="--c:#f5b54a"><div class="l">Meta</div><div class="v">90<small>%</small></div><div class="s">Cumplimiento mensual del PMP</div></div>
+    </div>
+    <div class="pp-tabsbar">${[['semana', 'Semana'], ['calendario', 'Calendario'], ['equipos', 'Equipos'], ['rutinas', 'Rutinas'], ['carga', 'Carga HH']].map(([k, l]) => `<button class="pp-tab ${VISTA === k ? 'on' : ''}" data-v="${k}">${l}</button>`).join('')}</div>
+    <div id="pvV"></div></div>`;
+  CTX.main.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { VISTA = b.dataset.v; pintar(); });
+  const box = CTX.main.querySelector('#pvV');
+  ({ semana: vSemana, calendario: vCalendario, equipos: vEquipos, rutinas: vRutinas, carga: vCarga })[VISTA](box);
+}
+
+function filtrosHtml(conSemanales = false) {
+  const sis = [...new Set(TAR.map(t => String(t.sistema)))].filter(x => x !== '').sort();
+  return `<div class="pp-tools">
+    <button class="pp-chip ${FIL.rol === '' ? 'on' : ''}" data-rol="">Todas</button>
+    ${ROLES.filter(r => TAR.some(t => (t.resp || {})[r] != null)).map(r => `<button class="pp-chip ${FIL.rol === r ? 'on' : ''}" data-rol="${esc(r)}">${esc(r)}</button>`).join('')}
+    <span class="pp-sp"></span>
+    <select class="field" id="pvSis" style="height:36px;width:auto;font-size:13px;padding:0 30px 0 10px"><option value="">Todos los sistemas</option>${sis.map(s => `<option value="${s}" ${FIL.sis === s ? 'selected' : ''}>${esc(sisNom(s))}</option>`).join('')}</select>
+    ${conSemanales ? `<label class="check" style="font-size:13px"><input type="checkbox" id="pvSem" ${FIL.semanales ? 'checked' : ''}>Semanales</label>` : ''}
+    <input class="field" id="pvQ" type="search" placeholder="Buscar equipo o tarea" value="${esc(FIL.q)}" style="height:36px;width:200px;font-size:13px">
+  </div>`;
+}
+function enlazarFiltros(box, re) {
+  box.querySelectorAll('[data-rol]').forEach(b => b.onclick = () => { FIL.rol = b.dataset.rol; re(); });
+  const s = box.querySelector('#pvSis'); if (s) s.onchange = () => { FIL.sis = s.value; re(); };
+  const k = box.querySelector('#pvSem'); if (k) k.onchange = () => { FIL.semanales = k.checked; re(); };
+  const q = box.querySelector('#pvQ'); if (q) q.oninput = () => { FIL.q = q.value; clearTimeout(q._t); q._t = setTimeout(() => { re(); const n = box.querySelector('#pvQ'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 250); };
+}
+
+// ---------- vista semana ----------
+function itemHtml(o, conSemana = false) {
+  const t = o.t, f = FREC[t.frec], st = EST[o.est];
+  const acc = [];
+  if (o.est === 'hecho' || o.est === 'no') {
+    acc.push(`<span class="pv-st" style="color:${st.hex};background:${st.hex}22">${st.l}</span>`);
+    if (gestiona()) acc.push(`<button class="btn" data-a="undo" title="Deshacer">${IC.undo}</button>`);
+  } else if (ejecuta()) {
+    acc.push(`<button class="btn" data-a="ok" style="color:#8ff0de">${IC.ok}Ejecutado</button>`);
+    if (gestiona()) acc.push(`<button class="btn" data-a="rep" title="Reprogramar">${IC.rep}</button><button class="btn" data-a="no" title="No ejecutado">${IC.no}</button>`);
+  } else acc.push(`<span class="pv-st" style="color:${st.hex};background:${st.hex}22">${st.l}</span>`);
+  const meta = o.e?.estado === 'hecho' || o.e?.estado === 'no' ? `${o.e.estado === 'hecho' ? corto(o.e.fecha) : ''} · ${esc(o.e.por || '')}${o.e.obs ? ' · ' + esc(o.e.obs) : ''}`
+    : o.reprog ? `Reprogramada desde la semana del ${corto(o.s)}` : conSemana ? `Programada semana del ${corto(o.ef)}` : '';
+  return `<div class="pv-it" data-t="${t.id}" data-s="${o.s}">
+    <div class="pv-f" style="background:${f.hex}" title="${f.l}">${f.c}</div>
+    <div><div class="t1">${esc(t.rutina)} · ${f.l}${t.porHoras && t.horas ? ` · ${t.horas.toLocaleString('es-PE')} h` : ''}${t.conjunto ? ` · con ${esc(t.conjunto)}` : ''}</div>
+      <div class="t2">${esc(t.tarea)}</div>
+      <div class="t3">${esc(respTxt(t))} · ${esc(t.cond)}${t.mat ? ' · ' + esc(t.mat) : ''}</div></div>
+    <div><div class="pv-acc">${acc.join('')}</div>${meta ? `<div class="pv-meta">${meta}</div>` : ''}</div></div>`;
+}
+function grupoEquipos(lista, conSemana) {
+  const g = new Map();
+  lista.forEach(o => { if (!g.has(o.t.eq)) g.set(o.t.eq, []); g.get(o.t.eq).push(o); });
+  return [...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([cod, os]) => {
+    const t = os[0].t, hh = os.reduce((a, o) => a + hhProp(o.t), 0);
+    os.sort((a, b) => ORD_F.indexOf(b.t.frec) - ORD_F.indexOf(a.t.frec));
+    return `<div class="pv-eq"><div class="pv-eqh"><b>${esc(cod)}</b><span>${esc(t.eqDesc)}</span><small>${esc(sisNom(t.sistema))} · ${hh.toFixed(1).replace('.', ',')} HH</small></div>${os.map(o => itemHtml(o, conSemana)).join('')}</div>`;
+  }).join('');
+}
+function vSemana(box) {
+  const oc = todas().filter(o => pasaFiltro(o.t));
+  const sem = oc.filter(o => o.ef === SEL);
+  const atr = SEL === HOY ? oc.filter(o => o.est === 'atrasada') : [];
+  const fin = masSem(CFG.inicio, 51);
+  const ev = Object.entries(CFG.eventos || {}).flatMap(([eq, l]) => l.filter(x => x.semana === SEL).map(x => ({ eq, ...x })));
+  const hh = {}; sem.forEach(o => Object.entries(o.t.resp || {}).forEach(([r, v]) => { hh[r] = (hh[r] || 0) + v; }));
+  box.innerHTML = `
+    <div class="pv-nav">
+      <button class="btn pp-btn" id="pvAnt" ${SEL <= CFG.inicio ? 'disabled' : ''}>${IC.izq}</button>
+      <div class="sem">Semana ${numSem(SEL)}${SEL === HOY ? ' · actual' : ''}<small>${rango(SEL)}</small></div>
+      <button class="btn pp-btn" id="pvSig" ${SEL >= fin ? 'disabled' : ''}>${IC.der}</button>
+      ${SEL !== HOY && HOY >= CFG.inicio && HOY <= fin ? '<button class="btn pp-btn" id="pvHoy">Semana actual</button>' : ''}
+      <span class="pp-sp"></span>
+      <button class="btn pp-btn" id="pvOT" ${sem.length ? '' : 'disabled'}>${IC.print}Orden de trabajo</button>
+    </div>
+    ${filtrosHtml()}
+    ${Object.keys(hh).length ? `<div class="pp-resp" style="margin-bottom:6px">${Object.entries(hh).map(([r, v]) => `<div><b>${v.toFixed(1).replace('.', ',')}</b><span>HH ${esc(r)}</span></div>`).join('')}</div>` : ''}
+    ${ev.map(x => `<div class="alert warn" style="margin-top:10px"><b>${esc(x.eq)}</b> · ${esc(x.texto)}</div>`).join('')}
+    ${atr.length ? `<div class="pv-sec" style="color:#ffb3b3">Atrasadas <span>${atr.length}</span></div>${grupoEquipos(atr, true)}` : ''}
+    <div class="pv-sec">Programadas para la semana <span>${sem.length}</span></div>
+    ${sem.length ? grupoEquipos(sem) : '<div class="pp-card muted" style="text-align:center;padding:24px">No hay tareas programadas con este filtro.</div>'}`;
+  box.querySelector('#pvAnt').onclick = () => { SEL = masSem(SEL, -1); vSemana(box); };
+  box.querySelector('#pvSig').onclick = () => { SEL = masSem(SEL, 1); vSemana(box); };
+  const h = box.querySelector('#pvHoy'); if (h) h.onclick = () => { SEL = HOY; vSemana(box); };
+  box.querySelector('#pvOT').onclick = () => ordenTrabajo(sem);
+  enlazarFiltros(box, () => vSemana(box));
+  enlazarAcciones(box, () => pintar());
+}
+
+function enlazarAcciones(box, re) {
+  box.querySelectorAll('.pv-it [data-a]').forEach(b => b.onclick = (ev) => {
+    ev.stopPropagation();
+    const it = b.closest('.pv-it'), t = TAR.find(x => x.id === it.dataset.t), s = it.dataset.s;
+    accion(b.dataset.a, t, s, re);
+  });
+}
+
+async function guardarEjec(t, s, valor) {
+  const ejec = { ...(t.ejec || {}) };
+  if (valor) ejec[s] = valor; else delete ejec[s];
+  await updateDoc(doc(colTar(), t.id), { ejec, actualizado: serverTimestamp() });
+  t.ejec = ejec;
+}
+
+function accion(tipo, t, s, re) {
+  const e = (t.ejec || {})[s] || {};
+  const cab = `<div style="font-family:var(--f-mono);font-size:12.5px;color:var(--mint-2)">${esc(t.eq)} · ${esc(t.rutina)}</div><div style="margin:4px 0 14px;line-height:1.45">${esc(t.tarea)}</div>`;
+  if (tipo === 'undo') {
+    guardarEjec(t, s, e.a ? { estado: 'reprog', a: e.a, por: e.por, motivo: e.motivo || '' } : null).then(() => { toast('Registro deshecho.'); re(); }).catch(er => toast('No se pudo: ' + (er.code || er.message), 'err'));
+    return;
+  }
+  if (tipo === 'ok') {
+    const bg = modal('Registrar ejecución', cab + `<div class="pp-fg" style="display:grid;grid-template-columns:1fr;gap:12px">
+      <div><label class="label" for="pvF">Fecha de ejecución</label><input class="field" type="date" id="pvF" value="${hoyIso()}"></div>
+      <div><label class="label" for="pvO">Observación o hallazgo (opcional)</label><textarea class="field" id="pvO" rows="3" style="height:auto;padding:12px 14px;line-height:1.5" placeholder="Valores medidos, repuestos usados, hallazgos…"></textarea></div></div>`,
+      `<button class="btn" data-x>Cancelar</button><button class="btn pp-grad" id="pvG">Registrar</button>`);
+    bg.querySelector('#pvG').onclick = async () => {
+      const f = bg.querySelector('#pvF').value; if (!f) return toast('Indique la fecha', 'err');
+      try { await guardarEjec(t, s, { estado: 'hecho', fecha: f, por: usuario(), obs: bg.querySelector('#pvO').value.trim(), ...(e.a ? { a: e.a } : {}) }); bg.remove(); toast('Ejecución registrada.'); re(); }
+      catch (er) { toast('No se pudo guardar: ' + (er.code || er.message), 'err'); }
+    };
+  }
+  if (tipo === 'rep') {
+    const actual = e.a || s;
+    const bg = modal('Reprogramar', cab + `<div style="display:grid;gap:12px">
+      <div><label class="label" for="pvF">Nueva fecha (se toma su semana)</label><input class="field" type="date" id="pvF" value="${masSem(actual, 1)}"></div>
+      <div><label class="label" for="pvO">Motivo</label><input class="field" id="pvO" placeholder="Coordinación con Producción, falta de repuesto…"></div></div>`,
+      `<button class="btn" data-x>Cancelar</button><button class="btn pp-grad" id="pvG">Reprogramar</button>`);
+    bg.querySelector('#pvG').onclick = async () => {
+      const f = bg.querySelector('#pvF').value, m = bg.querySelector('#pvO').value.trim();
+      if (!f) return toast('Indique la nueva fecha', 'err');
+      if (!m) return toast('Indique el motivo', 'err');
+      const a = lunes(deIso(f));
+      try { await guardarEjec(t, s, a === s ? null : { estado: 'reprog', a, motivo: m, por: usuario() }); bg.remove(); toast(`Reprogramada a la semana del ${corto(a)}.`); re(); }
+      catch (er) { toast('No se pudo guardar: ' + (er.code || er.message), 'err'); }
+    };
+  }
+  if (tipo === 'no') {
+    const bg = modal('No ejecutado', cab + `<label class="label" for="pvO">Motivo</label><input class="field" id="pvO" placeholder="Equipo en producción sin respaldo, sin repuesto…">
+      <div class="muted" style="font-size:12.5px;margin-top:8px">Cuenta como incumplimiento. Si se hará más adelante, use Reprogramar.</div>`,
+      `<button class="btn" data-x>Cancelar</button><button class="btn pp-grad" id="pvG">Guardar</button>`);
+    bg.querySelector('#pvG').onclick = async () => {
+      const m = bg.querySelector('#pvO').value.trim(); if (!m) return toast('Indique el motivo', 'err');
+      try { await guardarEjec(t, s, { estado: 'no', fecha: hoyIso(), obs: m, por: usuario(), ...(e.a ? { a: e.a } : {}) }); bg.remove(); toast('Registrado como no ejecutado.'); re(); }
+      catch (er) { toast('No se pudo guardar: ' + (er.code || er.message), 'err'); }
+    };
+  }
+}
+
+// ---------- orden de trabajo semanal (impresión) ----------
+function ordenTrabajo(lista) {
+  const porRol = new Map();
+  lista.forEach(o => { const r = Object.keys(o.t.resp || {}).find(k => k !== 'Tercero') || 'Tercero'; if (!porRol.has(r)) porRol.set(r, []); porRol.get(r).push(o); });
+  const logo = new URL('logo.png', location.href).href;
+  const bloques = [...porRol.entries()].sort((a, b) => ROLES.indexOf(a[0]) - ROLES.indexOf(b[0])).map(([r, os]) => {
+    os.sort((a, b) => a.t.eq.localeCompare(b.t.eq));
+    const hh = os.reduce((a, o) => a + hhProp(o.t), 0);
+    return `<h3>${esc(r)} <span>${os.length} tareas · ${hh.toFixed(1).replace('.', ',')} HH</span></h3>
+      <table><thead><tr><th style="width:4%">N°</th><th style="width:15%">Equipo</th><th style="width:7%">Rutina</th><th>Tarea</th><th style="width:12%">Responsables</th><th style="width:8%">Condición</th><th style="width:6%">Hecho</th><th style="width:8%">Fecha</th><th style="width:16%">Observación / firma</th></tr></thead>
+      <tbody>${os.map((o, i) => `<tr><td class="c">${i + 1}</td><td><b>${esc(o.t.eq)}</b><br><small>${esc(o.t.eqDesc)}</small></td><td class="c">${esc(o.t.rutina)}<br><small>${FREC[o.t.frec].l}</small></td><td>${esc(o.t.tarea)}${o.t.mat ? `<br><small>Materiales: ${esc(o.t.mat)}</small>` : ''}</td><td><small>${esc(respTxt(o.t))}</small></td><td class="c"><small>${esc(o.t.cond)}</small></td><td class="c"><span class="bx"></span></td><td></td><td></td></tr>`).join('')}</tbody></table>`;
+  }).join('');
+  const w = window.open('', '_blank');
+  if (!w) return toast('Permita ventanas emergentes para imprimir.', 'err');
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>OT preventiva semana ${numSem(SEL)}</title><style>
+    @page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#14202B;font-size:9pt;margin:0}
+    .cab{display:grid;grid-template-columns:40mm 1fr 60mm;border:1px solid #1E3A5C;align-items:center}
+    .cab div{padding:3mm}.cab img{max-height:14mm;max-width:100%}.cab .t{text-align:center;border-left:1px solid #1E3A5C;border-right:1px solid #1E3A5C}
+    .cab .t b{font-size:13pt;text-transform:uppercase;color:#1E3A5C;display:block}.cab .d{font-size:8.5pt;line-height:1.6}
+    h3{background:#1E3A5C;color:#fff;font-size:9.5pt;padding:1.6mm 2.5mm;margin:5mm 0 0;text-transform:uppercase;letter-spacing:.5pt}
+    h3 span{float:right;font-weight:400;text-transform:none}
+    table{width:100%;border-collapse:collapse}th{background:#EEF2F6;color:#1E3A5C;font-size:8pt;border:.6pt solid #9AA8B6;padding:1.3mm}
+    td{border:.6pt solid #9AA8B6;padding:1.3mm 1.6mm;vertical-align:top;font-size:8.4pt}td.c{text-align:center}small{color:#4A5866;font-size:7.4pt}
+    tr{break-inside:avoid}.bx{display:inline-block;width:4mm;height:4mm;border:.8pt solid #33414F}
+    .fir{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-top:10mm}.fir div{border-top:.8pt solid #33414F;padding-top:1.5mm;text-align:center;font-size:8.5pt}
+  </style></head><body>
+    <div class="cab"><div><img src="${logo}" alt=""></div><div class="t"><b>Orden de trabajo preventiva</b>Departamento de Mantenimiento · Planta Paita</div>
+      <div class="d"><b>Semana:</b> ${numSem(SEL)} · ${rango(SEL)}<br><b>Tareas:</b> ${lista.length}<br><b>Emitida:</b> ${corto(hoyIso())} · ${esc(usuario())}</div></div>
+    ${bloques}
+    <div class="fir"><div>Ejecutado por</div><div>Verificado por</div></div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  w.document.close();
+}
+
+// ---------- vista calendario ----------
+function vCalendario(box) {
+  const semanas = Array.from({ length: 52 }, (_, i) => masSem(CFG.inicio, i));
+  const tars = TAR.filter(t => t.frec !== 'D' && pasaFiltro(t) && (FIL.semanales || t.frec !== 'S'));
+  const porEq = new Map();
+  tars.forEach(t => { if (!porEq.has(t.eq)) porEq.set(t.eq, []); porEq.get(t.eq).push(t); });
+  const meses = []; semanas.forEach((s, i) => { const k = s.slice(0, 7); if (!meses.length || meses[meses.length - 1].k !== k) meses.push({ k, n: 1, d: deIso(s) }); else meses[meses.length - 1].n++; });
+  const fila = (t) => {
+    const cel = {};
+    ocurrencias(t).forEach(o => {
+      cel[o.ef] = o;
+      if (o.reprog && o.s !== o.ef && !cel[o.s]) cel[o.s] = { ...o, orig: true };
+    });
+    return `<tr><td class="fx" title="${esc(t.tarea)}"><span style="font-family:var(--f-mono);color:var(--tx-3)">${esc(t.rutina)}</span> ${esc(t.tarea)}</td>${semanas.map(s => {
+      const o = cel[s]; const f = FREC[t.frec];
+      return `<td class="c ${s === HOY ? 'hoy' : ''}" ${o && !o.orig ? `data-t="${t.id}" data-s="${o.s}"` : ''}>${o ? `<span class="m ${o.orig ? 'orig' : o.est}" style="background:${f.hex}">${o.est === 'hecho' && !o.orig ? '✓' : f.c}</span>` : ''}</td>`;
+    }).join('')}</tr>`;
+  };
+  const ev = CFG.eventos || {};
+  box.innerHTML = `${filtrosHtml(true)}
+    <div class="pv-leg">${ORD_F.map(k => `<span><i style="background:${FREC[k].hex}"></i>${FREC[k].l}</span>`).join('')}<span><i style="background:#2ec4a6"></i>Ejecutado</span><span><i style="background:#ff6b6b"></i>Atrasado</span><span><i style="background:#b4232c"></i>Overhaul</span><span>Toque una tarea para registrarla</span></div>
+    <div class="pv-cal"><table>
+      <thead><tr><th class="fx">Equipo / rutina</th>${meses.map(m => `<th colspan="${m.n}" style="text-align:left;padding-left:4px;border-left:1px solid rgba(255,255,255,.1);color:var(--tx)">${MES[m.d.getMonth()]}-${String(m.d.getFullYear()).slice(2)}</th>`).join('')}</tr>
+        <tr><th class="fx"></th>${semanas.map(s => `<th style="${s === HOY ? 'color:#7cc8f8' : ''}">${deIso(s).getDate()}</th>`).join('')}</tr></thead>
+      <tbody>${[...porEq.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([cod, ts]) => {
+        ts.sort((a, b) => ORD_F.indexOf(a.frec) - ORD_F.indexOf(b.frec) || a.rutina.localeCompare(b.rutina));
+        const ovh = (ev[cod] || []);
+        return `<tr class="eqr"><td class="fx"><span style="font-family:var(--f-mono);color:var(--mint-2)">${esc(cod)}</span> ${esc(ts[0].eqDesc)}</td>${semanas.map(s => { const o = ovh.find(x => x.semana === s); return `<td class="c ${s === HOY ? 'hoy' : ''}">${o ? `<span class="m" title="${esc(o.texto)}" style="background:#b4232c;color:#fff;width:22px">OH</span>` : ''}</td>`; }).join('')}</tr>${ts.map(fila).join('')}`;
+      }).join('') || `<tr><td class="fx muted">Sin tareas con este filtro</td></tr>`}</tbody></table></div>`;
+  enlazarFiltros(box, () => vCalendario(box));
+  box.querySelectorAll('td[data-t]').forEach(td => td.onclick = () => {
+    const t = TAR.find(x => x.id === td.dataset.t), s = td.dataset.s, o = ocurrencias(t).find(x => x.s === s);
+    const bg = modal(`${esc(t.eq)} · semana del ${corto(o.ef)}`, `<div class="pv-eq" style="margin:0">${itemHtml(o, true)}</div>`, '<button class="btn" data-x>Cerrar</button>', 760);
+    enlazarAcciones(bg, () => { bg.remove(); pintar(); });
+  });
+  const hoyTd = box.querySelector('thead th[style*="7cc8f8"]');
+  if (hoyTd) { const c = box.querySelector('.pv-cal'); c.scrollLeft = Math.max(0, hoyTd.offsetLeft - 320); }
+}
+
+// ---------- vista equipos ----------
+function vEquipos(box) {
+  const g = new Map();
+  TAR.filter(pasaFiltro).forEach(t => { if (!g.has(t.eq)) g.set(t.eq, []); g.get(t.eq).push(t); });
+  box.innerHTML = `${filtrosHtml()}<div class="pv-eqs">${[...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([cod, ts]) => {
+    const oc = ts.flatMap(ocurrencias).filter(o => o.t.frec !== 'S');
+    const prox = oc.filter(o => o.est === 'pendiente').sort((a, b) => a.ef.localeCompare(b.ef))[0];
+    return `<button class="pv-ec" data-eq="${esc(cod)}"><b>${esc(cod)}</b><h4>${esc(ts[0].eqDesc)}</h4>
+      <div class="n"><div><strong>${ts.length}</strong>rutinas</div><div><strong>${oc.filter(o => o.est === 'hecho').length}</strong>ejecutadas</div><div><strong style="color:${oc.some(o => o.est === 'atrasada') ? '#ff6b6b' : 'inherit'}">${oc.filter(o => o.est === 'atrasada').length}</strong>atrasadas</div>
+      <div><strong style="font-size:14px">${prox ? corto(prox.ef) : '—'}</strong>próxima</div></div></button>`;
+  }).join('')}</div>`;
+  enlazarFiltros(box, () => vEquipos(box));
+  box.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => detalleEquipo(b.dataset.eq));
+}
+function detalleEquipo(cod) {
+  const ts = TAR.filter(t => t.eq === cod).sort((a, b) => ORD_F.indexOf(a.frec) - ORD_F.indexOf(b.frec) || a.rutina.localeCompare(b.rutina));
+  const t0 = ts[0];
+  modal(`${esc(cod)} · ${esc(t0.eqDesc)}`, `<div class="muted" style="font-size:13px;margin-bottom:10px">${esc(sisNom(t0.sistema))} · ${esc(t0.tipoNombre || '')} · Criticidad ${esc(t0.crit || '—')}</div>
+    <div style="overflow-x:auto"><table class="pv-tbl"><thead><tr><th>Rutina</th><th>Tarea</th><th>Frecuencia</th><th>Semanas</th></tr></thead><tbody>${ts.map(t => {
+      const oc = ocurrencias(t);
+      const chips = t.frec === 'D' ? `<span class="muted">Por turno · ${esc(t.reg || 'formato')}</span>` : t.frec === 'S' ? `<span class="muted">Todas las semanas · ${oc.filter(o => o.est === 'hecho').length} ejecutadas</span>`
+        : oc.map(o => `<span class="pv-st" style="color:${EST[o.est].hex};background:${EST[o.est].hex}1f;margin:0 4px 4px 0">${corto(o.ef)}</span>`).join('') || '<span class="muted">—</span>';
+      return `<tr><td class="mono" style="white-space:nowrap">${esc(t.rutina)}</td><td>${esc(t.tarea)}<div class="muted" style="font-size:12px;margin-top:3px">${esc(respTxt(t))} · ${esc(t.cond)}</div></td><td style="white-space:nowrap">${FREC[t.frec].l}${t.horas ? `<div class="muted" style="font-size:12px">o ${t.horas.toLocaleString('es-PE')} h</div>` : ''}</td><td>${chips}${t.proximo ? `<div class="muted" style="font-size:12px">Próxima: ${esc(t.proximo)}</div>` : ''}${t.conjunto ? `<div class="muted" style="font-size:12px">En la parada de ${esc(t.conjunto)}</div>` : ''}</td></tr>`;
+    }).join('')}</tbody></table></div>`, '<button class="btn" data-x>Cerrar</button>', 980);
+}
+
+// ---------- vista rutinas ----------
+function vRutinas(box) {
+  const B = CFG.biblioteca || {};
+  const usados = new Map(); TAR.forEach(t => { usados.set(t.tipo, (usados.get(t.tipo) || new Set()).add(t.eq)); });
+  box.innerHTML = `<p class="muted" style="font-size:13px;margin:0 0 12px">Rutinas estándar por tipo de equipo. Las diarias se registran en los formatos de Registro de formatos; el resto se programa aquí.</p>
+    ${Object.entries(B).map(([k, b]) => `<details class="pp-card pv-rt" style="padding:0;margin-bottom:10px"><summary>${esc(b.nombre)} <small>${b.rutinas.length} rutinas · ${(usados.get(k) || new Set()).size} equipos</small></summary>
+      <div style="overflow-x:auto;padding:0 6px 8px"><table class="pv-tbl"><thead><tr><th>Código</th><th>Tarea</th><th>Frecuencia</th><th>Responsable</th><th>Condición</th><th>Registro</th></tr></thead><tbody>${b.rutinas.map(r => `<tr>
+        <td class="mono" style="white-space:nowrap"><span class="pv-f" style="display:inline-flex;width:26px;height:22px;font-size:10px;margin-right:6px;background:${FREC[r.frec].hex}">${FREC[r.frec].c}</span>${esc(r.cod)}</td>
+        <td>${esc(r.tarea)}${r.mat ? `<div class="muted" style="font-size:12px;margin-top:3px">${esc(r.mat)}</div>` : ''}</td><td style="white-space:nowrap">${FREC[r.frec].l}${r.horas ? ` o ${r.horas.toLocaleString('es-PE')} h` : ''}</td>
+        <td style="font-size:12.5px">${esc(respTxt(r))}</td><td style="font-size:12.5px">${esc(r.cond)}</td><td style="font-size:12.5px">${esc(r.reg || '')}</td></tr>`).join('')}</tbody></table></div></details>`).join('')}`;
+}
+
+// ---------- vista carga ----------
+function vCarga(box) {
+  const semanas = Array.from({ length: 52 }, (_, i) => masSem(CFG.inicio, i));
+  const mesesK = [...new Set(semanas.map(s => s.slice(0, 7)))];
+  const cap = CFG.capacidad || {};
+  const carga = {};
+  TAR.forEach(t => ocurrencias(t).forEach(o => {
+    const k = o.ef.slice(0, 7); if (!mesesK.includes(k)) return;
+    Object.entries(t.resp || {}).forEach(([r, v]) => { carga[r] = carga[r] || {}; carga[r][k] = (carga[r][k] || 0) + v; });
+  }));
+  box.innerHTML = `<p class="muted" style="font-size:13px;margin:0 0 12px">Horas-hombre programadas por mes frente a la capacidad disponible para preventivo (incluye reprogramaciones). La línea roja es la capacidad.</p>
+    <div class="pv-car">${ROLES.filter(r => carga[r]).map(r => {
+      const vals = mesesK.map(k => carga[r][k] || 0), c = cap[r]?.hhMes, max = Math.max(...vals, c || 0, 1);
+      const tot = vals.reduce((a, b) => a + b, 0);
+      return `<div class="pp-card"><div class="pp-ch"><h3>${esc(r)}</h3><span class="sub">${c ? `Capacidad ${c} HH/mes · ${cap[r].personas} × ${Math.round(cap[r].pct * 100)} % de la jornada · uso promedio ${Math.round(tot / 12 / c * 100)} %` : 'Servicio de terceros'} · ${tot.toFixed(0)} HH en el periodo</span></div>
+        <div class="pv-cap"><div class="pv-bars">${vals.map(v => `<div class="${c && v > c ? 'sobre' : ''}" style="height:${(v / max * 100).toFixed(1)}%"><span>${v ? Math.round(v) : ''}</span></div>`).join('')}</div>
+        ${c ? `<div class="ln" style="bottom:${(c / max * 90).toFixed(1)}px"></div>` : ''}</div>
+        <div class="pv-mes">${mesesK.map(k => { const [y, m] = k.split('-'); return `<span>${MES[+m - 1]}-${y.slice(2)}</span>`; }).join('')}</div></div>`;
+    }).join('')}</div>`;
 }
