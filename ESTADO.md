@@ -132,6 +132,10 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   R-101 Registro de parámetros de sala de máquinas (rangos y nombres de compresores por definir antes de emitir).
 - Impresión: hoja A4 desde un iframe aislado (vertical u horizontal según el formato). Lista maestra en PDF y Excel.
 - Permisos: plantillas y configuración solo las modifica el rol Admin del aplicativo (regla en `firestore.rules`).
+- Visualización por área: aplicativo con `porArea: true` en el catálogo (hoy fmt). En Administración → usuario → Registro de formatos
+  se marcan las áreas (sistemas) → `usuarios/{uid}.apps.fmt.sistemas: [ids]` (vacío = todas). `accesoApp` lo devuelve en
+  `acceso.sistemas`; en fmt `APP.enArea(sistema)` filtra Llenar (vigentes, pendientes) y Registros (lista y filtro de formatos).
+  Plantillas y Lista maestra no se filtran. Es un filtro de pantalla (las reglas de Firestore no lo restringen).
 - Tablas de parámetros: columnas desde la base de equipos (filtro sistema / tipo / ubicación; ubicación "se elige al llenar")
   o lista fija. Opción de estado por equipo (operando, parado, en mantenimiento, fuera de servicio): solo se exigen lecturas a los que operan.
 - Firmas con modo: usuario que envía (firma electrónica), firma en pantalla (nombre + trazo) y supervisor al aprobar.
@@ -214,6 +218,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-25: Formatos — visualización por área (áreas por usuario en Administración; filtra Llenar y Registros).
 - 2026-10-25: Formatos — campos calculados (diferencia, porcentaje), rangos por columna, emisión con revisión del manual y R-301 ósmosis.
 - 2026-10-25: Equipos — ubicaciones como lista controlada (módulo Ubicaciones, aviso de tipeo, unificar).
 - 2026-10-25: Sistema Servicios (SRV) y datos de placa del motor en Equipos.

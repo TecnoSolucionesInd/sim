@@ -154,7 +154,7 @@ const leerLS = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || ''
 const escribirLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { toast('El celular no tiene espacio para guardar el borrador. Envíe o descarte borradores con fotos.', 'err'); return false; } };
 const borradores = () => leerLS(keyB(), {});
 const cola = () => leerLS(keyC(), []);
-const vigentes = () => A.plantillas.filter(p => p.estado === 'vigente' && p.def);
+const vigentes = () => A.plantillas.filter(p => p.estado === 'vigente' && p.def && A.enArea(p.sistema));
 const plantillaPorId = (id) => A.plantillas.find(p => p.id === id);
 const mayus = (t) => t ? t[0].toUpperCase() + t.slice(1) : t;
 const sisNom = (id) => (SISTEMAS.find(s => s.id === Number(id)) || {}).nombre || '';
@@ -223,7 +223,7 @@ function pintarInicio() {
     <div class="ll-h">
       <div class="eyebrow rise">Registro de formatos</div>
       <h1 class="h-display rise d1">Llenar formatos</h1>
-      <div class="ll-sub rise d2"><span>${esc(mayus(fechaLarga(hoy.fechaOp)))}</span>${hoy.turno ? `<span class="pill">Turno ${esc(hoy.turno)}</span>` : ''}</div>
+      <div class="ll-sub rise d2"><span>${esc(mayus(fechaLarga(hoy.fechaOp)))}</span>${hoy.turno ? `<span class="pill">Turno ${esc(hoy.turno)}</span>` : ''}${A.areas.length ? `<span class="pill">${A.areas.map(sisNom).map(esc).join(' · ')}</span>` : ''}</div>
     </div>
     ${c.length ? `<div class="ll-cola ${conError.length ? 'err' : ''} rise d2">${navigator.onLine ? IC.cloud : IC.wifiOff}<div style="flex:1;min-width:180px">${c.length} registro${c.length > 1 ? 's' : ''} en cola de envío${conError.length ? ` · ${esc(conError[0].error)}` : navigator.onLine ? '' : ' · se enviarán al recuperar la señal'}</div><button class="btn sm" id="bCola">Reintentar</button></div>` : ''}
     ${DATA.sinConexion ? '<div class="alert warn rise d2" style="margin-bottom:6px">Sin conexión: los pendientes pueden no estar al día. Puede llenar formatos igual; se enviarán al recuperar la señal.</div>' : ''}

@@ -4,7 +4,7 @@ import { norm } from '../../core/maestros.js';
 import * as D from './datos.js';
 import { renderHoja } from './hoja.js';
 import { IC, modal, imprimir, cargarXlsx, qrSvg, ajustarHoja } from './ui.js';
-import { esc, firmasDe, revTxt } from './modelo.js';
+import { esc, firmasDe, revTxt, sistemaDeCodigo } from './modelo.js';
 import { fechaTxt, fechaISO, duracionTxt } from './logica.js';
 
 const CSS = `
@@ -97,9 +97,13 @@ async function cargar() {
   pintarItems();
 }
 
+// sistema del registro: el de su plantilla (o el que indica su código)
+const sisReg = (r) => A.plantillas.find(p => p.id === r.plantillaId)?.sistema ?? sistemaDeCodigo(r.codigo)?.id;
+
 function filtrados() {
   const q = norm(S.q);
   return LISTA.filter(r => {
+    if (!A.enArea(sisReg(r))) return false;
     if (S.tab !== 'todos' && S.tab !== 'enviado' && r.estado !== S.tab) return false;
     if (S.formato && r.codigo !== S.formato) return false;
     if (S.mios && r.creadoPor !== uidU()) return false;
@@ -109,7 +113,7 @@ function filtrados() {
 }
 
 function pintarLista() {
-  const cods = [...new Set(A.plantillas.filter(p => p.def).map(p => p.codigo))].sort();
+  const cods = [...new Set(A.plantillas.filter(p => p.def && A.enArea(p.sistema)).map(p => p.codigo))].sort();
   MAIN.innerHTML = `
     <div class="rg-h">
       <div><div class="eyebrow rise">Registro de formatos</div><h1 class="h-display rise d1">Registros</h1></div>

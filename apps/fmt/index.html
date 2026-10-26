@@ -1221,7 +1221,10 @@ function modalVersion() {
 
 // =====================================================================
 const APP = {
-  get ctx() { return CTX; }, get cfg() { return CFG; }, get plantillas() { return PLANT; }, get equipos() { return EQ; }
+  get ctx() { return CTX; }, get cfg() { return CFG; }, get plantillas() { return PLANT; }, get equipos() { return EQ; },
+  // áreas (sistemas) asignadas al usuario en Administración: vacío = todas
+  get areas() { return CTX?.acceso?.sistemas || []; },
+  enArea(sistema) { const a = this.areas; return !a.length || a.includes(Number(sistema)); }
 };
 
 function render() {

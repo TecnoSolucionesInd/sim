@@ -26,13 +26,15 @@ export async function cargarPerfil(user) {
 export function accesoApp(user, perfil, appId) {
   const app = APPS.find(a => a.id === appId);
   if (!app) return null;
-  if (esAdmin(user)) return { rol: 'admin', modulos: app.modulos.map(m => m.id) };
+  if (esAdmin(user)) return { rol: 'admin', modulos: app.modulos.map(m => m.id), sistemas: [] };
   if (!perfil || perfil.activo !== true || app.soloAdmin) return null;
   const p = (perfil.apps || {})[appId];
   if (!p || !p.rol) return null;
   const todos = app.modulos.map(m => m.id);
   const modulos = Array.isArray(p.modulos) && p.modulos.length ? p.modulos.filter(m => todos.includes(m)) : todos;
-  return { rol: p.rol, modulos };
+  // sistemas: áreas asignadas en aplicativos por área (vacío = todas)
+  const sistemas = app.porArea && Array.isArray(p.sistemas) ? p.sistemas.map(Number) : [];
+  return { rol: p.rol, modulos, sistemas };
 }
 
 export function appsVisibles(user, perfil) {

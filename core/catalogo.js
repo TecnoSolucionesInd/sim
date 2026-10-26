@@ -76,7 +76,7 @@ export const APPS = [
   },
   {
     id: 'fmt', nombre: 'Registro de formatos', sub: 'Llenado, revisión y control documental',
-    grupo: 'op', estado: 'dev', fase: 'F8', color: '#F7E07C', url: 'apps/fmt/',
+    grupo: 'op', estado: 'dev', fase: 'F8', color: '#F7E07C', url: 'apps/fmt/', porArea: true, // cada usuario ve los formatos de sus áreas (sistemas)
     icon: 'M7 3h8l4 4v14H7zM15 3v4h4M10 11h6M10 15h6M10 19h3',
     modulos: [
       { id: 'llenar', nombre: 'Llenar formatos' },
