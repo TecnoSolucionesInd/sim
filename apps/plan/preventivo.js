@@ -7,6 +7,7 @@
 import { db, toast } from '../../core/core.js';
 import { listarEquipos, colEquipos } from '../../core/equipos.js';
 import { SISTEMAS } from '../../core/maestros.js';
+import { vResumen } from './resumen.js';
 import { doc, getDoc, getDocs, setDoc, updateDoc, collection, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -45,7 +46,7 @@ const rango = (s) => { const a = deIso(s), b = deIso(masSem(s, 0)); b.setDate(b.
 const hoyIso = () => isoD(new Date());
 
 // ---------- estado ----------
-let CTX = null, CFG = null, TAR = [], HOY = lunes(new Date()), SEL = HOY, VISTA = 'semana';
+let CTX = null, CFG = null, TAR = [], HOY = lunes(new Date()), SEL = HOY, VISTA = 'resumen';
 const FIL = { rol: '', sis: '', semanales: false, q: '' };
 const usuario = () => CTX?.perfil?.nombre || CTX?.user?.email || '';
 const gestiona = () => CTX?.esAdmin || ['admin', 'supervisor'].includes(CTX?.rol);
@@ -313,18 +314,18 @@ function pintar() {
     <div class="pp-top"><div><div class="eyebrow">Plan de mantenimiento</div><h1 class="h-display">Plan preventivo</h1>
       <p class="muted" style="margin:8px 0 0;font-size:13.5px">${eqs} equipos · ${TAR.length} tareas · desde ${corto(CFG.inicio)} (52 semanas)</p></div>
       ${gestiona() ? `<button class="btn pp-btn pp-grad" id="pvNueva">${IC.mas}Nueva actividad</button>` : ''}</div>
-    <div class="pv-kpis">
+    <div class="pv-kpis" ${VISTA === 'resumen' ? 'hidden' : ''}>
       <div class="pv-kpi" style="--c:#2ec4a6"><div class="l">Cumplimiento</div><div class="v">${cumpl == null ? '—' : cumpl + '<small>%</small>'}</div><div class="s">${pas.length ? `${hechas} de ${pas.length} tareas vencidas` : 'Aún no hay semanas cerradas'}</div></div>
       <div class="pv-kpi"><div class="l">${REF === HOY ? 'Esta semana' : 'Semana del ' + corto(REF)}</div><div class="v">${sem.length}</div><div class="s">${sem.filter(o => o.est === 'hecho').length} ejecutadas · ${hhSem.toFixed(1).replace('.', ',')} HH</div></div>
       <div class="pv-kpi" style="--c:#ff6b6b"><div class="l">Atrasadas</div><div class="v">${atr.length}</div><div class="s">De semanas anteriores</div></div>
       <div class="pv-kpi" style="--c:#f5b54a"><div class="l">Meta</div><div class="v">90<small>%</small></div><div class="s">Cumplimiento mensual del PMP</div></div>
     </div>
-    <div class="pp-tabsbar">${[['semana', 'Semana'], ['calendario', 'Calendario'], ['equipos', 'Equipos'], ['rutinas', 'Rutinas'], ['carga', 'Carga HH']].map(([k, l]) => `<button class="pp-tab ${VISTA === k ? 'on' : ''}" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="pp-tabsbar">${[['resumen', 'Resumen'], ['semana', 'Semana'], ['calendario', 'Calendario'], ['equipos', 'Equipos'], ['rutinas', 'Rutinas'], ['carga', 'Carga HH']].map(([k, l]) => `<button class="pp-tab ${VISTA === k ? 'on' : ''}" data-v="${k}">${l}</button>`).join('')}</div>
     <div id="pvV"></div></div>`;
   CTX.main.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { VISTA = b.dataset.v; pintar(); });
   const nb = CTX.main.querySelector('#pvNueva'); if (nb) nb.onclick = () => editarActividad(null);
   const box = CTX.main.querySelector('#pvV');
-  ({ semana: vSemana, calendario: vCalendario, equipos: vEquipos, rutinas: vRutinas, carga: vCarga })[VISTA](box);
+  ({ resumen: (b) => vResumen(b, { CFG, TAR, HOY, ocurrencias, hhProp, sisNom, FREC, corto, masSem, deIso, numSem }), semana: vSemana, calendario: vCalendario, equipos: vEquipos, rutinas: vRutinas, carga: vCarga })[VISTA](box);
 }
 
 function filtrosHtml(conSemanales = false) {

@@ -169,6 +169,13 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   Vistas: Semana (atrasadas + programadas por equipo; Ejecutado / Reprogramar / No ejecutado; OT semanal imprimible A4 horizontal por
   especialidad), Calendario en formato línea de tiempo (periodo Semana / Mes / Trimestre / Año con navegación y salto a fecha; actividad con texto completo; barras por frecuencia y estado; línea de hoy), Equipos, Rutinas, Carga HH vs capacidad. Cumplimiento = ejecutadas / ocurrencias de semanas cerradas.
   Operador registra ejecución; Admin/Supervisor reprograman, marcan no ejecutado y deshacen.
+- Resumen (pestaña inicial, `apps/plan/resumen.js`, Chart.js): filtros periodo (acumulado, plan, trimestre, mes), sistema, especialidad
+  y criticidad. Indicadores: cumplimiento (ejecutadas / vencidas, meta 90 %, estado En meta / Bajo meta / Crítico), avance del periodo,
+  backlog (tareas, HH y semanas de capacidad), HH ejecutadas/programadas, % reprogramación, servicios de terceros. Gráficos: programado
+  vs ejecutado (semana o mes), cumplimiento acumulado vs meta, estado por sistema y por especialidad, uso de capacidad y carga de las
+  próximas 8 semanas, tareas por frecuencia. Alertas priorizadas (atrasos en criticidad A, bajo meta, no ejecutadas, sobrecarga semanal,
+  terceros en 5 semanas, overhauls, horómetro), equipos con más atrasos y trabajos clave de las próximas 2 semanas.
+  Colores: estados reservados con texto; especialidades con paleta categórica validada para fondo oscuro (orden fijo).
 - Actividades propias (Admin/Supervisor): "Nueva actividad" o "Agregar actividad a este equipo" (cualquier equipo de la base, también
   los que aún no tienen plan): tarea, frecuencia (única vez, S, M, T, SE, A), primera fecha, responsables con HH, condición, registro,
   materiales; opción de partir de una rutina de la biblioteca. Se guardan con `origen: 'manual'` y código P-01, P-02… por equipo.
@@ -237,6 +244,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-26: Plan preventivo — pestaña Resumen (dashboard del planner con filtros, indicadores, gráficos y alertas).
 - 2026-10-26: Plan preventivo — calendario en formato línea de tiempo con filtro por semana, mes, trimestre o año.
 - 2026-10-26: PMP v2 (terceros, capacidad), actividades propias en el plan, actualización de semilla y menú lateral ocultable.
 - 2026-10-26: Plan preventivo — módulo construido y plan inicial de 38 equipos (rutinas, calendario 52 semanas, OT semanal, cumplimiento, carga HH).
