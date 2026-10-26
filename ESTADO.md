@@ -167,7 +167,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   nivelado por especialidad; compresores por horómetro desde el overhaul; transformadores en bloque en feb; anuales con parada en
   temporada baja). Se carga una vez con "Cargar plan inicial" (Admin/Supervisor) y corrige descripciones en Equipos (SFT 4/5, REF-MOT-05).
   Vistas: Semana (atrasadas + programadas por equipo; Ejecutado / Reprogramar / No ejecutado; OT semanal imprimible A4 horizontal por
-  especialidad), Calendario 52 semanas, Equipos, Rutinas, Carga HH vs capacidad. Cumplimiento = ejecutadas / ocurrencias de semanas cerradas.
+  especialidad), Calendario en formato línea de tiempo (periodo Semana / Mes / Trimestre / Año con navegación y salto a fecha; actividad con texto completo; barras por frecuencia y estado; línea de hoy), Equipos, Rutinas, Carga HH vs capacidad. Cumplimiento = ejecutadas / ocurrencias de semanas cerradas.
   Operador registra ejecución; Admin/Supervisor reprograman, marcan no ejecutado y deshacen.
 - Actividades propias (Admin/Supervisor): "Nueva actividad" o "Agregar actividad a este equipo" (cualquier equipo de la base, también
   los que aún no tienen plan): tarea, frecuencia (única vez, S, M, T, SE, A), primera fecha, responsables con HH, condición, registro,
@@ -237,6 +237,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-26: Plan preventivo — calendario en formato línea de tiempo con filtro por semana, mes, trimestre o año.
 - 2026-10-26: PMP v2 (terceros, capacidad), actividades propias en el plan, actualización de semilla y menú lateral ocultable.
 - 2026-10-26: Plan preventivo — módulo construido y plan inicial de 38 equipos (rutinas, calendario 52 semanas, OT semanal, cumplimiento, carga HH).
 - 2026-10-25: Formatos — visualización por área (áreas por usuario en Administración; filtra Llenar y Registros).

@@ -95,20 +95,40 @@ const CSS = `
 .pv-st{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
 .pv-st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .pv-meta{font-size:11.5px;color:var(--tx-3);text-align:right;margin-top:3px}
-.pv-cal{overflow:auto;border:1px solid var(--pp-line);border-radius:14px;max-height:72vh;background:var(--pp-card)}
-.pv-cal table{border-collapse:separate;border-spacing:0;font-size:12px}
-.pv-cal th,.pv-cal td{border-bottom:1px solid rgba(255,255,255,.06);padding:0;height:24px}
-.pv-cal thead th{position:sticky;top:0;background:#3E4C5D;z-index:2;font:600 10.5px var(--f-mono);color:var(--tx-3)}
-.pv-cal thead tr:nth-child(2) th{top:24px}
-.pv-cal .fx{position:sticky;left:0;background:#37444f;z-index:1;text-align:left;padding:0 10px;white-space:nowrap;min-width:250px;max-width:250px;overflow:hidden;text-overflow:ellipsis}
-.pv-cal thead .fx{z-index:3}
-.pv-cal .eqr td{background:rgba(255,255,255,.04);font-weight:600}
-.pv-cal .eqr .fx{background:#3d4b58}
-.pv-cal td.c{width:24px;min-width:24px;text-align:center;cursor:pointer}
-.pv-cal td.hoy{background:rgba(59,180,229,.12)}
-.pv-cal .m{display:inline-flex;width:20px;height:18px;border-radius:5px;align-items:center;justify-content:center;font:700 9.5px var(--f-mono);color:#14202b}
-.pv-cal .m.hecho{background:#2ec4a6!important}.pv-cal .m.atrasada{background:#ff6b6b!important;color:#fff}.pv-cal .m.no{background:#5d6b79!important;color:#cfd8e3}
-.pv-cal .m.orig{opacity:.3;outline:1px dashed #f5b54a}
+.pv-seg{display:inline-flex;border:1px solid var(--pp-line);border-radius:999px;padding:3px;background:rgba(255,255,255,.04)}
+.pv-seg button{border:0;background:transparent;color:var(--tx-2);padding:7px 14px;border-radius:999px;font:500 13px var(--f-body);cursor:pointer}
+.pv-seg button.on{background:linear-gradient(120deg,var(--pp-acc2),var(--pp-acc));color:#fff}
+.pv-gwrap{overflow-x:auto;border-radius:10px;max-height:72vh;overflow-y:auto}
+.pv-gantt{position:relative}
+.pv-grow{display:grid;grid-template-columns:440px minmax(0,1fr);align-items:stretch;border-bottom:1px solid var(--pp-line)}
+.pv-grow:hover{background:rgba(255,255,255,.025)}
+.pv-gname{padding:9px 12px;font-size:13px;line-height:1.4;position:sticky;left:0;background:#3a4755;z-index:2;border-right:1px solid var(--pp-line)}
+.pv-gact{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;align-items:start}
+.pv-gact .pv-f{width:28px;height:26px;font-size:10.5px}
+.pv-gact .c{font-family:var(--f-mono);font-size:11px;color:var(--tx-3)}
+.pv-gact .x{font-size:13px;margin:2px 0;white-space:normal}
+.pv-geq{background:rgba(59,180,229,.06)}
+.pv-geq .pv-gname{background:#3d4c5c;font-family:var(--f-display);font-weight:600;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.pv-geq .pv-gname b{font-family:var(--f-mono);font-weight:500;color:var(--mint-2);font-size:12.5px}
+.pv-geq .pv-gname .r{margin-left:auto;font:400 11px var(--f-body);color:var(--tx-3)}
+.pv-gtrack{position:relative;min-height:40px}
+.pv-gb{position:absolute;top:50%;transform:translateY(-50%);height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font:700 10.5px var(--f-mono);color:#14202b;cursor:pointer;white-space:nowrap;overflow:hidden;padding:0 4px;transition:filter .2s,transform .2s}
+.pv-gb:hover{filter:brightness(1.12);transform:translateY(-50%) scaleY(1.08)}
+.pv-gb.atrasada{color:#fff}.pv-gb.no{color:#cfd8e3}
+.pv-gb.orig{border:1.5px dashed #f5b54a;color:#f5b54a;cursor:default}
+.pv-gb.oh{background:#b4232c;color:#fff;cursor:default}
+.pv-ghead{position:sticky;top:0;z-index:4;background:#3E4C5D}
+.pv-ghead .pv-gname{background:#3E4C5D;font:600 11.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--tx-3);display:flex;align-items:flex-end}
+.pv-gmonths,.pv-gweeks{position:relative;height:24px}
+.pv-gmonths{border-bottom:1px solid var(--pp-line)}
+.pv-gmonths div,.pv-gweeks div{position:absolute;top:0;height:100%;font-size:11px;color:var(--tx-3);padding:5px 6px;border-left:1px solid var(--pp-line);white-space:nowrap;overflow:hidden}
+.pv-gmonths div{color:var(--tx);font-weight:700}
+.pv-gweeks div.hoy{color:#7cc8f8;font-weight:700}
+.pv-gvl{position:absolute;top:48px;bottom:0;left:440px;right:0;pointer-events:none;z-index:1}
+.pv-gvl div{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(255,255,255,.07)}
+.pv-gvl .hoy{border-left:2px solid var(--pp-atr);z-index:3}
+.pv-gvl .hoy span{position:absolute;top:2px;left:4px;background:var(--pp-atr);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px}
+@media (max-width:820px){.pv-grow{grid-template-columns:260px minmax(0,1fr)}.pv-gvl{left:260px}}
 .pv-leg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--tx-3);margin:10px 0}
 .pv-leg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
 .pv-eqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:12px}
@@ -478,43 +498,103 @@ function ordenTrabajo(lista) {
   w.document.close();
 }
 
-// ---------- vista calendario ----------
+// ---------- vista calendario (formato línea de tiempo) ----------
+const CAL = { modo: 'mes', ref: null };
+function rangoCal() {
+  const ini = CFG.inicio, fin = finPlan();
+  const ref = CAL.ref || (HOY < ini ? ini : HOY > fin ? fin : HOY);
+  CAL.ref = ref;
+  const todas = Array.from({ length: 52 }, (_, i) => masSem(ini, i));
+  const d = deIso(ref);
+  let sem, titulo;
+  if (CAL.modo === 'anio') { sem = todas; titulo = `${corto(ini)} – ${corto(masSem(fin, 0))} · 52 semanas`; }
+  else if (CAL.modo === 'semana') { sem = [ref]; titulo = `Semana ${numSem(ref)} · ${rango(ref)}`; }
+  else if (CAL.modo === 'trimestre') {
+    const m0 = Math.floor(d.getMonth() / 3) * 3, y = d.getFullYear();
+    sem = todas.filter(s => { const x = deIso(s); return x.getFullYear() === y && x.getMonth() >= m0 && x.getMonth() < m0 + 3; });
+    titulo = `${MES[m0]} – ${MES[m0 + 2]} ${y}`;
+  } else {
+    sem = todas.filter(s => s.slice(0, 7) === ref.slice(0, 7));
+    titulo = `${['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'][d.getMonth()]} ${d.getFullYear()}`;
+  }
+  return { sem: sem.length ? sem : [ref], titulo, ini, fin };
+}
+function moverCal(dir) {
+  const { ini, fin } = rangoCal(); const r = deIso(CAL.ref);
+  let s;
+  if (CAL.modo === 'semana') s = masSem(CAL.ref, dir);
+  else {
+    const paso = CAL.modo === 'mes' ? 1 : 3, m0 = CAL.modo === 'mes' ? r.getMonth() : Math.floor(r.getMonth() / 3) * 3;
+    const d = new Date(r.getFullYear(), m0 + paso * dir, 1);
+    s = lunes(d); if (deIso(s).getMonth() !== d.getMonth()) s = masSem(s, 1);   // primer lunes del mes
+  }
+  CAL.ref = s < ini ? ini : s > fin ? fin : s;
+}
 function vCalendario(box) {
-  const semanas = Array.from({ length: 52 }, (_, i) => masSem(CFG.inicio, i));
-  const tars = TAR.filter(t => t.frec !== 'D' && pasaFiltro(t) && (FIL.semanales || t.frec !== 'S'));
-  const porEq = new Map();
-  tars.forEach(t => { if (!porEq.has(t.eq)) porEq.set(t.eq, []); porEq.get(t.eq).push(t); });
-  const meses = []; semanas.forEach((s, i) => { const k = s.slice(0, 7); if (!meses.length || meses[meses.length - 1].k !== k) meses.push({ k, n: 1, d: deIso(s) }); else meses[meses.length - 1].n++; });
-  const fila = (t) => {
-    const cel = {};
-    ocurrencias(t).forEach(o => {
-      cel[o.ef] = o;
-      if (o.reprog && o.s !== o.ef && !cel[o.s]) cel[o.s] = { ...o, orig: true };
-    });
-    return `<tr><td class="fx" title="${esc(t.tarea)}"><span style="font-family:var(--f-mono);color:var(--tx-3)">${esc(t.rutina)}</span> ${esc(t.tarea)}</td>${semanas.map(s => {
-      const o = cel[s]; const f = FREC[t.frec];
-      return `<td class="c ${s === HOY ? 'hoy' : ''}" ${o && !o.orig ? `data-t="${t.id}" data-s="${o.s}"` : ''}>${o ? `<span class="m ${o.orig ? 'orig' : o.est}" style="background:${f.hex}">${o.est === 'hecho' && !o.orig ? '✓' : f.c}</span>` : ''}</td>`;
-    }).join('')}</tr>`;
-  };
+  const { sem, titulo, ini, fin } = rangoCal();
+  const set = new Set(sem), n = sem.length, w0 = sem[0];
+  const pos = (s) => (Math.round((deIso(s) - deIso(w0)) / (7 * DIA)) / n) * 100;
+  const anchoMin = CAL.modo === 'anio' ? 1500 : CAL.modo === 'trimestre' ? 1100 : 900;
+  const etiqueta = CAL.modo !== 'anio';
+  const tars = TAR.filter(t => t.frec !== 'D' && pasaFiltro(t) && (FIL.semanales || t.frec !== 'S'))
+    .map(t => {
+      const marcas = [];
+      ocurrencias(t).forEach(o => {
+        if (set.has(o.ef)) marcas.push({ o, s: o.ef });
+        if (o.reprog && o.s !== o.ef && set.has(o.s)) marcas.push({ o, s: o.s, orig: true });
+      });
+      return { t, marcas };
+    }).filter(x => CAL.modo === 'anio' || x.marcas.length);
+  const porEq = new Map(); tars.forEach(x => { if (!porEq.has(x.t.eq)) porEq.set(x.t.eq, []); porEq.get(x.t.eq).push(x); });
   const ev = CFG.eventos || {};
-  box.innerHTML = `${filtrosHtml(true)}
-    <div class="pv-leg">${ORD_F.map(k => `<span><i style="background:${FREC[k].hex}"></i>${FREC[k].l}</span>`).join('')}<span><i style="background:#2ec4a6"></i>Ejecutado</span><span><i style="background:#ff6b6b"></i>Atrasado</span><span><i style="background:#b4232c"></i>Overhaul</span><span>Toque una tarea para registrarla</span></div>
-    <div class="pv-cal"><table>
-      <thead><tr><th class="fx">Equipo / rutina</th>${meses.map(m => `<th colspan="${m.n}" style="text-align:left;padding-left:4px;border-left:1px solid rgba(255,255,255,.1);color:var(--tx)">${MES[m.d.getMonth()]}-${String(m.d.getFullYear()).slice(2)}</th>`).join('')}</tr>
-        <tr><th class="fx"></th>${semanas.map(s => `<th style="${s === HOY ? 'color:#7cc8f8' : ''}">${deIso(s).getDate()}</th>`).join('')}</tr></thead>
-      <tbody>${[...porEq.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([cod, ts]) => {
-        ts.sort((a, b) => ORD_F.indexOf(a.frec) - ORD_F.indexOf(b.frec) || a.rutina.localeCompare(b.rutina));
-        const ovh = (ev[cod] || []);
-        return `<tr class="eqr"><td class="fx"><span style="font-family:var(--f-mono);color:var(--mint-2)">${esc(cod)}</span> ${esc(ts[0].eqDesc)}</td>${semanas.map(s => { const o = ovh.find(x => x.semana === s); return `<td class="c ${s === HOY ? 'hoy' : ''}">${o ? `<span class="m" title="${esc(o.texto)}" style="background:#b4232c;color:#fff;width:22px">OH</span>` : ''}</td>`; }).join('')}</tr>${ts.map(fila).join('')}`;
-      }).join('') || `<tr><td class="fx muted">Sin tareas con este filtro</td></tr>`}</tbody></table></div>`;
+  const meses = []; sem.forEach(s => { const k = s.slice(0, 7); if (!meses.length || meses[meses.length - 1].k !== k) meses.push({ k, desde: s, n: 1 }); else meses[meses.length - 1].n++; });
+  const txtEst = (o, orig) => orig ? 'Reprogramada' : o.est === 'hecho' ? 'Ejecutada' : o.est === 'atrasada' ? 'Atrasada' : o.est === 'no' ? 'No ejecutada' : 'Programada';
+  const barra = (t, m) => {
+    const f = FREC[t.frec], o = m.o, est = m.orig ? 'orig' : o.est;
+    const bg = est === 'hecho' ? '#2ec4a6' : est === 'atrasada' ? '#ff6b6b' : est === 'no' ? '#5d6b79' : f.hex;
+    const lbl = !etiqueta ? (o.est === 'hecho' && !m.orig ? '✓' : f.c)
+      : o.est === 'hecho' && !m.orig ? `✓ ${f.c}${o.e?.fecha ? ' · ' + corto(o.e.fecha) : ''}` : `${f.c} · ${txtEst(o, m.orig)}`;
+    return `<div class="pv-gb ${est}" ${m.orig ? '' : `data-t="${t.id}" data-s="${o.s}"`} style="left:calc(${pos(m.s)}% + 2px);width:calc(${100 / n}% - 4px);background:${est === 'orig' ? 'transparent' : bg}" title="${esc(f.l)} · ${txtEst(o, m.orig)} · semana del ${corto(m.s)}${o.reprog && !m.orig ? ` (reprogramada desde ${corto(o.s)})` : ''}">${lbl}</div>`;
+  };
+  let h = `<div class="pv-grow pv-ghead"><div class="pv-gname">Equipo / actividad</div><div><div class="pv-gmonths">${meses.map(m => { const d = deIso(m.desde); return `<div style="left:${pos(m.desde)}%;width:${m.n / n * 100}%">${CAL.modo === 'anio' ? `${MES[d.getMonth()]}-${String(d.getFullYear()).slice(2)}` : `${['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'][d.getMonth()]} ${d.getFullYear()}`}</div>`; }).join('')}</div>
+    <div class="pv-gweeks">${sem.map(s => `<div style="left:${pos(s)}%;width:${100 / n}%" class="${s === HOY ? 'hoy' : ''}">${CAL.modo === 'anio' ? deIso(s).getDate() : `Sem ${numSem(s)} · ${corto(s)}`}</div>`).join('')}</div></div></div>`;
+  [...porEq.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([cod, xs]) => {
+    xs.sort((a, b) => ORD_F.indexOf(a.t.frec) - ORD_F.indexOf(b.t.frec) || a.t.rutina.localeCompare(b.t.rutina));
+    const t0 = xs[0].t, ovh = (ev[cod] || []).filter(x => set.has(x.semana));
+    h += `<div class="pv-grow pv-geq"><div class="pv-gname"><b>${esc(cod)}</b>${esc(t0.eqDesc)}<span class="r">${esc(sisNom(t0.sistema))}</span></div><div class="pv-gtrack">${ovh.map(x => `<div class="pv-gb oh" style="left:calc(${pos(x.semana)}% + 2px);width:calc(${100 / n}% - 4px)" title="${esc(x.texto)}">${etiqueta ? 'Overhaul' : 'OH'}</div>`).join('')}</div></div>`;
+    xs.forEach(({ t, marcas }) => {
+      h += `<div class="pv-grow"><div class="pv-gname pv-gact"><span class="pv-f" style="background:${FREC[t.frec].hex}" title="${FREC[t.frec].l}">${FREC[t.frec].c}</span>
+        <div><div class="c">${esc(t.rutina)}${t.origen === 'manual' ? '<span class="pv-man">PROPIA</span>' : ''} · ${FREC[t.frec].l}${t.horas ? ` o ${t.horas.toLocaleString('es-PE')} h` : ''}</div><div class="x">${esc(t.tarea)}</div><div class="c">${esc(respTxt(t))} · ${esc(t.cond)}</div></div></div>
+        <div class="pv-gtrack">${marcas.map(m => barra(t, m)).join('')}</div></div>`;
+    });
+  });
+  if (!porEq.size) h += `<div class="pv-grow"><div class="pv-gname muted">No hay actividades en este periodo con el filtro elegido.</div><div></div></div>`;
+  const vl = sem.map(s => `<div style="left:${pos(s)}%"></div>`).join('') + (set.has(HOY) ? `<div class="hoy" style="left:${pos(HOY) + 50 / n}%"><span>Hoy</span></div>` : '');
+  box.innerHTML = `
+    <div class="pv-nav">
+      <div class="pv-seg">${[['semana', 'Semana'], ['mes', 'Mes'], ['trimestre', 'Trimestre'], ['anio', 'Año']].map(([k, l]) => `<button class="${CAL.modo === k ? 'on' : ''}" data-cm="${k}">${l}</button>`).join('')}</div>
+      ${CAL.modo !== 'anio' ? `<button class="btn pp-btn" id="cAnt" ${sem[0] <= ini ? 'disabled' : ''}>${IC.izq}</button>` : ''}
+      <div class="sem" style="min-width:200px">${esc(titulo)}</div>
+      ${CAL.modo !== 'anio' ? `<button class="btn pp-btn" id="cSig" ${sem[sem.length - 1] >= fin ? 'disabled' : ''}>${IC.der}</button>` : ''}
+      ${HOY >= ini && HOY <= fin && !set.has(HOY) ? '<button class="btn pp-btn" id="cHoy">Hoy</button>' : ''}
+      <span class="pp-sp"></span>
+      ${CAL.modo !== 'anio' ? `<input class="field" type="date" id="cFe" value="${CAL.ref}" min="${ini}" max="${masSem(fin, 0)}" style="height:38px;width:auto;font-size:13px" title="Ir a una fecha">` : ''}
+    </div>
+    ${filtrosHtml(true)}
+    <div class="pv-leg">${ORD_F.map(k => `<span><i style="background:${FREC[k].hex}"></i>${FREC[k].l}</span>`).join('')}<span><i style="background:#2ec4a6"></i>Ejecutada</span><span><i style="background:#ff6b6b"></i>Atrasada</span><span><i style="background:transparent;border:1.5px dashed #f5b54a"></i>Semana original (reprogramada)</span><span><i style="background:#b4232c"></i>Overhaul</span></div>
+    <div class="pp-card" style="padding:10px"><div class="pv-gwrap"><div class="pv-gantt" style="min-width:${anchoMin}px">${h}<div class="pv-gvl">${vl}</div></div></div>
+    <div class="pp-foot">${tars.length} actividades · toque una barra para registrar la ejecución o reprogramar${!FIL.semanales ? ' · las semanales están ocultas (marque "Semanales")' : ''}</div></div>`;
+  box.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { CAL.modo = b.dataset.cm; vCalendario(box); });
+  const an = box.querySelector('#cAnt'); if (an) an.onclick = () => { moverCal(-1); vCalendario(box); };
+  const sg = box.querySelector('#cSig'); if (sg) sg.onclick = () => { moverCal(1); vCalendario(box); };
+  const hy = box.querySelector('#cHoy'); if (hy) hy.onclick = () => { CAL.ref = HOY; vCalendario(box); };
+  const fe = box.querySelector('#cFe'); if (fe) fe.onchange = () => { if (fe.value) { CAL.ref = lunes(deIso(fe.value)); vCalendario(box); } };
   enlazarFiltros(box, () => vCalendario(box));
-  box.querySelectorAll('td[data-t]').forEach(td => td.onclick = () => {
-    const t = TAR.find(x => x.id === td.dataset.t), s = td.dataset.s, o = ocurrencias(t).find(x => x.s === s);
+  box.querySelectorAll('.pv-gb[data-t]').forEach(el => el.onclick = () => {
+    const t = TAR.find(x => x.id === el.dataset.t), s = el.dataset.s, o = ocurrencias(t).find(x => x.s === s);
     const bg = modal(`${esc(t.eq)} · semana del ${corto(o.ef)}`, `<div class="pv-eq" style="margin:0">${itemHtml(o, true)}</div>`, '<button class="btn" data-x>Cerrar</button>', 760);
     enlazarAcciones(bg, () => { bg.remove(); pintar(); });
   });
-  const hoyTd = box.querySelector('thead th[style*="7cc8f8"]');
-  if (hoyTd) { const c = box.querySelector('.pv-cal'); c.scrollLeft = Math.max(0, hoyTd.offsetLeft - 320); }
 }
 
 // ---------- vista equipos ----------
