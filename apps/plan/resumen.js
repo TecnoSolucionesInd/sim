@@ -15,7 +15,7 @@ const F = { periodo: '', sis: '', rol: '', crit: '' };
 let GR = [];
 
 const CSS = `
-.rs-f{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--pp-line)}
+.rs-f{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;padding:12px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--pp-line)}
 .rs-f label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx-3);font-weight:600}
 .rs-f select{height:38px;font-size:13px;padding:0 30px 0 10px;width:auto;min-width:150px;text-transform:none;letter-spacing:0}
 .rs-f .nota{margin-left:auto;font-size:12px;color:var(--tx-3);max-width:340px;line-height:1.4}
@@ -158,15 +158,15 @@ export function vResumen(box, M) {
 
   box.innerHTML = `
     <div class="rs-f">
-      <label>Periodo<select id="rsP">
+      <label>Periodo<select class="field" id="rsP">
         <option value="ac:" ${F.periodo === 'ac:' ? 'selected' : ''}>Acumulado a la fecha</option>
         <option value="plan:" ${F.periodo === 'plan:' ? 'selected' : ''}>Todo el plan (52 semanas)</option>
         <optgroup label="Trimestre">${trims.map(q => { const [y, n] = q.split('-Q'); return `<option value="q:${q}" ${F.periodo === 'q:' + q ? 'selected' : ''}>${n}.º trimestre ${y}</option>`; }).join('')}</optgroup>
         <optgroup label="Mes">${mesesK.map(k => { const [y, m] = k.split('-').map(Number); return `<option value="m:${k}" ${F.periodo === 'm:' + k ? 'selected' : ''}>${MESL[m - 1]} ${y}</option>`; }).join('')}</optgroup>
       </select></label>
-      <label>Sistema<select id="rsS"><option value="">Todos</option>${sisOpts.map(s => `<option value="${s}" ${F.sis === s ? 'selected' : ''}>${esc(sisNom(s))}</option>`).join('')}</select></label>
-      <label>Especialidad<select id="rsR"><option value="">Todas</option>${roles.map(r => `<option ${F.rol === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select></label>
-      <label>Criticidad<select id="rsC"><option value="">Todas</option>${['A', 'B', 'C'].filter(c => TAR.some(t => t.crit === c)).map(c => `<option ${F.crit === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+      <label>Sistema<select class="field" id="rsS"><option value="">Todos</option>${sisOpts.map(s => `<option value="${s}" ${F.sis === s ? 'selected' : ''}>${esc(sisNom(s))}</option>`).join('')}</select></label>
+      <label>Especialidad<select class="field" id="rsR"><option value="">Todas</option>${roles.map(r => `<option ${F.rol === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select></label>
+      <label>Criticidad<select class="field" id="rsC"><option value="">Todas</option>${['A', 'B', 'C'].filter(c => TAR.some(t => t.crit === c)).map(c => `<option ${F.crit === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
       <div class="nota">Cumplimiento = ejecutadas / vencidas (semanas cerradas). Meta ${META} %.${HOY < CFG.inicio ? ` El plan inicia el ${corto(CFG.inicio)}: por ahora se muestra lo programado.` : ''}</div>
     </div>
 

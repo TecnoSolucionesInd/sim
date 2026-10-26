@@ -76,7 +76,24 @@ const CSS = `
 .pv-kpi .v{font-family:var(--f-display);font-size:28px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
 .pv-kpi .v small{font-size:14px;color:var(--tx-3)}
 .pv-kpi .s{font-size:12px;color:var(--tx-3);margin-top:2px}
-.pv-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.pv-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pv-tabs{display:flex;gap:4px 26px;flex-wrap:wrap;border-bottom:1px solid var(--pp-line);margin:18px 0 16px}
+.pv-tabs button{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 2px 11px;color:var(--tx-3);font:600 14.5px var(--f-display);cursor:pointer;transition:color .2s,border-color .2s}
+.pv-tabs button:hover{color:var(--tx)}
+.pv-tabs button.on{color:#fff;border-bottom-color:var(--pp-acc)}
+.pv-tb{display:flex;flex-wrap:wrap;gap:14px 0;align-items:stretch;padding:12px 6px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--pp-line);margin-bottom:14px}
+.pv-blk{display:flex;flex-direction:column;gap:7px;padding:0 16px;min-width:0}
+.pv-blk+.pv-blk{border-left:1px solid var(--pp-line)}
+.pv-blk.der{margin-left:auto}
+.pv-tb.filas{flex-direction:column;gap:12px}
+.pv-tb.filas .pv-blk+.pv-blk{border-left:0;border-top:1px solid var(--pp-line);padding-top:12px}
+.pv-blk .lb{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-3);font-weight:600}
+.pv-blk .fila{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pv-blk select,.pv-blk input.field{height:38px;font-size:13px;width:auto}
+.pv-blk select{padding:0 30px 0 10px}
+.pv-blk .sem{font-family:var(--f-display);font-weight:600;font-size:15px;min-width:170px;text-align:center;line-height:1.2}
+.pv-blk .sem small{display:block;font-family:var(--f-body);font-weight:400;font-size:12px;color:var(--tx-3)}
+@media (max-width:820px){.pv-blk{padding:0 10px;width:100%}.pv-blk+.pv-blk{border-left:0;border-top:1px solid var(--pp-line);padding-top:12px}.pv-blk.der{margin-left:0}}
 .pv-nav .sem{font-family:var(--f-display);font-weight:600;font-size:16px;min-width:230px;text-align:center}
 .pv-nav .sem small{display:block;font-family:var(--f-body);font-weight:400;font-size:12px;color:var(--tx-3)}
 .pv-sec{margin:18px 0 8px;font-family:var(--f-display);font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -320,7 +337,7 @@ function pintar() {
       <div class="pv-kpi" style="--c:#ff6b6b"><div class="l">Atrasadas</div><div class="v">${atr.length}</div><div class="s">De semanas anteriores</div></div>
       <div class="pv-kpi" style="--c:#f5b54a"><div class="l">Meta</div><div class="v">90<small>%</small></div><div class="s">Cumplimiento mensual del PMP</div></div>
     </div>
-    <div class="pp-tabsbar">${[['resumen', 'Resumen'], ['semana', 'Semana'], ['calendario', 'Calendario'], ['equipos', 'Equipos'], ['rutinas', 'Rutinas'], ['carga', 'Carga HH']].map(([k, l]) => `<button class="pp-tab ${VISTA === k ? 'on' : ''}" data-v="${k}">${l}</button>`).join('')}</div>
+    <nav class="pv-tabs" role="tablist">${[['resumen', 'Resumen'], ['semana', 'Semana'], ['calendario', 'Calendario'], ['equipos', 'Equipos'], ['rutinas', 'Rutinas'], ['carga', 'Carga HH']].map(([k, l]) => `<button role="tab" aria-selected="${VISTA === k}" class="${VISTA === k ? 'on' : ''}" data-v="${k}">${l}</button>`).join('')}</nav>
     <div id="pvV"></div></div>`;
   CTX.main.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { VISTA = b.dataset.v; pintar(); });
   const nb = CTX.main.querySelector('#pvNueva'); if (nb) nb.onclick = () => editarActividad(null);
@@ -328,19 +345,21 @@ function pintar() {
   ({ resumen: (b) => vResumen(b, { CFG, TAR, HOY, ocurrencias, hhProp, sisNom, FREC, corto, masSem, deIso, numSem }), semana: vSemana, calendario: vCalendario, equipos: vEquipos, rutinas: vRutinas, carga: vCarga })[VISTA](box);
 }
 
+// Bloque "Filtros" del panel de controles (se usa en Semana, Calendario y Equipos)
 function filtrosHtml(conSemanales = false) {
   const sis = [...new Set(TAR.map(t => String(t.sistema)))].filter(x => x !== '').sort();
-  return `<div class="pp-tools">
-    <button class="pp-chip ${FIL.rol === '' ? 'on' : ''}" data-rol="">Todas</button>
-    ${ROLES.filter(r => TAR.some(t => (t.resp || {})[r] != null)).map(r => `<button class="pp-chip ${FIL.rol === r ? 'on' : ''}" data-rol="${esc(r)}">${esc(r)}</button>`).join('')}
-    <span class="pp-sp"></span>
-    <select class="field" id="pvSis" style="height:36px;width:auto;font-size:13px;padding:0 30px 0 10px"><option value="">Todos los sistemas</option>${sis.map(s => `<option value="${s}" ${FIL.sis === s ? 'selected' : ''}>${esc(sisNom(s))}</option>`).join('')}</select>
-    ${conSemanales ? `<label class="check" style="font-size:13px"><input type="checkbox" id="pvSem" ${FIL.semanales ? 'checked' : ''}>Semanales</label>` : ''}
-    <input class="field" id="pvQ" type="search" placeholder="Buscar equipo o tarea" value="${esc(FIL.q)}" style="height:36px;width:200px;font-size:13px">
-  </div>`;
+  const roles = ROLES.filter(r => TAR.some(t => (t.resp || {})[r] != null));
+  return `<div class="pv-blk"><span class="lb">Filtros</span><div class="fila">
+    <select class="field" id="pvRol" aria-label="Especialidad"><option value="">Todas las especialidades</option>${roles.map(r => `<option ${FIL.rol === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>
+    <select class="field" id="pvSis" aria-label="Sistema"><option value="">Todos los sistemas</option>${sis.map(x => `<option value="${x}" ${FIL.sis === x ? 'selected' : ''}>${esc(sisNom(x))}</option>`).join('')}</select>
+    <input class="field" id="pvQ" type="search" placeholder="Buscar equipo o tarea" value="${esc(FIL.q)}" style="width:190px">
+    ${conSemanales ? `<label class="check" style="font-size:13px"><input type="checkbox" id="pvSem" ${FIL.semanales ? 'checked' : ''}>Incluir semanales</label>` : ''}
+  </div></div>`;
 }
+const panel = (...bloques) => `<div class="pv-tb">${bloques.filter(Boolean).join('')}</div>`;
+const panelFilas = (...bloques) => `<div class="pv-tb filas">${bloques.filter(Boolean).join('')}</div>`;
 function enlazarFiltros(box, re) {
-  box.querySelectorAll('[data-rol]').forEach(b => b.onclick = () => { FIL.rol = b.dataset.rol; re(); });
+  const r = box.querySelector('#pvRol'); if (r) r.onchange = () => { FIL.rol = r.value; re(); };
   const s = box.querySelector('#pvSis'); if (s) s.onchange = () => { FIL.sis = s.value; re(); };
   const k = box.querySelector('#pvSem'); if (k) k.onchange = () => { FIL.semanales = k.checked; re(); };
   const q = box.querySelector('#pvQ'); if (q) q.oninput = () => { FIL.q = q.value; clearTimeout(q._t); q._t = setTimeout(() => { re(); const n = box.querySelector('#pvQ'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 250); };
@@ -383,15 +402,13 @@ function vSemana(box) {
   const ev = Object.entries(CFG.eventos || {}).flatMap(([eq, l]) => l.filter(x => x.semana === SEL).map(x => ({ eq, ...x })));
   const hh = {}; sem.forEach(o => Object.entries(o.t.resp || {}).forEach(([r, v]) => { hh[r] = (hh[r] || 0) + v; }));
   box.innerHTML = `
-    <div class="pv-nav">
-      <button class="btn pp-btn" id="pvAnt" ${SEL <= CFG.inicio ? 'disabled' : ''}>${IC.izq}</button>
-      <div class="sem">Semana ${numSem(SEL)}${SEL === HOY ? ' · actual' : ''}<small>${rango(SEL)}</small></div>
-      <button class="btn pp-btn" id="pvSig" ${SEL >= fin ? 'disabled' : ''}>${IC.der}</button>
-      ${SEL !== HOY && HOY >= CFG.inicio && HOY <= fin ? '<button class="btn pp-btn" id="pvHoy">Semana actual</button>' : ''}
-      <span class="pp-sp"></span>
-      <button class="btn pp-btn" id="pvOT" ${sem.length ? '' : 'disabled'}>${IC.print}Orden de trabajo</button>
-    </div>
-    ${filtrosHtml()}
+    ${panel(`<div class="pv-blk"><span class="lb">Periodo</span><div class="fila">
+        <button class="btn pp-btn" id="pvAnt" ${SEL <= CFG.inicio ? 'disabled' : ''} aria-label="Semana anterior">${IC.izq}</button>
+        <div class="sem">Semana ${numSem(SEL)}${SEL === HOY ? ' · actual' : ''}<small>${rango(SEL)}</small></div>
+        <button class="btn pp-btn" id="pvSig" ${SEL >= fin ? 'disabled' : ''} aria-label="Semana siguiente">${IC.der}</button>
+        ${SEL !== HOY && HOY >= CFG.inicio && HOY <= fin ? '<button class="btn pp-btn" id="pvHoy">Hoy</button>' : ''}</div></div>`,
+      filtrosHtml(),
+      `<div class="pv-blk der"><span class="lb">Acciones</span><div class="fila"><button class="btn pp-btn" id="pvOT" ${sem.length ? '' : 'disabled'}>${IC.print}Orden de trabajo</button></div></div>`)}
     ${Object.keys(hh).length ? `<div class="pp-resp" style="margin-bottom:6px">${Object.entries(hh).map(([r, v]) => `<div><b>${v.toFixed(1).replace('.', ',')}</b><span>HH ${esc(r)}</span></div>`).join('')}</div>` : ''}
     ${ev.map(x => `<div class="alert warn" style="margin-top:10px"><b>${esc(x.eq)}</b> · ${esc(x.texto)}</div>`).join('')}
     ${atr.length ? `<div class="pv-sec" style="color:#ffb3b3">Atrasadas <span>${atr.length}</span></div>${grupoEquipos(atr, true)}` : ''}
@@ -572,20 +589,18 @@ function vCalendario(box) {
   if (!porEq.size) h += `<div class="pv-grow"><div class="pv-gname muted">No hay actividades en este periodo con el filtro elegido.</div><div></div></div>`;
   const vl = sem.map(s => `<div style="left:${pos(s)}%"></div>`).join('') + (set.has(HOY) ? `<div class="hoy" style="left:${pos(HOY) + 50 / n}%"><span>Hoy</span></div>` : '');
   box.innerHTML = `
-    <div class="pv-nav">
-      <div class="pv-seg">${[['semana', 'Semana'], ['mes', 'Mes'], ['trimestre', 'Trimestre'], ['anio', 'Año']].map(([k, l]) => `<button class="${CAL.modo === k ? 'on' : ''}" data-cm="${k}">${l}</button>`).join('')}</div>
-      ${CAL.modo !== 'anio' ? `<button class="btn pp-btn" id="cAnt" ${sem[0] <= ini ? 'disabled' : ''}>${IC.izq}</button>` : ''}
-      <div class="sem" style="min-width:200px">${esc(titulo)}</div>
-      ${CAL.modo !== 'anio' ? `<button class="btn pp-btn" id="cSig" ${sem[sem.length - 1] >= fin ? 'disabled' : ''}>${IC.der}</button>` : ''}
-      ${HOY >= ini && HOY <= fin && !set.has(HOY) ? '<button class="btn pp-btn" id="cHoy">Hoy</button>' : ''}
-      <span class="pp-sp"></span>
-      ${CAL.modo !== 'anio' ? `<input class="field" type="date" id="cFe" value="${CAL.ref}" min="${ini}" max="${masSem(fin, 0)}" style="height:38px;width:auto;font-size:13px" title="Ir a una fecha">` : ''}
-    </div>
-    ${filtrosHtml(true)}
+    ${panelFilas(`<div class="pv-blk"><span class="lb">Vista y periodo</span><div class="fila">
+        <select class="field" id="cModo" aria-label="Vista">${[['semana', 'Semana'], ['mes', 'Mes'], ['trimestre', 'Trimestre'], ['anio', 'Año completo']].map(([k, l]) => `<option value="${k}" ${CAL.modo === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        ${CAL.modo !== 'anio' ? `<button class="btn pp-btn" id="cAnt" ${sem[0] <= ini ? 'disabled' : ''} aria-label="Anterior">${IC.izq}</button>` : ''}
+        <div class="sem">${esc(titulo)}</div>
+        ${CAL.modo !== 'anio' ? `<button class="btn pp-btn" id="cSig" ${sem[sem.length - 1] >= fin ? 'disabled' : ''} aria-label="Siguiente">${IC.der}</button>` : ''}
+        ${HOY >= ini && HOY <= fin && !set.has(HOY) ? '<button class="btn pp-btn" id="cHoy">Hoy</button>' : ''}
+        ${CAL.modo !== 'anio' ? `<input class="field" type="date" id="cFe" value="${CAL.ref}" min="${ini}" max="${masSem(fin, 0)}" title="Ir a una fecha" aria-label="Ir a una fecha">` : ''}</div></div>`,
+      filtrosHtml(true))}
     <div class="pv-leg">${ORD_F.map(k => `<span><i style="background:${FREC[k].hex}"></i>${FREC[k].l}</span>`).join('')}<span><i style="background:#2ec4a6"></i>Ejecutada</span><span><i style="background:#ff6b6b"></i>Atrasada</span><span><i style="background:transparent;border:1.5px dashed #f5b54a"></i>Semana original (reprogramada)</span><span><i style="background:#b4232c"></i>Overhaul</span></div>
     <div class="pp-card" style="padding:10px"><div class="pv-gwrap"><div class="pv-gantt" style="min-width:${anchoMin}px">${h}<div class="pv-gvl">${vl}</div></div></div>
-    <div class="pp-foot">${tars.length} actividades · toque una barra para registrar la ejecución o reprogramar${!FIL.semanales ? ' · las semanales están ocultas (marque "Semanales")' : ''}</div></div>`;
-  box.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { CAL.modo = b.dataset.cm; vCalendario(box); });
+    <div class="pp-foot">${tars.length} actividades · toque una barra para registrar la ejecución o reprogramar${!FIL.semanales ? ' · las semanales están ocultas (marque "Incluir semanales")' : ''}</div></div>`;
+  box.querySelector('#cModo').onchange = (e) => { CAL.modo = e.target.value; vCalendario(box); };
   const an = box.querySelector('#cAnt'); if (an) an.onclick = () => { moverCal(-1); vCalendario(box); };
   const sg = box.querySelector('#cSig'); if (sg) sg.onclick = () => { moverCal(1); vCalendario(box); };
   const hy = box.querySelector('#cHoy'); if (hy) hy.onclick = () => { CAL.ref = HOY; vCalendario(box); };
@@ -602,7 +617,7 @@ function vCalendario(box) {
 function vEquipos(box) {
   const g = new Map();
   TAR.filter(pasaFiltro).forEach(t => { if (!g.has(t.eq)) g.set(t.eq, []); g.get(t.eq).push(t); });
-  box.innerHTML = `${filtrosHtml()}<div class="pv-eqs">${[...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([cod, ts]) => {
+  box.innerHTML = `${panel(filtrosHtml())}<div class="pv-eqs">${[...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([cod, ts]) => {
     const oc = ts.flatMap(ocurrencias).filter(o => o.t.frec !== 'S');
     const prox = oc.filter(o => o.est === 'pendiente').sort((a, b) => a.ef.localeCompare(b.ef))[0];
     return `<button class="pv-ec" data-eq="${esc(cod)}"><b>${esc(cod)}</b><h4>${esc(ts[0].eqDesc)}</h4>

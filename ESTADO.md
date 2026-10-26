@@ -244,6 +244,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-26: Plan preventivo — pestañas con estilo propio y panel de controles por bloques (Periodo · Filtros · Acciones); especialidad en desplegable.
 - 2026-10-26: Plan preventivo — pestaña Resumen (dashboard del planner con filtros, indicadores, gráficos y alertas).
 - 2026-10-26: Plan preventivo — calendario en formato línea de tiempo con filtro por semana, mes, trimestre o año.
 - 2026-10-26: PMP v2 (terceros, capacidad), actividades propias en el plan, actualización de semilla y menú lateral ocultable.
