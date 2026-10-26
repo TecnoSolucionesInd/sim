@@ -169,6 +169,16 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   Vistas: Semana (atrasadas + programadas por equipo; Ejecutado / Reprogramar / No ejecutado; OT semanal imprimible A4 horizontal por
   especialidad), Calendario 52 semanas, Equipos, Rutinas, Carga HH vs capacidad. Cumplimiento = ejecutadas / ocurrencias de semanas cerradas.
   Operador registra ejecución; Admin/Supervisor reprograman, marcan no ejecutado y deshacen.
+- Actividades propias (Admin/Supervisor): "Nueva actividad" o "Agregar actividad a este equipo" (cualquier equipo de la base, también
+  los que aún no tienen plan): tarea, frecuencia (única vez, S, M, T, SE, A), primera fecha, responsables con HH, condición, registro,
+  materiales; opción de partir de una rutina de la biblioteca. Se guardan con `origen: 'manual'` y código P-01, P-02… por equipo.
+  Editar recalcula las semanas desde la fecha indicada (conserva lo ejecutado); eliminar solo si no tiene ejecuciones, si no "Dar de baja".
+- Versiones del plan inicial: `PMP_VERSION` en la semilla vs `config.version`. Si hay una nueva, Admin/Supervisor ven "Aplicar actualización":
+  actualiza las tareas de origen semilla (texto, responsables y semanas futuras), agrega nuevas y retira las que salen sin ejecuciones;
+  no toca las manuales ni lo registrado. v2: trabajos de terceros (tornillo, transformadores, CIP y servicio anual de ósmosis) y
+  capacidad de 3 frigoristas de mantenimiento (los 4 de proceso no se cuentan).
+- Menú lateral (núcleo, todos los aplicativos): el botón ☰ oculta o muestra los módulos en pantalla grande y se recuerda (localStorage
+  `sim_menu_oculto`); en celular sigue abriéndose sobre el contenido.
 - Programa de trabajo = conjunto de actividades con fechas, avance y cierre. Tipos: Parada de planta, Mantenimiento programado, Auditoría,
   Proyecto de mejora, Otro. Todos usan el mismo formato: Resumen (KPI + curva S), Línea de tiempo, Actividades, Evidencias y Costos.
 - Datos: `datos/plan/programas/{pid}` (nombre, tipo, planta, ref, desde, hasta, estado activa|cerrada, cierre, lineaBase {fecha, por}),
@@ -227,6 +237,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-26: PMP v2 (terceros, capacidad), actividades propias en el plan, actualización de semilla y menú lateral ocultable.
 - 2026-10-26: Plan preventivo — módulo construido y plan inicial de 38 equipos (rutinas, calendario 52 semanas, OT semanal, cumplimiento, carga HH).
 - 2026-10-25: Formatos — visualización por área (áreas por usuario en Administración; filtra Llenar y Registros).
 - 2026-10-25: Formatos — campos calculados (diferencia, porcentaje), rangos por columna, emisión con revisión del manual y R-301 ósmosis.

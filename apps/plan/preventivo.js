@@ -13,13 +13,16 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 const I = (d, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 const IC = {
   ok: I('M20 6L9 17l-5-5'), rep: I('M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5'), no: I('M18 6L6 18M6 6l12 12'), izq: I('M15 18l-6-6 6-6'), der: I('M9 18l6-6-6-6'),
+  edit: I('M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z'), mas: I('M12 5v14M5 12h14'),
   print: I('M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z'), up: I('M12 16V4M6 10l6-6 6 6M4 20h16'), undo: I('M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8')
 };
 const FREC = {
-  D: { l: 'Diario', c: 'D', hex: '#8b9bb0' }, S: { l: 'Semanal', c: 'S', hex: '#7cc8f8' }, M: { l: 'Mensual', c: 'M', hex: '#4aa3ff' },
+  U: { l: 'Única vez', c: '1', hex: '#c9a7ff' }, D: { l: 'Diario', c: 'D', hex: '#8b9bb0' }, S: { l: 'Semanal', c: 'S', hex: '#7cc8f8' }, M: { l: 'Mensual', c: 'M', hex: '#4aa3ff' },
   TRI: { l: 'Trimestral', c: 'T', hex: '#f5b54a' }, SEM: { l: 'Semestral', c: 'SE', hex: '#ff9f5a' }, A: { l: 'Anual', c: 'A', hex: '#ff6b8a' }
 };
-const ORD_F = ['S', 'M', 'TRI', 'SEM', 'A'];
+const ORD_F = ['S', 'M', 'TRI', 'SEM', 'A', 'U'];
+const MESES_F = { M: 1, TRI: 3, SEM: 6, A: 12 };
+const CONDS = ['Operando', 'Parada corta', 'Parado', 'Energizado', 'Desenergizado', 'Lado agua aislado'];
 const ROLES = ['Frigorista', 'Mecánico', 'Electricista', 'Soldador', 'Op. calderos', 'Op. ósmosis', 'Tercero'];
 const EST = {
   hecho: { l: 'Ejecutado', hex: '#2ec4a6' }, no: { l: 'No ejecutado', hex: '#8b9bb0' },
@@ -131,6 +134,8 @@ const CSS = `
 .pv-cap{position:relative}
 .pv-cap .ln{position:absolute;left:0;right:0;border-top:1.5px dashed #ff6b6b}
 .pv-vacio{padding:42px 26px;text-align:center}
+.pv-rr{display:grid;grid-template-columns:minmax(0,1fr) 90px 36px;gap:8px;margin-bottom:8px}
+.pv-man{display:inline-block;font:600 10px var(--f-mono);letter-spacing:.06em;color:#c9a7ff;border:1px solid rgba(201,167,255,.45);border-radius:6px;padding:1px 5px;margin-left:6px;vertical-align:1px}
 .pv-vacio h2{font-family:var(--f-display);font-weight:600;font-size:22px;margin:0 0 10px}
 @media (max-width:820px){.pv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-it{grid-template-columns:34px minmax(0,1fr)}.pv-acc{grid-column:1/-1;justify-content:flex-start}.pv-meta{text-align:left}}
 `;
@@ -149,6 +154,59 @@ export async function montar(ctx) {
   if (!CFG) return vacio();
   if (SEL < CFG.inicio) SEL = CFG.inicio;
   pintar();
+  // ¿hay una versión nueva del plan inicial?
+  if (gestiona()) import('./pmp_semilla.js').then(S => { if ((CFG.version || 1) < S.PMP_VERSION) avisoActualizacion(S); }).catch(() => {});
+}
+
+function avisoActualizacion(S) {
+  const top = CTX.main.querySelector('.pp-top'); if (!top || CTX.main.querySelector('#pvUpd')) return;
+  top.insertAdjacentHTML('afterend', `<div class="alert warn" id="pvUpd" style="margin-bottom:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1;min-width:240px"><b>Actualización del plan inicial disponible</b><ul style="margin:6px 0 0;padding-left:18px;line-height:1.5">${S.PMP_NOVEDADES.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    <div style="font-size:12.5px;margin-top:6px">Se conservan las ejecuciones registradas y las actividades cargadas manualmente; solo cambian las semanas futuras.</div></div>
+    <button class="btn pp-grad" id="pvUpdOk">Aplicar actualización</button></div>`);
+  CTX.main.querySelector('#pvUpdOk').onclick = async (ev) => {
+    const b = ev.currentTarget; b.disabled = true; b.textContent = 'Aplicando…';
+    try {
+      const n = await aplicarSemilla(S);
+      toast(`Plan actualizado: ${n.act} tareas actualizadas, ${n.nuevas} nuevas${n.quitadas ? `, ${n.quitadas} retiradas` : ''}.`);
+      montar(CTX);
+    } catch (e) { toast('No se pudo actualizar: ' + (e.code || e.message), 'err'); b.disabled = false; b.textContent = 'Aplicar actualización'; }
+  };
+}
+
+// Aplica una versión nueva de la semilla: actualiza las tareas de origen semilla (texto, responsables, semanas futuras), agrega las nuevas
+// y retira las que ya no existen si no tienen ejecuciones. Las tareas manuales no se tocan.
+async function aplicarSemilla(S) {
+  const EQ = await listarEquipos(); const porCod = new Map(EQ.map(e => [e.codigo, e]));
+  const actuales = new Map(TAR.filter(t => t.origen !== 'manual').map(t => [`${t.eq}|${t.rutina}`, t]));
+  const ops = []; const n = { act: 0, nuevas: 0, quitadas: 0 };
+  S.PMP_TAREAS.filter(t => porCod.has(t.eq)).forEach(t => {
+    const r = S.PMP_BIBLIOTECA[t.tipo].rutinas.find(x => x.cod === t.rutina);
+    const base = { tipo: t.tipo, tipoNombre: S.PMP_BIBLIOTECA[t.tipo].nombre, rutina: r.cod, tarea: r.tarea, frec: r.frec, horas: r.horas || null, resp: r.resp, cond: r.cond, mat: r.mat || '', reg: r.reg || '',
+      porHoras: !!t.porHoras, conjunto: t.conjunto || '', proximo: t.proximo || '', origen: 'semilla' };
+    const k = `${t.eq}|${t.rutina}`, ya = actuales.get(k);
+    if (ya) {
+      const hechas = (ya.semanas || []).filter(s => s < HOY || (ya.ejec || {})[s]);
+      const semanas = [...new Set([...hechas, ...t.semanas.filter(s => s >= HOY)])].sort();
+      ops.push(['upd', ya.id, { ...base, semanas }]); actuales.delete(k); n.act++;
+    } else {
+      const e = porCod.get(t.eq);
+      ops.push(['new', null, { ...base, eq: t.eq, eqId: e.id, eqDesc: S.PMP_CORRECCIONES[t.eq] || e.descripcion || '', sistema: e.sistema ?? '', crit: e.criticidad || '', ubicacion: e.ubicacion || '', semanas: t.semanas, ejec: {} }]); n.nuevas++;
+    }
+  });
+  actuales.forEach(t => { if (!Object.keys(t.ejec || {}).length) { ops.push(['del', t.id]); n.quitadas++; } });
+  for (let i = 0; i < ops.length; i += 400) {
+    const w = writeBatch(db);
+    ops.slice(i, i + 400).forEach(([op, id, d]) => {
+      if (op === 'upd') w.set(doc(colTar(), id), { ...d, actualizado: serverTimestamp() }, { merge: true });
+      else if (op === 'new') w.set(doc(colTar()), d);
+      else w.delete(doc(colTar(), id));
+    });
+    await w.commit();
+  }
+  await setDoc(refCfg(), { capacidad: S.PMP_CAPACIDAD, biblioteca: S.PMP_BIBLIOTECA, eventos: S.PMP_EVENTOS, supuestos: S.PMP_SUPUESTOS, version: S.PMP_VERSION,
+    actualizado: { fecha: hoyIso(), por: usuario() } }, { merge: true });
+  return n;
 }
 
 // ---------- plan sin cargar ----------
@@ -193,7 +251,7 @@ async function cargarInicial() {
         const e = porCod.get(t.eq), r = S.PMP_BIBLIOTECA[t.tipo].rutinas.find(x => x.cod === t.rutina);
         return { eq: t.eq, eqId: e.id, eqDesc: S.PMP_CORRECCIONES[t.eq] || e.descripcion || '', sistema: e.sistema ?? '', crit: e.criticidad || '', ubicacion: e.ubicacion || '',
           tipo: t.tipo, tipoNombre: S.PMP_BIBLIOTECA[t.tipo].nombre, rutina: r.cod, tarea: r.tarea, frec: r.frec, horas: r.horas || null, resp: r.resp, cond: r.cond, mat: r.mat || '', reg: r.reg || '',
-          semanas: t.semanas, porHoras: !!t.porHoras, conjunto: t.conjunto || '', proximo: t.proximo || '', ejec: {} };
+          semanas: t.semanas, porHoras: !!t.porHoras, conjunto: t.conjunto || '', proximo: t.proximo || '', origen: 'semilla', ejec: {} };
       });
       for (let i = 0; i < filas.length; i += 400) {
         const w = writeBatch(db);
@@ -201,7 +259,7 @@ async function cargarInicial() {
         if (i === 0) corr.forEach(([c, d]) => w.set(doc(colEquipos(), porCod.get(c).id), { descripcion: d, actualizado: serverTimestamp(), actualizadoPor: usuario() }, { merge: true }));
         await w.commit();
       }
-      await setDoc(refCfg(), { inicio: S.PMP_INICIO, capacidad: S.PMP_CAPACIDAD, biblioteca: S.PMP_BIBLIOTECA, eventos: S.PMP_EVENTOS, supuestos: S.PMP_SUPUESTOS,
+      await setDoc(refCfg(), { version: S.PMP_VERSION, inicio: S.PMP_INICIO, capacidad: S.PMP_CAPACIDAD, biblioteca: S.PMP_BIBLIOTECA, eventos: S.PMP_EVENTOS, supuestos: S.PMP_SUPUESTOS,
         cargado: { fecha: hoyIso(), por: usuario() }, creado: serverTimestamp() });
       bg.remove(); toast(`Plan cargado: ${filas.length} tareas${corr.length ? ` · ${corr.length} correcciones en Equipos` : ''}.`);
       montar(CTX);
@@ -233,7 +291,8 @@ function pintar() {
   const eqs = new Set(TAR.map(t => t.eq)).size;
   CTX.main.innerHTML = `<div class="pp">
     <div class="pp-top"><div><div class="eyebrow">Plan de mantenimiento</div><h1 class="h-display">Plan preventivo</h1>
-      <p class="muted" style="margin:8px 0 0;font-size:13.5px">${eqs} equipos · ${TAR.length} tareas · desde ${corto(CFG.inicio)} (52 semanas)</p></div></div>
+      <p class="muted" style="margin:8px 0 0;font-size:13.5px">${eqs} equipos · ${TAR.length} tareas · desde ${corto(CFG.inicio)} (52 semanas)</p></div>
+      ${gestiona() ? `<button class="btn pp-btn pp-grad" id="pvNueva">${IC.mas}Nueva actividad</button>` : ''}</div>
     <div class="pv-kpis">
       <div class="pv-kpi" style="--c:#2ec4a6"><div class="l">Cumplimiento</div><div class="v">${cumpl == null ? '—' : cumpl + '<small>%</small>'}</div><div class="s">${pas.length ? `${hechas} de ${pas.length} tareas vencidas` : 'Aún no hay semanas cerradas'}</div></div>
       <div class="pv-kpi"><div class="l">${REF === HOY ? 'Esta semana' : 'Semana del ' + corto(REF)}</div><div class="v">${sem.length}</div><div class="s">${sem.filter(o => o.est === 'hecho').length} ejecutadas · ${hhSem.toFixed(1).replace('.', ',')} HH</div></div>
@@ -243,6 +302,7 @@ function pintar() {
     <div class="pp-tabsbar">${[['semana', 'Semana'], ['calendario', 'Calendario'], ['equipos', 'Equipos'], ['rutinas', 'Rutinas'], ['carga', 'Carga HH']].map(([k, l]) => `<button class="pp-tab ${VISTA === k ? 'on' : ''}" data-v="${k}">${l}</button>`).join('')}</div>
     <div id="pvV"></div></div>`;
   CTX.main.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { VISTA = b.dataset.v; pintar(); });
+  const nb = CTX.main.querySelector('#pvNueva'); if (nb) nb.onclick = () => editarActividad(null);
   const box = CTX.main.querySelector('#pvV');
   ({ semana: vSemana, calendario: vCalendario, equipos: vEquipos, rutinas: vRutinas, carga: vCarga })[VISTA](box);
 }
@@ -280,7 +340,7 @@ function itemHtml(o, conSemana = false) {
     : o.reprog ? `Reprogramada desde la semana del ${corto(o.s)}` : conSemana ? `Programada semana del ${corto(o.ef)}` : '';
   return `<div class="pv-it" data-t="${t.id}" data-s="${o.s}">
     <div class="pv-f" style="background:${f.hex}" title="${f.l}">${f.c}</div>
-    <div><div class="t1">${esc(t.rutina)} · ${f.l}${t.porHoras && t.horas ? ` · ${t.horas.toLocaleString('es-PE')} h` : ''}${t.conjunto ? ` · con ${esc(t.conjunto)}` : ''}</div>
+    <div><div class="t1">${esc(t.rutina)}${t.origen === 'manual' ? '<span class="pv-man">PROPIA</span>' : ''} · ${f.l}${t.porHoras && t.horas ? ` · ${t.horas.toLocaleString('es-PE')} h` : ''}${t.conjunto ? ` · con ${esc(t.conjunto)}` : ''}</div>
       <div class="t2">${esc(t.tarea)}</div>
       <div class="t3">${esc(respTxt(t))} · ${esc(t.cond)}${t.mat ? ' · ' + esc(t.mat) : ''}</div></div>
     <div><div class="pv-acc">${acc.join('')}</div>${meta ? `<div class="pv-meta">${meta}</div>` : ''}</div></div>`;
@@ -474,13 +534,114 @@ function vEquipos(box) {
 function detalleEquipo(cod) {
   const ts = TAR.filter(t => t.eq === cod).sort((a, b) => ORD_F.indexOf(a.frec) - ORD_F.indexOf(b.frec) || a.rutina.localeCompare(b.rutina));
   const t0 = ts[0];
-  modal(`${esc(cod)} · ${esc(t0.eqDesc)}`, `<div class="muted" style="font-size:13px;margin-bottom:10px">${esc(sisNom(t0.sistema))} · ${esc(t0.tipoNombre || '')} · Criticidad ${esc(t0.crit || '—')}</div>
+  const bgD = modal(`${esc(cod)} · ${esc(t0.eqDesc)}`, `<div class="muted" style="font-size:13px;margin-bottom:10px">${esc(sisNom(t0.sistema))} · ${esc(t0.tipoNombre || '')} · Criticidad ${esc(t0.crit || '—')}</div>
     <div style="overflow-x:auto"><table class="pv-tbl"><thead><tr><th>Rutina</th><th>Tarea</th><th>Frecuencia</th><th>Semanas</th></tr></thead><tbody>${ts.map(t => {
       const oc = ocurrencias(t);
       const chips = t.frec === 'D' ? `<span class="muted">Por turno · ${esc(t.reg || 'formato')}</span>` : t.frec === 'S' ? `<span class="muted">Todas las semanas · ${oc.filter(o => o.est === 'hecho').length} ejecutadas</span>`
         : oc.map(o => `<span class="pv-st" style="color:${EST[o.est].hex};background:${EST[o.est].hex}1f;margin:0 4px 4px 0">${corto(o.ef)}</span>`).join('') || '<span class="muted">—</span>';
-      return `<tr><td class="mono" style="white-space:nowrap">${esc(t.rutina)}</td><td>${esc(t.tarea)}<div class="muted" style="font-size:12px;margin-top:3px">${esc(respTxt(t))} · ${esc(t.cond)}</div></td><td style="white-space:nowrap">${FREC[t.frec].l}${t.horas ? `<div class="muted" style="font-size:12px">o ${t.horas.toLocaleString('es-PE')} h</div>` : ''}</td><td>${chips}${t.proximo ? `<div class="muted" style="font-size:12px">Próxima: ${esc(t.proximo)}</div>` : ''}${t.conjunto ? `<div class="muted" style="font-size:12px">En la parada de ${esc(t.conjunto)}</div>` : ''}</td></tr>`;
-    }).join('')}</tbody></table></div>`, '<button class="btn" data-x>Cerrar</button>', 980);
+      return `<tr><td class="mono" style="white-space:nowrap">${esc(t.rutina)}${t.origen === 'manual' ? '<br><span class="pv-man" style="margin:4px 0 0">PROPIA</span>' : ''}${gestiona() ? `<br><button class="btn" data-ed="${t.id}" style="height:30px;padding:0 8px;margin-top:6px;font-size:12px">${IC.edit}Editar</button>` : ''}</td><td>${esc(t.tarea)}<div class="muted" style="font-size:12px;margin-top:3px">${esc(respTxt(t))} · ${esc(t.cond)}</div></td><td style="white-space:nowrap">${FREC[t.frec].l}${t.horas ? `<div class="muted" style="font-size:12px">o ${t.horas.toLocaleString('es-PE')} h</div>` : ''}</td><td>${chips}${t.proximo ? `<div class="muted" style="font-size:12px">Próxima: ${esc(t.proximo)}</div>` : ''}${t.conjunto ? `<div class="muted" style="font-size:12px">En la parada de ${esc(t.conjunto)}</div>` : ''}</td></tr>`;
+    }).join('')}</tbody></table></div>`, `${gestiona() ? `<button class="btn" id="pvAddEq" style="margin-right:auto">${IC.mas}Agregar actividad a este equipo</button>` : ''}<button class="btn" data-x>Cerrar</button>`, 980);
+  bgD.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { bgD.remove(); editarActividad(TAR.find(t => t.id === b.dataset.ed)); });
+  const ad = bgD.querySelector('#pvAddEq'); if (ad) ad.onclick = () => { bgD.remove(); editarActividad(null, cod); };
+}
+
+// ---------- actividades: nueva / editar / baja ----------
+const finPlan = () => masSem(CFG.inicio, 51);
+// semanas (lunes) desde una fecha según la frecuencia, hasta el fin del plan
+function generarSemanas(fecha, frec) {
+  const fin = finPlan(), out = [];
+  if (frec === 'U') return [lunes(deIso(fecha))].filter(s => s <= fin);
+  if (frec === 'S') { for (let s = lunes(deIso(fecha)); s <= fin; s = masSem(s, 1)) out.push(s); return out; }
+  const n = MESES_F[frec], d0 = deIso(fecha);
+  for (let k = 0; k < 60; k++) {
+    const d = new Date(d0.getFullYear(), d0.getMonth() + k * n, Math.min(d0.getDate(), 28));
+    const s = lunes(d); if (s > fin) break; out.push(s);
+  }
+  return [...new Set(out)];
+}
+let EQS = null;
+async function equiposBase() { if (!EQS) EQS = await listarEquipos(); return EQS; }
+
+async function editarActividad(t, codIni = '') {
+  const nueva = !t;
+  let eqs = [];
+  try { eqs = await equiposBase(); } catch (e) { return toast('No se pudo leer la base de equipos: ' + (e.code || e.message), 'err'); }
+  const B = CFG.biblioteca || {};
+  const prox = t ? ocurrencias(t).filter(o => o.est === 'pendiente' || o.est === 'atrasada').map(o => o.ef).sort()[0] : '';
+  const v = t || { eq: codIni, tarea: '', frec: 'M', resp: { 'Frigorista': 1 }, cond: 'Operando', mat: '', reg: 'Orden de trabajo' };
+  const filasResp = (r) => Object.entries(r).map(([k, h]) => `<div class="pv-rr"><select class="field" data-rk>${ROLES.map(x => `<option ${x === k ? 'selected' : ''}>${x}</option>`).join('')}</select><input class="field" data-rh inputmode="decimal" value="${String(h).replace('.', ',')}" placeholder="HH"><button type="button" class="btn btn-icon" data-rq aria-label="Quitar">${IC.no}</button></div>`).join('');
+  const bg = modal(nueva ? 'Nueva actividad' : `Editar ${esc(t.rutina)} · ${esc(t.eq)}`, `
+    <div style="display:grid;gap:12px">
+      ${nueva ? `<div><label class="label" for="aEq">Equipo</label><input class="field" id="aEq" list="aEqL" value="${esc(codIni ? `${codIni} · ${eqs.find(e => e.codigo === codIni)?.descripcion || ''}` : '')}" placeholder="Código o descripción" autocomplete="off">
+        <datalist id="aEqL">${eqs.map(e => `<option value="${esc(e.codigo)} · ${esc(e.descripcion)}">`).join('')}</datalist></div>
+      <div><label class="label" for="aRut">Partir de una rutina de la biblioteca (opcional)</label><select class="field" id="aRut"><option value="">Actividad propia</option>${Object.values(B).map(b => `<optgroup label="${esc(b.nombre)}">${b.rutinas.filter(r => r.frec !== 'D').map(r => `<option value="${esc(r.cod)}">${esc(r.cod)} · ${esc(r.tarea.slice(0, 70))}${r.tarea.length > 70 ? '…' : ''}</option>`).join('')}</optgroup>`).join('')}</select></div>` : ''}
+      <div><label class="label" for="aTar">Actividad</label><textarea class="field" id="aTar" rows="3" style="height:auto;padding:12px 14px;line-height:1.5" placeholder="Qué se hace, en concreto">${esc(v.tarea)}</textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label class="label" for="aFr">Frecuencia</label><select class="field" id="aFr">${['U', 'S', 'M', 'TRI', 'SEM', 'A'].map(k => `<option value="${k}" ${k === v.frec ? 'selected' : ''}>${FREC[k].l}</option>`).join('')}</select></div>
+        <div><label class="label" for="aFe">${nueva ? 'Primera fecha' : 'Próxima fecha'}</label><input class="field" type="date" id="aFe" value="${prox || (HOY < CFG.inicio ? CFG.inicio : HOY)}"></div>
+      </div>
+      <div><span class="label">Responsables y horas-hombre</span><div id="aRs">${filasResp(v.resp)}</div><button type="button" class="btn" id="aRAdd" style="height:36px;font-size:13px">${IC.mas}Responsable</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label class="label" for="aCo">Condición del equipo</label><select class="field" id="aCo">${CONDS.map(c => `<option ${c === v.cond ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+        <div><label class="label" for="aRe">Registro</label><input class="field" id="aRe" value="${esc(v.reg || '')}"></div>
+      </div>
+      <div><label class="label" for="aMa">Materiales / repuestos (opcional)</label><input class="field" id="aMa" value="${esc(v.mat || '')}"></div>
+      <div class="muted" id="aPrev" style="font-size:12.5px;line-height:1.5"></div>
+    </div>`,
+    `${!nueva ? `<button class="btn btn-danger" id="aDel" style="margin-right:auto">${Object.keys(t.ejec || {}).length ? 'Dar de baja' : 'Eliminar'}</button>` : ''}<button class="btn" data-x>Cancelar</button><button class="btn pp-grad" id="aOk">${nueva ? 'Agregar al plan' : 'Guardar cambios'}</button>`, 720);
+  const $ = (q) => bg.querySelector(q);
+  const enlazarResp = () => bg.querySelectorAll('[data-rq]').forEach(b => b.onclick = () => { if (bg.querySelectorAll('.pv-rr').length > 1) b.closest('.pv-rr').remove(); });
+  enlazarResp();
+  $('#aRAdd').onclick = () => { $('#aRs').insertAdjacentHTML('beforeend', filasResp({ 'Mecánico': 1 })); enlazarResp(); };
+  const prev = () => { const f = $('#aFe').value, fr = $('#aFr').value; if (!f) { $('#aPrev').textContent = ''; return; }
+    const ss = generarSemanas(f, fr); $('#aPrev').textContent = ss.length ? `Se programa en ${ss.length} semana${ss.length === 1 ? '' : 's'}: ${ss.slice(0, 8).map(corto).join(', ')}${ss.length > 8 ? '…' : ''} (hasta el fin del plan, ${corto(finPlan())}).` : 'La fecha está fuera del periodo del plan.'; };
+  $('#aFe').oninput = prev; $('#aFr').onchange = prev; prev();
+  if ($('#aRut')) $('#aRut').onchange = () => {
+    const r = Object.values(B).flatMap(b => b.rutinas).find(x => x.cod === $('#aRut').value); if (!r) return;
+    $('#aTar').value = r.tarea; $('#aFr').value = r.frec; $('#aCo').value = CONDS.includes(r.cond) ? r.cond : 'Operando'; $('#aRe').value = r.reg || ''; $('#aMa').value = r.mat || '';
+    $('#aRs').innerHTML = filasResp(r.resp); enlazarResp(); prev();
+  };
+  if ($('#aDel')) $('#aDel').onclick = async () => {
+    const conHist = Object.keys(t.ejec || {}).length;
+    if (!confirm(conHist ? 'Se retiran las semanas futuras; las ejecuciones registradas se conservan. ¿Continuar?' : '¿Eliminar esta actividad del plan?')) return;
+    try {
+      if (conHist) { const semanas = (t.semanas || []).filter(s => s < HOY || (t.ejec || {})[s]); await updateDoc(doc(colTar(), t.id), { semanas, baja: { fecha: hoyIso(), por: usuario() } }); Object.assign(t, { semanas }); }
+      else { await writeBatch(db).delete(doc(colTar(), t.id)).commit(); TAR = TAR.filter(x => x !== t); }
+      bg.remove(); toast(conHist ? 'Actividad dada de baja.' : 'Actividad eliminada.'); pintar();
+    } catch (e) { toast('No se pudo: ' + (e.code || e.message), 'err'); }
+  };
+  $('#aOk').onclick = async () => {
+    const tarea = $('#aTar').value.trim(), frec = $('#aFr').value, fecha = $('#aFe').value;
+    const resp = {}; let malo = false;
+    bg.querySelectorAll('.pv-rr').forEach(r => { const k = r.querySelector('[data-rk]').value, h = Number(r.querySelector('[data-rh]').value.replace(',', '.')); if (!(h > 0)) malo = true; resp[k] = (resp[k] || 0) + h; });
+    if (!tarea) return toast('Describa la actividad', 'err');
+    if (!fecha) return toast('Indique la fecha', 'err');
+    if (malo) return toast('Indique las horas-hombre de cada responsable', 'err');
+    const nuevas = generarSemanas(fecha, frec);
+    if (!nuevas.length) return toast('La fecha está fuera del periodo del plan', 'err');
+    const comun = { tarea, frec, resp, cond: $('#aCo').value, reg: $('#aRe').value.trim(), mat: $('#aMa').value.trim() };
+    try {
+      if (nueva) {
+        const txt = $('#aEq').value.trim(), cod = txt.split(' · ')[0].trim().toUpperCase();
+        const e = eqs.find(x => x.codigo === cod); if (!e) return toast('Elija un equipo de la lista', 'err');
+        const rut = $('#aRut').value;
+        const nPropias = TAR.filter(x => x.eq === e.codigo && x.origen === 'manual').length + 1;
+        const tipo = rut ? Object.entries(B).find(([, b]) => b.rutinas.some(r => r.cod === rut))?.[0] || '' : '';
+        const d = { ...comun, eq: e.codigo, eqId: e.id, eqDesc: e.descripcion || '', sistema: e.sistema ?? '', crit: e.criticidad || '', ubicacion: e.ubicacion || '',
+          tipo, tipoNombre: tipo ? B[tipo].nombre : (e.tipo || ''), rutina: rut || `P-${String(nPropias).padStart(2, '0')}`, horas: null,
+          semanas: nuevas, porHoras: false, conjunto: '', proximo: '', origen: 'manual', creado: { fecha: hoyIso(), por: usuario() }, ejec: {} };
+        const ref = doc(colTar()); await setDoc(ref, d); TAR.push({ id: ref.id, ...d });
+        toast(`Actividad agregada: ${nuevas.length} semana${nuevas.length === 1 ? '' : 's'} programada${nuevas.length === 1 ? '' : 's'}.`);
+      } else {
+        const desde = lunes(deIso(fecha)) < HOY ? lunes(deIso(fecha)) : HOY;
+        const semanas = [...new Set([...(t.semanas || []).filter(s => s < desde || (t.ejec || {})[s]), ...nuevas])].sort();
+        await updateDoc(doc(colTar(), t.id), { ...comun, semanas, editado: { fecha: hoyIso(), por: usuario() } });
+        Object.assign(t, comun, { semanas });
+        toast('Actividad actualizada.');
+      }
+      bg.remove(); pintar();
+    } catch (e) { toast('No se pudo guardar: ' + (e.code || e.message), 'err'); }
+  };
 }
 
 // ---------- vista rutinas ----------

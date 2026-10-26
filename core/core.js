@@ -39,7 +39,9 @@ const ICO_OUT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" str
 const ICO_MENU = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 
 const CSS = `
-.sim-shell{position:relative;z-index:1;display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh}
+.sim-shell{position:relative;z-index:1;display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh;transition:grid-template-columns .35s var(--ease)}
+.sim-shell.side-off{grid-template-columns:0 minmax(0,1fr)}
+.sim-shell.side-off .sim-side{opacity:0;transform:translateX(-30px);pointer-events:none;overflow:hidden;padding-left:0;padding-right:0}
 .sim-side{position:sticky;top:0;height:100vh;overflow-y:auto;padding:22px 16px;background:rgba(36,46,57,.62);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:24px;animation:slidein .5s var(--ease) both}
 .sim-apphead{display:flex;align-items:center;gap:14px;padding:0 6px}
 .sim-appico{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -56,14 +58,16 @@ const CSS = `
 .sim-crumb{font-family:var(--f-mono);font-size:13px;color:var(--tx-3)}
 .sim-crumb b{color:var(--tx);font-weight:500}
 .sim-main{padding:6px 36px 60px;min-width:0}
-.sim-menu{display:none}
+.sim-menu{display:inline-flex}
 .sim-float{position:fixed;left:16px;bottom:16px;z-index:9999;height:44px;padding:0 16px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(46,58,71,.88);backdrop-filter:blur(12px);color:#F1F4F7;display:flex;align-items:center;gap:8px;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;box-shadow:0 14px 30px -14px rgba(0,0,0,.6)}
 .sim-float:hover{background:rgba(58,71,87,.95)}
 @media (max-width:900px){
   .sim-shell{grid-template-columns:minmax(0,1fr)}
   .sim-side{position:fixed;inset:0 auto 0 0;width:284px;z-index:30;transform:translateX(-100%);transition:transform .35s var(--ease);animation:none}
   .sim-shell.menu-open .sim-side{transform:none;box-shadow:30px 0 60px -20px rgba(0,0,0,.6)}
-  .sim-menu{display:inline-flex}
+  .sim-shell.side-off{grid-template-columns:minmax(0,1fr)}
+  .sim-shell.side-off .sim-side{opacity:1;pointer-events:auto;padding:22px 16px;overflow-y:auto;transform:translateX(-100%)}
+  .sim-shell.side-off.menu-open .sim-side{transform:none}
   .sim-bar{padding:14px 16px}
   .sim-main{padding:4px 16px 48px}
 }`;
@@ -148,7 +152,18 @@ export async function iniciarApp({ appId, layout = 'completo', alCambiarModulo =
   document.body.insertAdjacentHTML('afterbegin', '<div class="amb"></div>');
   ctx.main = shell.querySelector('#simMain');
   shell.querySelector('#simOut').onclick = ctx.salir;
-  shell.querySelector('#simMenu').onclick = () => shell.classList.toggle('menu-open');
+  // Menú lateral: en celular se abre sobre el contenido; en pantalla grande se oculta o muestra (se recuerda la preferencia)
+  const LS_SIDE = 'sim_menu_oculto';
+  const movil = () => matchMedia('(max-width:900px)').matches;
+  try { if (localStorage.getItem(LS_SIDE) === '1') shell.classList.add('side-off'); } catch (e) {}
+  const btnMenu = shell.querySelector('#simMenu');
+  const titMenu = () => { const t = movil() ? 'Abrir menú' : shell.classList.contains('side-off') ? 'Mostrar módulos' : 'Ocultar módulos'; btnMenu.title = t; btnMenu.setAttribute('aria-label', t); };
+  btnMenu.onclick = () => {
+    if (movil()) shell.classList.toggle('menu-open');
+    else { const off = shell.classList.toggle('side-off'); try { localStorage.setItem(LS_SIDE, off ? '1' : '0'); } catch (e) {} }
+    titMenu();
+  };
+  titMenu();
 
   const pintarMenu = () => {
     shell.querySelector('#simMods').innerHTML = modulos.length
