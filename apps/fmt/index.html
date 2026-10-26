@@ -149,6 +149,7 @@ let CTX = null;
 let CFG = clonar(CONFIG_BASE);
 let PLANT = [];
 let EQ = [];             // base de equipos (aplicativo Equipos)
+let EQ_ERR = '';         // error al leer la base de equipos (p. ej. reglas sin publicar)
 let ED = null;           // editor abierto: { id, trabajo, vista, timer, guardando, sucio }
 let FIL = { sistema: 'all', estado: 'activos', q: '' };
 let FIL_M = { estado: 'vigentes' };
@@ -1221,7 +1222,7 @@ function modalVersion() {
 
 // =====================================================================
 const APP = {
-  get ctx() { return CTX; }, get cfg() { return CFG; }, get plantillas() { return PLANT; }, get equipos() { return EQ; },
+  get ctx() { return CTX; }, get cfg() { return CFG; }, get plantillas() { return PLANT; }, get equipos() { return EQ; }, get equiposError() { return EQ_ERR; },
   // áreas (sistemas) asignadas al usuario en Administración: vacío = todas
   get areas() { return CTX?.acceso?.sistemas || []; },
   enArea(sistema) { const a = this.areas; return !a.length || a.includes(Number(sistema)); }
@@ -1253,7 +1254,8 @@ CTX = await iniciarApp({
   }
 });
 try {
-  [CFG, PLANT, EQ] = await Promise.all([D.cargarConfig(), D.listarPlantillas(), listarEquipos().catch(() => [])]);
+  [CFG, PLANT, EQ] = await Promise.all([D.cargarConfig(), D.listarPlantillas(), listarEquipos().catch(e => { EQ_ERR = e.code || e.message || 'error'; return []; })]);
+  if (EQ_ERR) toast(EQ_ERR === 'permission-denied' ? 'Sin permiso para leer la base de equipos: el administrador debe publicar las reglas de seguridad vigentes.' : 'No se pudo leer la base de equipos: ' + EQ_ERR, 'err');
 } catch (e) { toast('No se pudieron leer los datos: ' + (e.code || e.message), 'err'); }
 listo = true;
 render();

@@ -564,7 +564,7 @@ function elegirEquipo(c, alElegir) {
     const q = norm(m.$('#eqQ').value);
     const l = base.filter(e => !q || norm(`${e.codigo} ${e.descripcion} ${e.ubicacion}`).includes(q)).slice(0, 80);
     m.$('#eqL').innerHTML = l.map(e => `<button type="button" class="ll-card" data-e="${e.id}" style="margin-bottom:8px;animation:none"><span class="tx"><span class="cd">${esc(e.codigo)}</span><b>${esc(e.descripcion)}</b><small>${esc([sisNom(e.sistema), e.ubicacion].filter(Boolean).join(' · '))}${e.estado === 'fuera' ? ' · Fuera de servicio' : ''}</small></span></button>`).join('')
-      || `<div class="muted" style="padding:12px 4px">${base.length ? 'Ningún equipo coincide.' : 'No hay equipos registrados en la base para este campo.'}</div>`;
+      || `<div class="muted" style="padding:12px 4px">${base.length ? 'Ningún equipo coincide.' : A.equiposError === 'permission-denied' ? 'Su usuario no tiene permiso para leer la base de equipos. Avise al administrador (reglas de seguridad).' : A.equiposError ? 'No se pudo leer la base de equipos. Revise la conexión.' : 'No hay equipos registrados en la base para este campo.'}</div>`;
     m.$('#eqL').querySelectorAll('[data-e]').forEach(b => b.onclick = () => { alElegir(base.find(e => e.id === b.dataset.e)); m.cerrar(); });
   };
   m.$('#eqQ').oninput = pintar;
