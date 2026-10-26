@@ -110,6 +110,14 @@ function campoHtml(cf, R) {
       cuerpo = `<div class="hj-ln"><span>${m != null ? vv(duracionTxt(m), m < 0 ? 'hj-al' : '') : ''}</span><span>${R ? '' : 'h:mm'}</span></div>`;
       break;
     }
+    case 'diferencia': {
+      const n = (k) => { const t = R ? R.v[k] : null; return t === '' || t == null || isNaN(Number(t)) ? null : Number(t); };
+      const a1 = R ? n(cf.desde) : null, b1 = R ? n(cf.hasta) : null;
+      const d = a1 != null && b1 != null ? Math.round((a1 - b1) * 100) / 100 : null;
+      const al = d != null && fueraDeRango(cf, d), r = rangoTxt(cf);
+      cuerpo = `<div class="hj-ln"><span>${d != null ? vv(String(d).replace('.', ','), al ? 'hj-al' : '') : ''}</span><span>${esc(cf.unidad || '')}${r ? ` · Rango ${esc(r)}` : ''}${R ? '' : ' · calculado'}</span></div>`;
+      break;
+    }
     case 'equipo': cuerpo = `<div class="hj-ln"><span>${x && x.codigo ? vv(`${x.codigo} · ${x.descripcion || ''}`) : ''}</span><span>${R ? '' : 'Código · descripción'}</span></div>`; break;
     case 'referencia': cuerpo = `<div class="hj-ln"><span>${hay ? vv(x) : ''}</span><span>${R ? '' : 'N° de registro'}</span></div>`; break;
     case 'foto': {
