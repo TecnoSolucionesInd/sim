@@ -606,7 +606,8 @@ function seccionEd(s, i, n, ro) {
   } else if (s.tipo === 'lista') {
     cuerpo = `<div class="label">Columnas</div>${s.columnas.map((c, j) => `<div class="irow">
         <input class="field sm" data-lc="${s.id}:${j}:nombre" value="${esc(c.nombre)}" placeholder="Descripción" ${dis}>
-        <select class="field sm" data-lc="${s.id}:${j}:tipo" style="width:130px;flex-shrink:0" ${dis}><option value="texto" ${c.tipo === 'texto' ? 'selected' : ''}>Texto</option><option value="numero" ${c.tipo === 'numero' ? 'selected' : ''}>Número</option></select>
+        <select class="field sm" data-lc="${s.id}:${j}:tipo" style="width:130px;flex-shrink:0" ${dis}><option value="texto" ${c.tipo === 'texto' ? 'selected' : ''}>Texto</option><option value="numero" ${c.tipo === 'numero' ? 'selected' : ''}>Número</option><option value="seleccion" ${c.tipo === 'seleccion' ? 'selected' : ''}>Selección</option></select>
+        ${c.tipo === 'seleccion' ? `<input class="field sm" data-lc="${s.id}:${j}:opciones" value="${esc((c.opciones || []).join(' / '))}" placeholder="Opción 1 / Opción 2" title="Opciones separadas por /" ${dis}>` : ''}
         ${ro ? '' : `<button type="button" class="ib del" data-dellc="${s.id}:${j}" aria-label="Quitar columna" ${s.columnas.length <= 1 ? 'disabled' : ''}>${IC.del}</button>`}</div>`).join('')}
       <div class="addrow" style="align-items:center;justify-content:space-between">
         ${ro ? '<span></span>' : `<button type="button" class="btn sm" data-addlc="${s.id}">${IC.mas}Columna</button>`}
@@ -734,8 +735,12 @@ function enlazarDiseno(cont) {
   on('[data-addvar]', 'click', (e) => modalVarios(e.currentTarget.dataset.addvar));
 
   // lista
-  on('[data-lc]', 'input', (e) => { const [sid, j, k] = e.target.dataset.lc.split(':'); secPor(sid).columnas[Number(j)][k] = e.target.value; cambio(false); });
-  on('[data-lc]', 'change', (e) => { const [sid, j, k] = e.target.dataset.lc.split(':'); secPor(sid).columnas[Number(j)][k] = e.target.value; cambio(false); });
+  const setLc = (e, re) => { const [sid, j, k] = e.target.dataset.lc.split(':'); const col = secPor(sid).columnas[Number(j)];
+    if (k === 'opciones') col.opciones = e.target.value.split('/').map(x => x.trim()).filter(Boolean); else col[k] = e.target.value;
+    if (k === 'tipo' && col.tipo === 'seleccion' && !col.opciones) col.opciones = [];
+    cambio(re); };
+  on('[data-lc]', 'input', (e) => { if (!e.target.dataset.lc.endsWith(':tipo')) setLc(e, false); });
+  on('[data-lc]', 'change', (e) => setLc(e, e.target.dataset.lc.endsWith(':tipo')));
   on('[data-dellc]', 'click', (e) => { const [sid, j] = e.currentTarget.dataset.dellc.split(':'); secPor(sid).columnas.splice(Number(j), 1); cambio(); });
   on('[data-addlc]', 'click', (e) => { const s = secPor(e.currentTarget.dataset.addlc); if (s.columnas.length >= 8) return toast('Máximo 8 columnas.', 'err'); s.columnas.push({ id: uid(), nombre: '', tipo: 'texto' }); cambio(); });
   on('[data-filimp]', 'change', (e) => { const n = Math.max(1, Math.min(20, Number(e.target.value) || 5)); e.target.value = n; secPor(e.target.dataset.filimp).filasImpresas = n; cambio(false); });

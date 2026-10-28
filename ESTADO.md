@@ -69,7 +69,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 | F1 | Congelamiento (conserva su diseño) | Integrado en pruebas · pendiente copia de datos y cambio de enlace |
 | F2 | Costos de mantenimiento (conserva su diseño) | Integrado en pruebas · pendiente cargar datos y respaldo |
 | F3 | Equipos (maestro) | Construido (pruebas) |
-| F5 | Materiales e inventario (maestro) | Planificado |
+| F5 | Materiales e inventario (maestro) | Químicos e insumos de ósmosis en pruebas (Análisis, kardex, catálogo) · pendiente: almacén general |
 | F6 | Conformidades · Reporte de mantenimiento | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Programas de trabajo (paradas, auditorías, proyectos) con costos en pruebas · pendiente: plan preventivo, programación quincenal, OT |
 | F9 | Informes técnicos | Construido (pruebas) · archivos en Firestore por partes (sin Blaze) |
@@ -238,12 +238,24 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   en el aplicativo y en el portal. Almacenamiento: descargar y retirar los más antiguos; la ficha conserva el historial.
 - Pendiente de evaluar: Cloud Storage con Blaze (storage.rules ya escrito) o Google Drive. Para migrar, se reemplaza core/archivos.js.
 
+## Materiales e inventario (F5)
+- apps/mat/ (layout mínimo, tema claro de Costos). Módulos: analisis, movimientos, catalogo. Cálculos puros en apps/mat/calculo.js.
+- Catálogo inicial en core/insumos.js (compartido con el R-302): 4 químicos, cartuchos 1 y 5 µm, zeolita y grava. El nombre une el R-302 con el inventario: no cambiarlo.
+- datos/mat/config/osmosis: items (stockInicial, reposicion, carga, vidaMeses, ultimoCambio por módulo), fechaInicio (2026-10-28), horasDia 20, seguridad 7. Se crea con "Inicializar".
+- datos/mat/movimientos: ingresos y ajustes por conteo (el ajuste guarda conteo y la diferencia contra el stock calculado a esa fecha).
+- Salidas: no se escriben; se leen de datos/fmt/registros con codigo R-302 (listas r302q y r302c, columnas ins/mod/can). "Ambos" se reparte 50/50 entre módulos.
+- stock = inicial + ingresos + ajustes − salidas. Tasa de químicos aprendida (mín. 7 días y 2 fechas; ventana 60 días). Cartuchos por intervalo real entre cambios (2 cambios por módulo).
+  Material filtrante: próximo cambio = último cambio (catálogo o R-302) + 18 meses. Pedir antes de = se agota − reposición − seguridad.
+- Comparación g/m³: producción = promedio diario del flujo de permeado del R-301 × horas/día; módulo desde el código del equipo (…-01 → OI-01).
+- Reglas: Materiales e inventario puede leer datos/fmt/registros y plantillas (volver a publicar firestore.rules).
+
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
 2. Authentication → Configuración → Dominios autorizados: agregar `tecnosolucionesind.github.io`.
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-28: Materiales e inventario — químicos e insumos de ósmosis (tablero de análisis, kardex, catálogo). Formatos: columnas de selección con unidad y R-302 predefinido. Reglas actualizadas (volver a publicar `firestore.rules`).
 - 2026-10-26: Plan preventivo — pestañas con estilo propio y panel de controles por bloques (Periodo · Filtros · Acciones); especialidad en desplegable.
 - 2026-10-26: Plan preventivo — pestaña Resumen (dashboard del planner con filtros, indicadores, gráficos y alertas).
 - 2026-10-26: Plan preventivo — calendario en formato línea de tiempo con filtro por semana, mes, trimestre o año.

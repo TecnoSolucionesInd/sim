@@ -57,6 +57,11 @@ service cloud.firestore {
       allow read: if esAdmin() || activo();
     }
 
+    // Materiales e inventario descuenta stock con los registros del R-302 y lee el flujo del R-301
+    match /datos/fmt/{coleccion}/{resto=**} {
+      allow read: if coleccion in ['registros', 'plantillas'] && puedeLeer('mat');
+    }
+
     // Registro de formatos: plantillas y configuración solo las modifica el rol Admin del aplicativo
     match /datos/fmt/{coleccion}/{resto=**} {
       allow write: if (coleccion in ['plantillas', 'config'] && esAdminDe('fmt'))

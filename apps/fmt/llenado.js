@@ -666,16 +666,41 @@ function pasoChecklist(box, s) {
 }
 
 // ---------------- lista ----------------
+// celda de una fila de lista: texto, número (con unidad tomada de otra columna) o selección
+function celdaLista(s, c, f, j) {
+  const id = `l_${j}_${c.id}`, x = f[c.id] ?? '';
+  if (c.tipo === 'seleccion') {
+    const ops = c.opciones || [];
+    if (ops.length <= 4) return `<div style="grid-column:1/-1"><span class="label">${esc(c.nombre)}</span><div class="chs">${ops.map(o => `<button type="button" data-lch="${j}:${c.id}" data-v="${esc(o)}" class="${o === x ? 'on' : ''}">${esc(o)}</button>`).join('')}</div></div>`;
+    return `<div style="grid-column:1/-1"><label class="label" for="${id}">${esc(c.nombre)}</label><select class="field" id="${id}" data-l="${j}:${c.id}"><option value="">Seleccione</option>${ops.map(o => `<option ${o === x ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`;
+  }
+  if (c.tipo === 'numero') {
+    const ref = c.unidadDe ? s.columnas.find(k => k.id === c.unidadDe) : null;
+    const u = ref && ref.unidades ? ref.unidades[f[ref.id]] || '' : c.unidad || '';
+    return `<div><label class="label" for="${id}">${esc(c.nombre)}</label><div class="num"><input id="${id}" data-l="${j}:${c.id}" inputmode="decimal" value="${esc(x)}" placeholder="—" autocomplete="off">${u ? `<span class="u">${esc(u)}</span>` : ''}</div></div>`;
+  }
+  return `<div><label class="label" for="${id}">${esc(c.nombre)}</label><input class="field" id="${id}" data-l="${j}:${c.id}" value="${esc(x)}" autocomplete="off"></div>`;
+}
+
 function pasoLista(box, s) {
   const filas = F.reg.v[s.id] || (F.reg.v[s.id] = []);
   const pintar = () => {
     box.innerHTML = `${filas.map((f, j) => `<div class="lrow"><div class="hd"><span>Fila ${j + 1}</span><button type="button" class="btn sm" data-del="${j}" aria-label="Quitar fila">${IC.del}</button></div>
-      <div class="g">${s.columnas.map(c => `<div><label class="label" for="l_${j}_${c.id}">${esc(c.nombre)}</label><input class="field" id="l_${j}_${c.id}" data-l="${j}:${c.id}" ${c.tipo === 'numero' ? 'inputmode="decimal"' : ''} value="${esc(f[c.id] ?? '')}" autocomplete="off"></div>`).join('')}</div></div>`).join('')
+      <div class="g">${s.columnas.map(c => celdaLista(s, c, f, j)).join('')}</div></div>`).join('')
       || '<div class="muted" style="font-size:14px;margin-bottom:12px">Sin filas. Agregue una si corresponde.</div>'}
       <button type="button" class="btn" id="lAdd">${IC.mas}Agregar fila</button>`;
-    box.querySelectorAll('[data-l]').forEach(inp => inp.oninput = () => { const [j, cid] = inp.dataset.l.split(':'); filas[Number(j)][cid] = inp.value; cambio(); });
+    box.querySelectorAll('[data-l]').forEach(inp => {
+      const ev = inp.tagName === 'SELECT' ? 'onchange' : 'oninput';
+      inp[ev] = () => {
+        const [j, cid] = inp.dataset.l.split(':');
+        let val = inp.value; if (inp.inputMode === 'decimal') { val = val.replace(/[^\d.,-]/g, ''); if (val !== inp.value) inp.value = val; }
+        filas[Number(j)][cid] = val; cambio();
+        if (s.columnas.some(c => c.unidadDe === cid)) pintar();   // cambia la unidad mostrada
+      };
+    });
+    box.querySelectorAll('[data-lch]').forEach(b => b.onclick = () => { const [j, cid] = b.dataset.lch.split(':'); const f = filas[Number(j)]; f[cid] = f[cid] === b.dataset.v ? '' : b.dataset.v; cambio(); pintar(); });
     box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { filas.splice(Number(b.dataset.del), 1); cambio(); pintar(); });
-    box.querySelector('#lAdd').onclick = () => { filas.push({}); cambio(); pintar(); box.querySelector(`[data-l^="${filas.length - 1}:"]`)?.focus(); };
+    box.querySelector('#lAdd').onclick = () => { filas.push({}); cambio(); pintar(); box.querySelectorAll('.lrow')[filas.length - 1]?.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   };
   pintar();
 }

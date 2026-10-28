@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Materiales e inventario · SIM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#E4E9EF; --card:#FFFFFF; --card2:#F3F5F7; --line:#D5DDE5; --ink:#1B2733; --ink2:#46535F; --muted:#6A7684;
+  --nav:#1D2E40; --nav2:#26405A; --navink:#C9D4DF; --accent:#2BA6A0;
+  --ok:#2f8f4e; --warn:#c98500; --bad:#cc3d3d;
+  --m1:#2a78d6; --m2:#eb6834;
+  --r:12px; --sh:0 1px 2px rgba(20,32,46,.06),0 4px 14px rgba(20,32,46,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;font-size:14px}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer}
+/* encabezado */
+#hd{background:var(--nav);color:#fff;padding:14px 24px 0;position:sticky;top:0;z-index:20;box-shadow:0 2px 10px rgba(10,20,30,.18)}
+#hd .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#hd .ico{width:38px;height:38px;border-radius:10px;background:rgba(43,166,160,.18);display:grid;place-items:center;flex:0 0 38px}
+#hd h1{font-size:18px;margin:0;font-weight:650;letter-spacing:.01em}
+#hd .sub{font-size:12px;color:#9FB1C3;margin-top:1px}
+#hd .tt{flex:1;min-width:200px}
+#hd .meta{font-size:12px;color:#9FB1C3;text-align:right}
+#hd .meta b{color:#fff;font-weight:600}
+#tabs{display:flex;gap:2px;margin-top:12px;overflow-x:auto}
+#tabs button{background:transparent;border:0;color:var(--navink);padding:10px 16px;font-size:13.5px;border-bottom:3px solid transparent;white-space:nowrap}
+#tabs button:hover{color:#fff}
+#tabs button.on{color:#fff;border-bottom-color:var(--accent);font-weight:600}
+#view{padding:18px 24px 90px;max-width:1500px;margin:0 auto}
+/* controles */
+.tb{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:12px 16px;margin-bottom:14px}
+.tb .blk{display:flex;flex-direction:column;gap:5px}
+.tb .blk>span{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tb .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card2)}
+.seg button{border:0;background:transparent;padding:6px 12px;font-size:12.5px;color:var(--ink2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--nav);color:#fff}
+select,input[type=text],input[type=number],input[type=date]{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;color:var(--ink);min-height:32px}
+input:focus,select:focus{outline:2px solid rgba(43,166,160,.35);border-color:var(--accent)}
+.btn{font-size:12.5px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:7px 12px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--card2)}
+.btn.pri{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.btn.pri:hover{filter:brightness(.95)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+/* rejilla */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;min-width:0}
+.card h3{margin:0;font-size:14px;font-weight:650}
+.card .hint{font-size:12px;color:var(--muted);margin:2px 0 10px}
+.ch{position:relative;height:280px}
+.ch.sm{height:230px}
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:13px 16px;position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+.kpi.bad::before{background:var(--bad)}.kpi.warn::before{background:var(--warn)}.kpi.ok::before{background:var(--ok)}.kpi.mut::before{background:#AEB8C2}
+.kpi small{display:block;font-size:11.5px;color:var(--muted);font-weight:600}
+.kpi b{display:block;font-size:24px;font-weight:650;margin:5px 0 2px;letter-spacing:-.01em}
+.kpi b em{font-style:normal;font-size:13px;font-weight:500;color:var(--ink2);margin-left:4px}
+.kpi span{font-size:12px;color:var(--ink2)}
+/* estados (siempre con texto) */
+.st{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st.ok{color:var(--ok);background:rgba(47,143,78,.1)}
+.st.warn{color:#9a6600;background:rgba(201,133,0,.12)}
+.st.bad{color:var(--bad);background:rgba(204,61,61,.1)}
+.st.mut{color:var(--muted);background:var(--card2)}
+/* tablas */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--card2)}
+.tbl td{padding:9px 10px;border-bottom:1px solid #E8EDF2;vertical-align:middle}
+.tbl td.r,.tbl th.r{text-align:right}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .nm{font-weight:600}
+.tbl .sm{font-size:11.5px;color:var(--muted)}
+.scroll{overflow-x:auto}
+.bar{height:6px;border-radius:4px;background:#E8EDF2;overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;border-radius:4px}
+/* alertas */
+.al{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #E8EDF2}
+.al:last-child{border-bottom:0}
+.al .dt{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 8px}
+.al.bad .dt{background:var(--bad)}.al.warn .dt{background:var(--warn)}.al.ok .dt{background:var(--ok)}.al.mut .dt{background:#AEB8C2}
+.al b{display:block;font-size:13px}
+.al span{font-size:12px;color:var(--ink2)}
+.vacio{color:var(--muted);font-size:13px;padding:18px 0;text-align:center}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink2);margin-bottom:8px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.leg i.dash{height:0;border-top:2px dashed;border-radius:0;width:14px;vertical-align:3px}
+.aviso{background:#FFF7E6;border:1px solid #F0D49A;color:#6B4B00;border-radius:var(--r);padding:11px 14px;margin-bottom:14px;font-size:13px}
+.aviso.bad{background:#FDECEC;border-color:#F1B9B9;color:#7A1F1F}
+.cl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.cl div{background:var(--card2);border-radius:10px;padding:10px 12px}
+.cl small{display:block;font-size:11px;color:var(--muted)}
+.cl b{font-size:18px;font-weight:650}
+.pt{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #E8EDF2;font-size:13px}
+.pt:last-child{border-bottom:0}
+.pt span{color:var(--ink2);text-align:right}
+/* formularios */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end}
+.form label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink2);font-weight:600}
+.form label input,.form label select{width:100%}
+.inl{width:92px}
+.toast{position:fixed;right:18px;bottom:18px;background:var(--nav);color:#fff;padding:11px 16px;border-radius:10px;box-shadow:var(--sh);z-index:50;font-size:13px}
+.toast.err{background:var(--bad)}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:900px){
+  .grid>*{grid-column:span 12!important}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  #view{padding:14px 16px 90px}
+  #hd{padding:12px 16px 0}
+  #hd .meta{display:none}
+}
+@media (max-width:480px){.kpis{grid-template-columns:1fr 1fr}.kpi b{font-size:20px}}
+</style>
+</head>
+<body>
+<header id="hd">
+  <div class="row">
+    <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5FD3CC" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8M7.5 5.5l9 5"/></svg></div>
+    <div class="tt"><h1>Materiales e inventario</h1><div class="sub">Químicos e insumos · Planta de ósmosis inversa</div></div>
+    <div class="meta" id="meta"></div>
+  </div>
+  <nav id="tabs"></nav>
+</header>
+<main id="view"><div class="vacio">Cargando…</div></main>
+
+<script type="module">
+import { iniciarApp } from '../../core/core.js';
+import { doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { INSUMOS_OSMOSIS, INV_INICIO, MODULOS_OSMOSIS } from '../../core/insumos.js';
+import * as K from './calculo.js';
+
+const ctx = await iniciarApp({ appId: 'mat', layout: 'minimo' });
+const db = ctx.db;
+const esAdminMat = ctx.esAdmin || ctx.rol === 'admin';
+const MODS = MODULOS_OSMOSIS;
+const COL_MOD = { 'OI-01': '#2a78d6', 'OI-02': '#eb6834' };
+const COL_INS = { ai: '#2a78d6', bs: '#eb6834', hs: '#1baf7a', hc: '#7a5bbf' };
+const hoy = K.iso(new Date());
+
+const ST = { cfg: null, movs: [], regs302: [], regs301: [], pl301: [], errFmt: '', vista: 'analisis', periodo: 30, modulo: 'all', insumo: '', kardex: '' };
+let CH = [];
+
+// ---------- utilidades ----------
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = (x, d = 1) => (x == null || isNaN(x) ? '—' : Number(x).toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d }));
+const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+const fd = (f) => (f ? `${f.slice(8, 10)}-${MES[Number(f.slice(5, 7)) - 1]}-${f.slice(2, 4)}` : '—');
+const diasTxt = (n) => (n == null ? '—' : n < 1 ? 'menos de 1 día' : `${nf(n, 0)} día${Math.round(n) === 1 ? '' : 's'}`);
+const st = (e) => `<span class="st ${K.NIVEL[e] || 'mut'}">${esc(e)}</span>`;
+function toast(t, tipo = '') { const d = document.createElement('div'); d.className = 'toast ' + tipo; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 3200); }
+const $ = (s) => document.querySelector(s);
+const CORTO = Object.fromEntries(INSUMOS_OSMOSIS.map(x => [x.id, x.corto]));
+const corto = (x) => x.corto || CORTO[x.id] || x.nombre;
+const usuario = () => ctx.perfil?.nombre || ctx.user.email;
+
+// ---------- datos ----------
+const refCfg = () => doc(db, 'datos', 'mat', 'config', 'osmosis');
+const colMov = () => collection(db, 'datos', 'mat', 'movimientos');
+const lista = (snap) => snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+async function cargar() {
+  const c = await getDoc(refCfg());
+  ST.cfg = c.exists() ? c.data() : null;
+  ST.movs = lista(await getDocs(colMov()));
+  ST.errFmt = '';
+  try {
+    const R = collection(db, 'datos', 'fmt', 'registros');
+    const [a, b, p] = await Promise.all([
+      getDocs(query(R, where('codigo', '==', 'R-302'))),
+      getDocs(query(R, where('codigo', '==', 'R-301'))),
+      getDocs(query(collection(db, 'datos', 'fmt', 'plantillas'), where('codigo', '==', 'R-301')))
+    ]);
+    ST.regs302 = lista(a); ST.regs301 = lista(b); ST.pl301 = lista(p);
+  } catch (e) {
+    ST.regs302 = []; ST.regs301 = []; ST.pl301 = [];
+    ST.errFmt = e.code === 'permission-denied'
+      ? 'No se pudieron leer los registros del R-302: publique las reglas de Firestore actualizadas (permiten a Materiales e inventario leer los registros de formatos).'
+      : 'No se pudieron leer los registros de formatos: ' + (e.code || e.message);
+  }
+}
+
+function calcular() {
+  const cfg = ST.cfg;
+  const salidas = K.salidasR302(ST.regs302, cfg.fechaInicio);
+  const movs = ST.movs.filter(m => m.fecha >= cfg.fechaInicio);
+  const prod = K.produccionR301(ST.regs301, ST.pl301, Number(cfg.horasDia) || 20);
+  return { salidas, movs, prod, A: K.analizar({ cfg, movs, salidas, prod, hoy, periodo: ST.periodo, modulos: MODS }) };
+}
+
+// ---------- estructura ----------
+const VISTAS = [
+  { id: 'analisis', nombre: 'Análisis' },
+  { id: 'movimientos', nombre: 'Movimientos' },
+  { id: 'catalogo', nombre: 'Catálogo' }
+].filter(v => ctx.puedeModulo(v.id));
+
+function tabs() {
+  $('#tabs').innerHTML = VISTAS.map(v => `<button class="${v.id === ST.vista ? 'on' : ''}" data-v="${v.id}">${v.nombre}</button>`).join('');
+  $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { ST.vista = b.dataset.v; location.hash = ST.vista; render(); });
+  $('#meta').innerHTML = `Hoy <b>${fd(hoy)}</b>${ST.cfg ? `<br>Inventario desde ${fd(ST.cfg.fechaInicio)}` : ''}`;
+}
+
+function render() {
+  CH.forEach(c => c.destroy()); CH = [];
+  tabs();
+  const v = $('#view');
+  if (!VISTAS.length) { v.innerHTML = '<div class="vacio">Su usuario no tiene módulos habilitados en este aplicativo.</div>'; return; }
+  if (!VISTAS.some(x => x.id === ST.vista)) ST.vista = VISTAS[0].id;
+  if (!ST.cfg) return vistaInicial(v);
+  const C = calcular();
+  if (ST.vista === 'analisis') return vistaAnalisis(v, C);
+  if (ST.vista === 'movimientos') return vistaMovimientos(v, C);
+  return vistaCatalogo(v, C);
+}
+
+// ---------- sin configuración ----------
+function vistaInicial(v) {
+  v.innerHTML = `<div class="card" style="max-width:720px;margin:30px auto">
+    <h3>Inventario de insumos de ósmosis</h3>
+    <p class="hint" style="font-size:13px;line-height:1.55">El inventario parte del stock inicial de cada insumo y descuenta lo registrado en el formato <b>R-302 Control de químicos e insumos</b>. Los consumos de químicos se aprenden de esos registros: después de ${K.DIAS_MIN} días con datos se calcula cuánto dura cada uno y cuándo pedir.</p>
+    <table class="tbl" style="margin:10px 0 16px"><thead><tr><th>Insumo</th><th class="r">Stock inicial</th></tr></thead><tbody>
+      ${INSUMOS_OSMOSIS.map(x => `<tr><td>${esc(x.nombre)}${x.respaldo ? ' <span class="sm">(respaldo)</span>' : ''}</td><td class="r num">${nf(x.stockInicial, 0)} ${x.unidad}</td></tr>`).join('')}
+    </tbody></table>
+    ${esAdminMat ? `<button class="btn pri" id="bIni">Inicializar inventario al ${fd(INV_INICIO)}</button>` : '<div class="aviso">El administrador del aplicativo debe inicializar el inventario.</div>'}
+  </div>`;
+  const b = $('#bIni');
+  if (b) b.onclick = async () => {
+    b.disabled = true;
+    try {
+      const items = INSUMOS_OSMOSIS.map(x => ({ ...x }));
+      await setDoc(refCfg(), { items, fechaInicio: INV_INICIO, horasDia: 20, seguridad: 7, creado: new Date().toISOString(), creadoPor: usuario() });
+      await cargar(); toast('Inventario inicializado.'); render();
+    } catch (e) { b.disabled = false; toast('No se pudo inicializar: ' + (e.code || e.message), 'err'); }
+  };
+}
+
+// ---------- ANÁLISIS ----------
+function vistaAnalisis(v, C) {
+  const A = C.A, its = A.items;
+  const quim = its.filter(x => x.tipo === 'quimico'), cart = its.filter(x => x.tipo === 'cartucho'), filt = its.filter(x => x.tipo === 'filtrante');
+  const visibles = (x) => !ST.insumo || x.id === ST.insumo;
+  if (ST.insumo && !its.some(x => x.id === ST.insumo)) ST.insumo = '';
+
+  // KPIs
+  const pedir = its.filter(x => ['bad', 'warn'].includes(K.NIVEL[x.estado]) && x.estado !== 'Atención');
+  const conAut = quim.filter(x => x.autonomia != null && !x.respaldo).sort((a, b) => a.autonomia - b.autonomia);
+  const menor = conAut[0];
+  const consumoP = quim.reduce((s, x) => s + (ST.modulo === 'all' ? x.periodo : Object.values(x.serie[ST.modulo] || {}).reduce((a, b) => a + b, 0)), 0);
+  const fil = filt.flatMap(x => x.proximos || []).sort((a, b) => a.proximo.localeCompare(b.proximo))[0];
+  const nivelAut = !menor ? 'mut' : menor.autonomia < 15 ? 'bad' : menor.autonomia < 30 ? 'warn' : 'ok';
+  const cl = A.cloro;
+
+  const alertas = [];
+  if (ST.errFmt) alertas.push(['bad', 'Sin lectura del R-302', ST.errFmt]);
+  for (const x of its) {
+    if (x.stock < 0) alertas.push(['bad', `${x.nombre}: stock negativo`, `Se registró más salida que stock (${nf(x.stock)} ${x.unidad}). Registre el ingreso pendiente o un ajuste por conteo.`]);
+    if (x.tipo === 'filtrante') {
+      for (const p of x.proximos || []) if (p.vencido) alertas.push(['bad', `${x.nombre} ${p.m}: cambio vencido`, `Tocaba el ${fd(p.proximo)} (último cambio ${fd(p.ultimo)}). Se requieren ${nf(x.carga, 0)} kg; stock ${nf(Math.max(x.stock, 0), 0)} kg.`]);
+      if (x.siguiente && !x.siguiente.vencido && ['Pedir ya', 'Pedir', 'Atención'].includes(x.estado)) alertas.push([K.NIVEL[x.estado], `${x.nombre}: comprar ${nf(x.comprar, 0)} kg`, `Próximo cambio ${x.siguiente.m} el ${fd(x.siguiente.proximo)}. Pedir antes del ${fd(x.pedir)}.`]);
+      continue;
+    }
+    if (x.estado === 'Sin stock') alertas.push(['bad', `${x.nombre}: sin stock`, 'Registre el ingreso en Movimientos cuando llegue el pedido.']);
+    else if (['Pedir ya', 'Pedir'].includes(x.estado)) alertas.push([K.NIVEL[x.estado], `${x.nombre}: ${x.estado.toLowerCase()}`, `Se agota el ${fd(x.agota)} (${diasTxt(x.autonomia)}). Pedir antes del ${fd(x.pedir)}.`]);
+    else if (x.estado === 'Atención') alertas.push(['warn', `${x.nombre}: pedido próximo`, `Pedir antes del ${fd(x.pedir)}; quedan ${diasTxt(x.autonomia)}.`]);
+  }
+  for (const n of A.ajenos) alertas.push(['warn', `"${n}" no está en el catálogo`, 'Se registró en el R-302 pero no descuenta stock. Revise el nombre en el Catálogo.']);
+  const calc = its.filter(x => x.estado === 'Calculando' && x.tipo !== 'filtrante');
+  if (calc.length) alertas.push(['mut', `Aprendiendo consumo (${calc.length})`, calc.map(x => corto(x)).join(', ') + `: se necesita registrar al menos ${K.DIAS_MIN} días en el R-302.`]);
+  const ord = { bad: 0, warn: 1, mut: 2, ok: 3 }; alertas.sort((a, b) => ord[a[0]] - ord[b[0]]);
+
+  const opIns = quim.concat(cart).map(x => `<option value="${x.id}" ${x.id === ST.insumo ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('');
+
+  v.innerHTML = `
+  ${ST.errFmt ? `<div class="aviso bad">${esc(ST.errFmt)}</div>` : ''}
+  <div class="tb">
+    <div class="blk"><span>Periodo</span><div class="seg" id="sPer">${[30, 60, 90].map(n => `<button data-p="${n}" class="${n === ST.periodo ? 'on' : ''}">${n} días</button>`).join('')}</div></div>
+    <div class="blk"><span>Módulo</span><div class="seg" id="sMod">${['all', ...MODS].map(m => `<button data-m="${m}" class="${m === ST.modulo ? 'on' : ''}">${m === 'all' ? 'Ambos' : m}</button>`).join('')}</div></div>
+    <div class="blk"><span>Insumo</span><select id="sIns"><option value="">Todos los químicos</option>${opIns}</select></div>
+    <div class="sp"></div>
+    <div class="blk"><span>Datos</span><div style="font-size:12.5px;color:var(--ink2)">${C.salidas.length} salidas en R-302 · ${ST.regs301.length} registros R-301</div></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi ${pedir.length ? 'bad' : 'ok'}"><small>Insumos para pedir</small><b class="num">${pedir.length}<em>de ${its.length}</em></b><span>${pedir.length ? esc(pedir.map(corto).slice(0, 3).join(', ')) : 'Nada pendiente'}</span></div>
+    <div class="kpi ${nivelAut}"><small>Menor autonomía</small><b class="num">${menor ? nf(menor.autonomia, 0) + '<em>días</em>' : 'Calculando'}</b><span>${menor ? esc(menor.nombre) : `Requiere ${K.DIAS_MIN} días de registros`}</span></div>
+    <div class="kpi"><small>Químicos consumidos · ${ST.periodo} días</small><b class="num">${nf(consumoP, 1)}<em>kg</em></b><span>${ST.modulo === 'all' ? 'Ambos módulos' : ST.modulo}</span></div>
+    <div class="kpi ${!cl || cl.autonomia == null ? 'mut' : cl.autonomia < 15 ? 'bad' : cl.autonomia < 30 ? 'warn' : 'ok'}"><small>Cloro activo disponible</small><b class="num">${cl ? nf(cl.disp, 1) + '<em>kg Cl</em>' : '—'}</b><span>${cl && cl.autonomia != null ? 'Alcanza ' + diasTxt(cl.autonomia) : 'Autonomía: calculando'}</span></div>
+    <div class="kpi ${!fil ? 'mut' : fil.vencido ? 'bad' : fil.dias < 90 ? 'warn' : 'ok'}"><small>Material filtrante</small><b class="num">${fil ? (fil.vencido ? 'Vencido' : nf(fil.dias, 0) + '<em>días</em>') : '—'}</b><span>${fil ? `${fil.m}: ${fil.vencido ? 'tocaba' : 'cambio'} el ${fd(fil.proximo)}` : 'Sin fecha de cambio'}</span></div>
+  </div>
+
+  <div class="grid">
+    <div class="card c8"><h3>Proyección de stock de químicos</h3><div class="hint">Stock real desde el inicio y proyección con el consumo aprendido (línea discontinua) hasta que se agota.</div>
+      <div class="leg" id="lgP"></div><div class="ch"><canvas id="gP"></canvas></div></div>
+    <div class="card c4"><h3>Alertas</h3><div class="hint">Ordenadas por urgencia</div>
+      <div style="max-height:318px;overflow:auto">${alertas.length ? alertas.map(a => `<div class="al ${a[0]}"><i class="dt"></i><div><b>${esc(a[1])}</b><span>${esc(a[2])}</span></div></div>`).join('') : '<div class="al ok"><i class="dt"></i><div><b>Todo en orden</b><span>No hay insumos por pedir.</span></div></div>'}</div></div>
+
+    <div class="card c12"><h3>Stock y reposición</h3><div class="hint">Pedir antes de = fecha en que se agota − días de reposición − ${ST.cfg.seguridad || 0} días de seguridad.</div>
+      <div class="scroll"><table class="tbl"><thead><tr><th>Insumo</th><th class="r">Stock</th><th>Nivel</th><th class="r">Consumo / día</th><th class="r">Autonomía</th><th>Se agota</th><th>Pedir antes de</th><th>Estado</th></tr></thead><tbody>
+      ${quim.concat(cart).filter(visibles).map(x => {
+        const ref = x.tasa ? Math.max(x.tasa * 60, x.stockInicial || 1) : (x.stockInicial || 1);
+        const pct = Math.max(0, Math.min(100, x.stock / ref * 100));
+        const col = K.NIVEL[x.estado] === 'bad' ? 'var(--bad)' : K.NIVEL[x.estado] === 'warn' ? 'var(--warn)' : K.NIVEL[x.estado] === 'ok' ? 'var(--ok)' : '#AEB8C2';
+        return `<tr><td><div class="nm">${esc(x.nombre)}</div>${x.respaldo ? '<div class="sm">Respaldo</div>' : x.motivo ? `<div class="sm">${esc(x.motivo)}</div>` : ''}</td>
+          <td class="r num"><b>${nf(x.stock, x.unidad === 'und' ? 0 : 1)}</b> ${x.unidad}</td>
+          <td><div class="bar"><i style="width:${pct}%;background:${col}"></i></div></td>
+          <td class="r num">${x.tasa ? nf(x.tasa, 2) + ' ' + x.unidad : '—'}</td>
+          <td class="r num">${diasTxt(x.autonomia)}</td><td>${fd(x.agota)}</td><td>${x.pedir ? `<b>${fd(x.pedir)}</b>` : '—'}</td><td>${st(x.estado)}</td></tr>`;
+      }).join('')}
+      </tbody></table></div></div>
+
+    <div class="card c8"><h3>Consumo diario por módulo</h3><div class="hint" id="hT"></div>
+      <div class="leg"><span><i style="background:${COL_MOD['OI-01']}"></i>OI-01</span><span><i style="background:${COL_MOD['OI-02']}"></i>OI-02</span><span><i class="dash" style="border-color:#1B2733"></i>Media móvil 7 días</span></div>
+      <div class="ch"><canvas id="gT"></canvas></div></div>
+    <div class="card c4"><h3>Comparación entre módulos</h3><div class="hint">Gramos de químico por m³ de permeado · últimos ${ST.periodo} días</div>
+      <div class="leg"><span><i style="background:${COL_MOD['OI-01']}"></i>OI-01 · ${nf(A.m3['OI-01'], 0)} m³</span><span><i style="background:${COL_MOD['OI-02']}"></i>OI-02 · ${nf(A.m3['OI-02'], 0)} m³</span></div>
+      ${A.comparacion.some(c => MODS.some(m => c.gm3[m] != null && c.kg[m] > 0)) ? '<div class="ch sm"><canvas id="gC"></canvas></div>' : `<div class="vacio">Se calcula cuando haya consumos en el R-302 y flujo de permeado en el R-301 del periodo.<br><span style="font-size:12px">Producción = flujo de permeado × ${ST.cfg.horasDia || 20} h/día.</span></div>`}</div>
+
+    <div class="card c4"><h3>Cloro: sodio y calcio</h3><div class="hint">Ambos hipocloritos en kg de cloro activo. El de calcio es respaldo.</div>
+      ${cl ? `<div class="cl">${cl.items.map(x => `<div><small>${esc(x.nombre.replace('Hipoclorito de ', '').replace(' granulado', ''))}</small><b class="num">${nf(Math.max(x.stock, 0), 0)} kg</b><div class="sm" style="font-size:11.5px;color:var(--muted)">= ${nf(Math.max(x.stock, 0) * x.cloro, 1)} kg Cl</div></div>`).join('')}</div>
+        <div class="pt" style="margin-top:8px"><b>Autonomía combinada</b><span>${cl.autonomia != null ? diasTxt(cl.autonomia) : 'Calculando'}</span></div>
+        <div class="pt"><b>Equivalencia</b><span>1 kg de calcio 70 % ≈ ${nf(0.70 / 0.075, 1)} kg de sodio 7,5 %</span></div>` : '<div class="vacio">Sin hipocloritos en el catálogo.</div>'}</div>
+    <div class="card c4"><h3>Patrón de uso aprendido</h3><div class="hint">Frecuencia y cantidad por dosificación, según el R-302</div>
+      ${quim.map(x => `<div class="pt"><b>${esc(corto(x))}</b><span>${x.patron ? `Cada ${nf(x.patron.cada, 1)} días · ${nf(x.patron.porDosis, 1)} ${x.unidad} por dosis` : x.motivo || 'Calculando'}</span></div>`).join('')}</div>
+    <div class="card c4"><h3>Filtros cartucho</h3><div class="hint">Intervalo real entre cambios por módulo</div>
+      ${cart.map(x => `<div style="margin-bottom:8px"><div class="pt" style="border:0;padding-bottom:2px"><b>${esc(x.nombre.replace('Filtro cartucho ', 'Cartucho '))}</b><span>${st(x.estado)}</span></div>
+        ${MODS.map(m => { const i = x.modulos[m] || {}; return `<div class="pt" style="padding:4px 0"><span style="text-align:left">${m}</span><span>${i.intervalo ? `cada ${nf(i.intervalo, 0)} días · próximo ${fd(i.proximo)}` : i.ultimo ? `último ${fd(i.ultimo)} · falta otro cambio` : 'sin cambios registrados'}</span></div>`; }).join('')}</div>`).join('')}</div>
+
+    <div class="card c12"><h3>Material filtrante</h3><div class="hint">Cambio completo cada ${filt[0]?.vidaMeses || 18} meses por módulo. Comprar a tiempo considera los días de reposición.</div>
+      <div class="scroll"><table class="tbl"><thead><tr><th>Material</th><th>Módulo</th><th>Último cambio</th><th>Próximo cambio</th><th class="r">Faltan</th><th class="r">Carga</th><th class="r">Stock</th><th class="r">Comprar</th><th>Pedir antes de</th><th>Estado</th></tr></thead><tbody>
+      ${filt.flatMap(x => MODS.map((m, k) => { const i = x.modulos[m] || {}; const sig = x.siguiente && x.siguiente.m === m;
+        const e = i.vencido ? 'Vencido' : sig ? x.estado : i.proximo ? (i.dias < 90 ? 'Atención' : 'OK') : 'Calculando';
+        return `<tr><td>${k === 0 ? `<span class="nm">${esc(x.nombre)}</span>` : ''}</td><td>${m}</td><td>${fd(i.ultimo)}</td><td><b>${fd(i.proximo)}</b></td>
+          <td class="r num">${i.dias == null ? '—' : i.dias < 0 ? `<span style="color:var(--bad)">${nf(-i.dias, 0)} días atrasado</span>` : nf(i.dias, 0) + ' días'}</td>
+          <td class="r num">${nf(x.carga, 0)} kg</td><td class="r num">${k === 0 ? nf(Math.max(x.stock, 0), 0) + ' kg' : ''}</td>
+          <td class="r num">${sig ? nf(x.comprar, 0) + ' kg' : ''}</td><td>${sig && !i.vencido ? fd(x.pedir) : i.vencido ? '<b style="color:var(--bad)">Ya</b>' : ''}</td><td>${st(e)}</td></tr>`; })).join('')}
+      </tbody></table></div></div>
+  </div>`;
+
+  $('#sPer').querySelectorAll('button').forEach(b => b.onclick = () => { ST.periodo = Number(b.dataset.p); render(); });
+  $('#sMod').querySelectorAll('button').forEach(b => b.onclick = () => { ST.modulo = b.dataset.m; render(); });
+  $('#sIns').onchange = (e) => { ST.insumo = e.target.value; render(); };
+  if (window.Chart) graficos(A, C);
+}
+
+// línea vertical "Hoy" y marcas "Se agota"
+const marcas = {
+  id: 'marcas',
+  afterDatasetsDraw(ch, _, o) {
+    const { ctx: g, chartArea: a, scales: { x } } = ch;
+    if (o.hoy != null) {
+      const px = x.getPixelForValue(o.hoy);
+      g.save(); g.strokeStyle = '#46535F'; g.setLineDash([3, 3]); g.lineWidth = 1;
+      g.beginPath(); g.moveTo(px, a.top); g.lineTo(px, a.bottom); g.stroke(); g.setLineDash([]);
+      g.fillStyle = '#1B2733'; g.font = '600 11px "Segoe UI",system-ui'; g.textAlign = 'center'; g.fillText('Hoy', px, a.top - 4); g.restore();
+    }
+    for (const m of o.agota || []) {
+      const px = x.getPixelForValue(m.i), py = ch.scales.y.getPixelForValue(0);
+      g.save(); g.fillStyle = '#fff'; g.strokeStyle = m.color; g.lineWidth = 2;
+      g.beginPath(); g.arc(px, py, 5, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.fillStyle = m.color; g.font = '600 10.5px "Segoe UI",system-ui'; g.textAlign = 'center'; g.fillText('Se agota', px, py - 10); g.restore();
+    }
+  }
+};
+
+function graficos(A, C) {
+  Chart.defaults.font.family = '"Segoe UI",system-ui,sans-serif'; Chart.defaults.font.size = 11.5; Chart.defaults.color = '#6A7684';
+  const grid = { color: '#E8EDF2' }, cfg = ST.cfg;
+  const quim = A.items.filter(x => x.tipo === 'quimico' && (!ST.insumo || x.id === ST.insumo));
+
+  // proyección
+  const desde = K.sumarDias(hoy, -Math.max(ST.periodo, 14)) < cfg.fechaInicio ? cfg.fechaInicio : K.sumarDias(hoy, -ST.periodo);
+  const finProy = quim.map(x => x.agota).filter(Boolean).sort().pop();
+  let hasta = K.sumarDias(hoy, 60);
+  if (finProy) hasta = finProy > K.sumarDias(hoy, 240) ? K.sumarDias(hoy, 240) : finProy > hasta ? K.sumarDias(finProy, 7) : hasta;
+  const fechas = []; for (let f = desde; f <= hasta; f = K.sumarDias(f, 1)) fechas.push(f);
+  const iHoy = fechas.indexOf(hoy);
+  const ds = [], agota = [];
+  for (const x of quim) {
+    const col = COL_INS[x.id] || '#6A7684';
+    const real = fechas.map(f => (f <= hoy ? K.stockAl(x, C.movs, C.salidas, f) : null));
+    ds.push({ label: x.nombre, data: real, borderColor: col, backgroundColor: col, borderWidth: 2, pointRadius: 0, tension: 0.15 });
+    if (x.tasa) {
+      const proy = fechas.map(f => (f < hoy ? null : Math.max(0, x.stock - x.tasa * K.dias(hoy, f))));
+      const corte = proy.findIndex((y, i) => i >= iHoy && y === 0);
+      if (corte >= 0) { for (let i = corte + 1; i < proy.length; i++) proy[i] = null; agota.push({ i: corte, color: col }); }
+      ds.push({ label: x.nombre + ' (proyección)', data: proy, borderColor: col, borderDash: [5, 4], borderWidth: 1.6, pointRadius: 0 });
+    }
+  }
+  $('#lgP').innerHTML = quim.map(x => `<span><i style="background:${COL_INS[x.id]}"></i>${esc(corto(x))}</span>`).join('') + '<span><i class="dash" style="border-color:#46535F"></i>Proyección</span>';
+  CH.push(new Chart($('#gP'), {
+    type: 'line', data: { labels: fechas, datasets: ds }, plugins: [marcas],
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, layout: { padding: { top: 16 } },
+      plugins: { legend: { display: false }, marcas: { hoy: iHoy >= 0 ? iHoy : null, agota },
+        tooltip: { filter: (t) => t.raw != null, callbacks: { title: (t) => fd(t[0].label), label: (t) => ` ${t.dataset.label}: ${nf(t.raw, 1)} kg` } } },
+      scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8, callback: function (v) { return fd(this.getLabelForValue(v)); } } },
+        y: { beginAtZero: true, grid, title: { display: true, text: 'kg' } } } }
+  }));
+
+  // consumo diario por módulo + media móvil
+  const sel = A.items.find(x => x.id === ST.insumo) || quim.find(x => x.consumido > 0) || quim[0];
+  if (sel) {
+    const fs = []; for (let f = A.desdeP < cfg.fechaInicio ? cfg.fechaInicio : A.desdeP; f <= hoy; f = K.sumarDias(f, 1)) fs.push(f);
+    const mods = ST.modulo === 'all' ? MODS : [ST.modulo];
+    const series = Object.fromEntries(mods.map(m => [m, fs.map(f => sel.serie[m]?.[f] || 0)]));
+    const tot = fs.map((_, i) => mods.reduce((s, m) => s + series[m][i], 0));
+    $('#hT').textContent = `${sel.nombre} · ${sel.unidad} por día · últimos ${ST.periodo} días`;
+    CH.push(new Chart($('#gT'), {
+      data: { labels: fs, datasets: [
+        ...mods.map(m => ({ type: 'bar', label: m, data: series[m], backgroundColor: COL_MOD[m], stack: 's', borderRadius: 2, maxBarThickness: 18 })),
+        { type: 'line', label: 'Media móvil 7 días', data: K.mediaMovil(tot, 7), borderColor: '#1B2733', borderDash: [5, 4], borderWidth: 1.6, pointRadius: 0, spanGaps: false }
+      ] },
+      options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { title: (t) => fd(t[0].label), label: (t) => t.raw == null ? null : ` ${t.dataset.label}: ${nf(t.raw, 1)} ${sel.unidad}` } } },
+        scales: { x: { stacked: true, grid: { display: false }, ticks: { maxTicksLimit: 10, callback: function (v) { return fd(this.getLabelForValue(v)); } } },
+          y: { stacked: true, beginAtZero: true, grid, title: { display: true, text: sel.unidad } } } }
+    }));
+  }
+
+  // comparación g/m³
+  const gc = $('#gC');
+  if (gc) {
+    const filas = A.comparacion.filter(c => MODS.some(m => c.kg[m] > 0));
+    CH.push(new Chart(gc, {
+      type: 'bar', data: { labels: filas.map(c => corto(c)),
+        datasets: MODS.map(m => ({ label: m, data: filas.map(c => c.gm3[m]), backgroundColor: COL_MOD[m], borderRadius: 3, maxBarThickness: 16 })) },
+      options: { indexAxis: 'y', maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (t) => ` ${t.dataset.label}: ${nf(t.raw, 2)} g/m³` } } },
+        scales: { x: { beginAtZero: true, grid, title: { display: true, text: 'g/m³' } }, y: { grid: { display: false } } } }
+    }));
+  }
+}
+
+// ---------- MOVIMIENTOS (kardex) ----------
+function vistaMovimientos(v, C) {
+  const its = ST.cfg.items;
+  if (!ST.kardex || !its.some(x => x.id === ST.kardex)) ST.kardex = its[0]?.id;
+  const it = its.find(x => x.id === ST.kardex);
+  const puede = ctx.puedeEscribir;
+  const filas = [{ fecha: ST.cfg.fechaInicio, mov: 'Stock inicial', doc: '', mod: '', ent: Number(it.stockInicial) || 0, sal: 0, us: ST.cfg.creadoPor || '' }];
+  for (const m of C.movs.filter(m => m.insumo === it.id)) filas.push({ fecha: m.fecha, mov: m.tipo === 'entrada' ? 'Ingreso' : `Ajuste por conteo (${nf(m.conteo, it.unidad === 'und' ? 0 : 1)} ${it.unidad})`, doc: m.documento || '', mod: '', ent: m.cantidad > 0 ? m.cantidad : 0, sal: m.cantidad < 0 ? -m.cantidad : 0, us: m.usuario || '', obs: m.observacion || '', id: m.id, orden: m.creado || '' });
+  for (const s of C.salidas.filter(s => K.norm(s.nombre) === K.norm(it.nombre))) filas.push({ fecha: s.fecha, mov: s.motivo ? `Cambio · ${s.motivo}` : 'Consumo R-302', doc: s.numero, mod: s.modulo, ent: 0, sal: s.cantidad, us: s.usuario, obs: s.obs, orden: s.hora });
+  const cuerpo = [filas[0], ...filas.slice(1).sort((a, b) => (a.fecha + (a.orden || '')).localeCompare(b.fecha + (b.orden || '')))];
+  let saldo = 0; cuerpo.forEach(f => { saldo += f.ent - f.sal; f.saldo = saldo; });
+  const dec = it.unidad === 'und' ? 0 : 1;
+
+  v.innerHTML = `
+  ${ST.errFmt ? `<div class="aviso bad">${esc(ST.errFmt)}</div>` : ''}
+  <div class="tb">
+    <div class="blk"><span>Insumo</span><select id="kIns">${its.map(x => `<option value="${x.id}" ${x.id === it.id ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></div>
+    <div class="sp"></div>
+    <div class="blk"><span>Stock actual</span><div style="font-size:20px;font-weight:650" class="num">${nf(saldo, dec)} ${it.unidad}</div></div>
+  </div>
+  <div class="grid">
+    ${puede ? `<div class="card c12"><h3>Registrar movimiento</h3><div class="hint">Las salidas no se registran aquí: se descuentan solas desde el formato R-302.</div>
+      <div class="form">
+        <label>Tipo<select id="fTipo"><option value="entrada">Ingreso (compra o despacho de almacén)</option><option value="ajuste">Ajuste por conteo físico</option></select></label>
+        <label>Fecha<input type="date" id="fFecha" value="${hoy}" min="${ST.cfg.fechaInicio}" max="${hoy}"></label>
+        <label id="lCan">Cantidad (${it.unidad})<input type="number" id="fCan" min="0" step="any" inputmode="decimal"></label>
+        <label>Documento<input type="text" id="fDoc" placeholder="Guía, OC o vale"></label>
+        <label>Observación<input type="text" id="fObs"></label>
+        <div><button class="btn pri" id="fOk">Registrar</button></div>
+      </div></div>` : ''}
+    <div class="card c12"><h3>Kardex · ${esc(it.nombre)}</h3><div class="hint">Movimientos desde el ${fd(ST.cfg.fechaInicio)}, más recientes al final.</div>
+      <div class="scroll"><table class="tbl"><thead><tr><th>Fecha</th><th>Movimiento</th><th>Documento / registro</th><th>Módulo</th><th class="r">Entrada</th><th class="r">Salida</th><th class="r">Saldo</th><th>Usuario</th><th></th></tr></thead><tbody>
+      ${cuerpo.map(f => `<tr><td class="num">${fd(f.fecha)}</td><td>${esc(f.mov)}${f.obs ? `<div class="sm">${esc(f.obs)}</div>` : ''}</td><td>${esc(f.doc)}</td><td>${esc(f.mod)}</td>
+        <td class="r num">${f.ent ? nf(f.ent, dec) : ''}</td><td class="r num">${f.sal ? nf(f.sal, dec) : ''}</td><td class="r num"><b style="${f.saldo < 0 ? 'color:var(--bad)' : ''}">${nf(f.saldo, dec)}</b></td>
+        <td class="sm">${esc(f.us)}</td><td>${f.id && esAdminMat ? `<button class="btn sm" data-del="${f.id}">Quitar</button>` : ''}</td></tr>`).join('')}
+      </tbody></table></div></div>
+  </div>`;
+
+  $('#kIns').onchange = (e) => { ST.kardex = e.target.value; render(); };
+  const tipo = $('#fTipo');
+  if (tipo) {
+    tipo.onchange = () => { $('#lCan').firstChild.textContent = tipo.value === 'ajuste' ? `Conteo físico (${it.unidad})` : `Cantidad (${it.unidad})`; };
+    $('#fOk').onclick = async () => {
+      const fecha = $('#fFecha').value, val = K.num($('#fCan').value);
+      if (!fecha || fecha < ST.cfg.fechaInicio || fecha > hoy) return toast('Indique una fecha válida.', 'err');
+      if (!(val >= 0) || (tipo.value === 'entrada' && !(val > 0))) return toast('Indique la cantidad.', 'err');
+      const m = { tipo: tipo.value, insumo: it.id, nombre: it.nombre, fecha, documento: $('#fDoc').value.trim(), observacion: $('#fObs').value.trim(), usuario: usuario(), uid: ctx.user.uid, creado: new Date().toISOString() };
+      if (tipo.value === 'entrada') m.cantidad = val;
+      else { const calc = K.stockAl(it, C.movs, C.salidas, fecha); m.conteo = val; m.cantidad = Math.round((val - calc) * 1000) / 1000; }
+      $('#fOk').disabled = true;
+      try { await addDoc(colMov(), m); await cargar(); toast(tipo.value === 'entrada' ? 'Ingreso registrado.' : `Ajuste registrado (${m.cantidad >= 0 ? '+' : ''}${nf(m.cantidad, dec)} ${it.unidad}).`); render(); }
+      catch (e) { $('#fOk').disabled = false; toast('No se pudo registrar: ' + (e.code || e.message), 'err'); }
+    };
+  }
+  v.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if (b.dataset.ok !== '1') { b.dataset.ok = '1'; b.textContent = '¿Seguro?'; return; }
+    try { await deleteDoc(doc(db, 'datos', 'mat', 'movimientos', b.dataset.del)); await cargar(); toast('Movimiento quitado.'); render(); }
+    catch (e) { toast('No se pudo quitar: ' + (e.code || e.message), 'err'); }
+  });
+}
+
+// ---------- CATÁLOGO ----------
+function vistaCatalogo(v) {
+  const cfg = ST.cfg, ed = esAdminMat, dis = ed ? '' : 'disabled';
+  const TIPO = { quimico: 'Químico', cartucho: 'Filtro cartucho', filtrante: 'Material filtrante' };
+  v.innerHTML = `
+  <div class="grid">
+    <div class="card c12"><h3>Parámetros del inventario</h3><div class="hint">${ed ? 'Solo el administrador del aplicativo modifica estos datos.' : 'Solo lectura: los cambia el administrador del aplicativo.'}</div>
+      <div class="form">
+        <label>Fecha del stock inicial<input type="date" id="pIni" value="${esc(cfg.fechaInicio)}" ${dis}></label>
+        <label>Horas de operación por día<input type="number" id="pHor" value="${esc(cfg.horasDia ?? 20)}" min="1" max="24" ${dis}></label>
+        <label>Días de seguridad<input type="number" id="pSeg" value="${esc(cfg.seguridad ?? 7)}" min="0" ${dis}></label>
+      </div></div>
+    <div class="card c12"><h3>Insumos de ósmosis</h3><div class="hint">El nombre une el inventario con lo que se elige en el R-302; no se edita aquí. Reposición = días que demora en llegar un pedido.</div>
+      <div class="scroll"><table class="tbl"><thead><tr><th>Insumo</th><th>Tipo</th><th>Unidad</th><th class="r">Stock inicial</th><th class="r">Reposición (días)</th><th class="r">Carga por cambio</th><th class="r">Vida (meses)</th><th>Último cambio OI-01</th><th>Último cambio OI-02</th></tr></thead><tbody>
+      ${cfg.items.map((x, i) => `<tr><td class="nm">${esc(x.nombre)}${x.respaldo ? ' <span class="sm">(respaldo)</span>' : ''}</td><td>${TIPO[x.tipo] || x.tipo}</td><td>${x.unidad}</td>
+        <td class="r"><input class="inl num" type="number" step="any" min="0" data-i="${i}" data-k="stockInicial" value="${esc(x.stockInicial)}" ${dis}></td>
+        <td class="r"><input class="inl num" type="number" min="0" data-i="${i}" data-k="reposicion" value="${esc(x.reposicion)}" ${dis}></td>
+        ${x.tipo === 'filtrante' ? `<td class="r"><input class="inl num" type="number" min="0" data-i="${i}" data-k="carga" value="${esc(x.carga)}" ${dis}></td>
+          <td class="r"><input class="inl num" type="number" min="1" data-i="${i}" data-k="vidaMeses" value="${esc(x.vidaMeses)}" ${dis}></td>
+          ${MODS.map(m => `<td><input type="date" data-i="${i}" data-u="${m}" value="${esc(x.ultimoCambio?.[m] || '')}" ${dis}></td>`).join('')}` : '<td></td><td></td><td></td><td></td>'}</tr>`).join('')}
+      </tbody></table></div>
+      ${ed ? '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn pri" id="cOk">Guardar cambios</button><span class="sm" style="font-size:12px;color:var(--muted)">Los cambios de material filtrante registrados en el R-302 actualizan solos el último cambio.</span></div>' : ''}
+    </div>
+  </div>`;
+  const b = $('#cOk');
+  if (b) b.onclick = async () => {
+    const items = cfg.items.map(x => ({ ...x, ultimoCambio: x.ultimoCambio ? { ...x.ultimoCambio } : undefined }));
+    v.querySelectorAll('[data-k]').forEach(inp => { const n = K.num(inp.value); items[+inp.dataset.i][inp.dataset.k] = isNaN(n) ? 0 : n; });
+    v.querySelectorAll('[data-u]').forEach(inp => { const it = items[+inp.dataset.i]; it.ultimoCambio = { ...(it.ultimoCambio || {}), [inp.dataset.u]: inp.value }; });
+    items.forEach(x => { if (x.ultimoCambio === undefined) delete x.ultimoCambio; });
+    const nuevo = { ...cfg, items, fechaInicio: $('#pIni').value || cfg.fechaInicio, horasDia: K.num($('#pHor').value) || 20, seguridad: K.num($('#pSeg').value) || 0, actualizado: new Date().toISOString(), actualizadoPor: usuario() };
+    b.disabled = true;
+    try { await setDoc(refCfg(), nuevo); ST.cfg = nuevo; toast('Catálogo guardado.'); render(); }
+    catch (e) { b.disabled = false; toast('No se pudo guardar: ' + (e.code || e.message), 'err'); }
+  };
+}
+
+// ---------- inicio ----------
+const h = location.hash.slice(1); if (h) ST.vista = h;
+try { await cargar(); } catch (e) { $('#view').innerHTML = `<div class="aviso bad">No se pudo leer el inventario: ${esc(e.code || e.message)}</div>`; throw e; }
+render();
+</script>
+</body>
+</html>

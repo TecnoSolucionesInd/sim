@@ -179,9 +179,18 @@ function seccionHtml(s, def, cols, R, equipos) {
     const filas = R ? (R.v[s.id] || []).filter(f => s.columnas.some(c => String(f[c.id] ?? '').trim())) : [];
     const n = R ? Math.max(1, filas.length) : Math.max(1, Math.min(20, Number(s.filasImpresas) || 5));
     return `<div class="hj-sec">${tit}<table class="hj-t">
-      <thead><tr><th style="width:6%">N°</th>${s.columnas.map(c => `<th class="${c.tipo === 'texto' ? 'l' : ''}" style="${c.tipo === 'numero' ? 'width:14%' : ''}">${esc(c.nombre || 'Columna')}</th>`).join('')}</tr></thead>
+      <thead><tr><th style="width:6%">N°</th>${s.columnas.map(c => `<th class="${c.tipo !== 'numero' ? 'l' : ''}" style="${c.tipo === 'numero' ? 'width:14%' : ''}">${esc(c.nombre || 'Columna')}${c.tipo === 'seleccion' && !R && c.opciones?.length && c.opciones.length <= 4 ? `<small>${c.opciones.map(esc).join(' / ')}</small>` : ''}</th>`).join('')}</tr></thead>
       <tbody>${R && !filas.length ? `<tr><td colspan="${s.columnas.length + 1}" class="na">Sin registros</td></tr>`
-        : Array.from({ length: n }, (_, i) => `<tr><td class="c">${i + 1}</td>${s.columnas.map(c => `<td class="${c.tipo === 'numero' ? 'vv' : 'l'}">${esc(filas[i]?.[c.id] ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+        : Array.from({ length: n }, (_, i) => `<tr><td class="c">${i + 1}</td>${s.columnas.map(c => {
+            let v = filas[i]?.[c.id] ?? '';
+            if (c.tipo === 'numero' && v !== '') {
+              v = String(v).replace('.', ',');
+              const ref = c.unidadDe ? s.columnas.find(k => k.id === c.unidadDe) : null;
+              const u = ref && ref.unidades ? ref.unidades[filas[i]?.[ref.id]] : '';
+              if (u) v += ' ' + u;
+            }
+            return `<td class="${c.tipo === 'numero' ? 'vv' : 'l'}">${esc(v)}</td>`;
+          }).join('')}</tr>`).join('')}</tbody></table></div>`;
   }
   return '';
 }

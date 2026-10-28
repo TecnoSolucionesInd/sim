@@ -1,6 +1,7 @@
 // Modelo del aplicativo Registro de formatos: catálogos, utilidades y formatos piloto.
 
 import { SISTEMAS } from '../../core/maestros.js';
+import { QUIMICOS_OSMOSIS, CONSUMIBLES_OSMOSIS, unidadesDe } from '../../core/insumos.js';
 export { SISTEMAS };
 
 export const FRECUENCIAS = ['Por turno', 'Diario', 'Semanal', 'Quincenal', 'Mensual', 'Trimestral', 'Según plan', 'Por evento'];
@@ -190,6 +191,7 @@ export function validarDef(def) {
     if (s.tipo === 'lista') {
       if (!s.columnas.length) err.push(`"${t}" no tiene columnas.`);
       if (s.columnas.some(x => !x.nombre.trim())) err.push(`"${t}" tiene columnas sin nombre.`);
+      if (s.columnas.some(x => x.tipo === 'seleccion' && !(x.opciones || []).length)) err.push(`"${t}" tiene columnas de selección sin opciones.`);
     }
   });
   const fir = firmasDe(def);
@@ -350,5 +352,34 @@ export function pilotos() {
     }
   };
 
-  return [r001, r002, r101, r301];
+  // R-302: consumo de químicos e insumos de ósmosis (alimenta el inventario de Materiales e inventario)
+  // Ids fijos de secciones y columnas: el inventario los lee para calcular las salidas.
+  const sel = (id, nombre, opciones, extra = {}) => ({ id, nombre, tipo: 'seleccion', opciones, ...extra });
+  const r302 = {
+    codigo: 'R-302',
+    def: {
+      ...defVacia('Control de químicos e insumos — Planta de ósmosis inversa'),
+      frecuencia: 'Por evento',
+      datosGenerales: { turno: true, hora: true },
+      secciones: [
+        { id: 'r302q', tipo: 'lista', titulo: 'Dosificación de químicos', filasImpresas: 5, columnas: [
+          sel('ins', 'Químico', QUIMICOS_OSMOSIS.map(x => x.nombre), { unidades: unidadesDe(QUIMICOS_OSMOSIS) }),
+          sel('mod', 'Módulo', ['OI-01', 'OI-02', 'Ambos']),
+          { id: 'can', nombre: 'Cantidad', tipo: 'numero', unidadDe: 'ins' },
+          { id: 'obs', nombre: 'Observación', tipo: 'texto' }
+        ] },
+        { id: 'r302c', tipo: 'lista', titulo: 'Cambio de filtros y material filtrante', filasImpresas: 4, columnas: [
+          sel('ins', 'Insumo', CONSUMIBLES_OSMOSIS.map(x => x.nombre), { unidades: unidadesDe(CONSUMIBLES_OSMOSIS) }),
+          sel('mod', 'Módulo', ['OI-01', 'OI-02']),
+          { id: 'can', nombre: 'Cantidad', tipo: 'numero', unidadDe: 'ins' },
+          { id: 'dp', nombre: 'ΔP antes (bar)', tipo: 'numero' },
+          sel('mot', 'Motivo', ['ΔP alto', 'Programado', 'Falla', 'Otro'])
+        ] },
+        { id: 'r302e', tipo: 'campos', titulo: 'Evidencia', columnas: 0, campos: [c('Foto del cambio (filtro o material retirado)', 'foto')] }
+      ],
+      firmas: [{ nombre: 'Técnico', modo: 'usuario' }, FA]
+    }
+  };
+
+  return [r001, r002, r101, r301, r302];
 }

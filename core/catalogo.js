@@ -98,10 +98,14 @@ export const APPS = [
     ]
   },
   {
-    id: 'mat', nombre: 'Materiales e inventario', sub: 'Catálogo, stock y kardex',
-    grupo: 'mae', estado: 'plan', fase: 'F5', color: '#F29E7A', url: null,
+    id: 'mat', nombre: 'Materiales e inventario', sub: 'Químicos e insumos de ósmosis: stock, kardex y alertas',
+    grupo: 'mae', estado: 'dev', fase: 'F5', color: '#F29E7A', url: 'apps/mat/',
     icon: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8M7.5 5.5l9 5',
-    modulos: []
+    modulos: [
+      { id: 'analisis', nombre: 'Análisis' },
+      { id: 'movimientos', nombre: 'Movimientos' },
+      { id: 'catalogo', nombre: 'Catálogo' }
+    ]
   },
   {
     id: 'conf', nombre: 'Conformidades', sub: 'Trabajos realizados por proveedores',
