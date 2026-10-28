@@ -255,6 +255,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-10-28: Formatos — nota de referencia en listas (s.guia: título, columnas, filas, nota): al pie del impreso tras Observaciones y botón de consulta al llenar; cantidad sugerida por opción (sugeridos). R-302 con dosificación recomendada (core/insumos.js → GUIA_DOSIFICACION). En R-302 ya cargados: editor → "Usar la referencia predefinida" y emitir.
 - 2026-10-28: Materiales e inventario — químicos e insumos de ósmosis (tablero de análisis, kardex, catálogo). Formatos: columnas de selección con unidad y R-302 predefinido. Reglas actualizadas (volver a publicar `firestore.rules`).
 - 2026-10-26: Plan preventivo — pestañas con estilo propio y panel de controles por bloques (Periodo · Filtros · Acciones); especialidad en desplegable.
 - 2026-10-26: Plan preventivo — pestaña Resumen (dashboard del planner con filtros, indicadores, gráficos y alertas).

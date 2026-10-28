@@ -245,6 +245,8 @@ function vistaPlantillas(main) {
   pintarCards(main);
 }
 
+// referencia predefinida para una sección de lista (por id de sección de los formatos predefinidos)
+const guiaPredef = (s) => { for (const pl of pilotos()) { const x = pl.def.secciones.find(k => k.id === s.id && k.guia); if (x) return x.guia; } return null; };
 const faltanPilotos = () => pilotos().some(pl => !PLANT.some(p => p.codigo === pl.codigo));
 async function cargarPilotos() {
   const btn = document.getElementById('bPilotos');
@@ -612,7 +614,12 @@ function seccionEd(s, i, n, ro) {
       <div class="addrow" style="align-items:center;justify-content:space-between">
         ${ro ? '<span></span>' : `<button type="button" class="btn sm" data-addlc="${s.id}">${IC.mas}Columna</button>`}
         <label class="check" style="font-size:13px">Filas en el formato impreso <input class="field sm" type="number" min="1" max="20" data-filimp="${s.id}" value="${s.filasImpresas}" style="width:72px" ${dis}></label>
-      </div>`;
+      </div>
+      <div class="label" style="margin-top:12px">Tabla de referencia <span class="muted" style="font-weight:400">(opcional: nota al pie del impreso, consultable al llenar)</span></div>
+      <input class="field sm" data-guia="${s.id}:titulo" value="${esc(s.guia?.titulo || '')}" placeholder="Título, p. ej. Dosificación de referencia" ${dis} style="margin-bottom:6px">
+      <textarea class="field sm" data-guia="${s.id}:filas" rows="4" placeholder="Una fila por línea, columnas separadas por |&#10;Químico | Dosis | Agua permeada | Función" ${dis}>${esc(s.guia ? [(s.guia.columnas || []).join(' | '), ...(s.guia.filas || []).map(f => f.join(' | '))].join('\n') : '')}</textarea>
+      <input class="field sm" data-guia="${s.id}:nota" value="${esc(s.guia?.nota || '')}" placeholder="Nota al pie (opcional)" ${dis} style="margin-top:6px">
+      ${!ro && !s.guia && guiaPredef(s) ? `<div class="addrow"><button type="button" class="btn sm" data-guiapre="${s.id}">Usar la referencia predefinida</button></div>` : ''}`;
   }
   return `<div class="sec" data-sec="${s.id}">
     <div class="sec-h">
@@ -743,6 +750,15 @@ function enlazarDiseno(cont) {
   on('[data-lc]', 'change', (e) => setLc(e, e.target.dataset.lc.endsWith(':tipo')));
   on('[data-dellc]', 'click', (e) => { const [sid, j] = e.currentTarget.dataset.dellc.split(':'); secPor(sid).columnas.splice(Number(j), 1); cambio(); });
   on('[data-addlc]', 'click', (e) => { const s = secPor(e.currentTarget.dataset.addlc); if (s.columnas.length >= 8) return toast('Máximo 8 columnas.', 'err'); s.columnas.push({ id: uid(), nombre: '', tipo: 'texto' }); cambio(); });
+  on('[data-guia]', 'input', (e) => {
+    const [sid, k] = e.target.dataset.guia.split(':'); const s = secPor(sid);
+    const g = s.guia || { titulo: '', nota: '', columnas: [], filas: [] };
+    if (k === 'filas') { const ls = e.target.value.split('\n').map(l => l.split('|').map(x => x.trim())).filter(f => f.some(Boolean)); g.columnas = ls[0] || []; g.filas = ls.slice(1); }
+    else g[k] = e.target.value;
+    if (!g.titulo && !g.filas.length && !g.nota) delete s.guia; else s.guia = g;
+    cambio(false);
+  });
+  on('[data-guiapre]', 'click', (e) => { const s = secPor(e.currentTarget.dataset.guiapre); const g = guiaPredef(s); if (g) { s.guia = clonar(g); cambio(); } });
   on('[data-filimp]', 'change', (e) => { const n = Math.max(1, Math.min(20, Number(e.target.value) || 5)); e.target.value = n; secPor(e.target.dataset.filimp).filasImpresas = n; cambio(false); });
 
   // firmas

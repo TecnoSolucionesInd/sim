@@ -109,6 +109,13 @@ const CSS = `
 .ck .chs button{flex:1;min-width:70px;padding:0 10px}
 .ck.err{box-shadow:0 0 0 2px rgba(245,185,74,.6)}
 /* lista */
+.gbtn{display:inline-flex;align-items:center;gap:7px;margin:-4px 0 14px;padding:7px 13px;border-radius:20px;border:1px solid rgba(111,227,207,.3);background:rgba(111,227,207,.08);color:var(--mint);font-size:13px}
+.gl .gr{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.gl .gr:last-child{border-bottom:0}
+.gl .gr b{font-size:14.5px;font-weight:500}
+.gl .gr .d{font-family:var(--f-mono);font-size:14px;color:var(--mint);white-space:nowrap}
+.gn{margin-top:12px;padding:11px 13px;border-radius:12px;background:rgba(111,227,207,.08);font-size:13px;color:var(--tx-2);line-height:1.45}
+.lrow .ref{grid-column:1/-1;font-size:12.5px;color:var(--mint);margin-top:-2px}
 .lrow{padding:14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);margin-bottom:10px}
 .lrow .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-family:var(--f-mono);font-size:12px;color:var(--tx-3)}
 .lrow .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
@@ -677,15 +684,25 @@ function celdaLista(s, c, f, j) {
   if (c.tipo === 'numero') {
     const ref = c.unidadDe ? s.columnas.find(k => k.id === c.unidadDe) : null;
     const u = ref && ref.unidades ? ref.unidades[f[ref.id]] || '' : c.unidad || '';
-    return `<div><label class="label" for="${id}">${esc(c.nombre)}</label><div class="num"><input id="${id}" data-l="${j}:${c.id}" inputmode="decimal" value="${esc(x)}" placeholder="—" autocomplete="off">${u ? `<span class="u">${esc(u)}</span>` : ''}</div></div>`;
+    const sug = ref?.sugeridos?.[f[ref.id]];
+    return `<div><label class="label" for="${id}">${esc(c.nombre)}</label><div class="num"><input id="${id}" data-l="${j}:${c.id}" inputmode="decimal" value="${esc(x)}" placeholder="—" autocomplete="off">${u ? `<span class="u">${esc(u)}</span>` : ''}</div></div>${sug ? `<div class="ref">Referencia: ${esc(sug.texto)}</div>` : ''}`;
   }
   return `<div><label class="label" for="${id}">${esc(c.nombre)}</label><input class="field" id="${id}" data-l="${j}:${c.id}" value="${esc(x)}" autocomplete="off"></div>`;
 }
 
+// nota de referencia (p. ej. dosificación recomendada): no es parte del llenado, se consulta en una ventana
+function verGuia(g) {
+  modal({
+    titulo: esc(g.titulo || 'Referencia'), ancho: 520,
+    cuerpo: `<div class="gl">${g.filas.map(f => `<div class="gr"><b>${esc(f[0])}</b><span class="d">${esc(f.slice(1).filter(Boolean).join(' · '))}</span></div>`).join('')}</div>
+      ${g.nota ? `<div class="gn">${esc(g.nota)}</div>` : ''}`,
+    pie: '<button type="button" class="btn btn-primary" data-x>Entendido</button>'
+  });
+}
 function pasoLista(box, s) {
   const filas = F.reg.v[s.id] || (F.reg.v[s.id] = []);
   const pintar = () => {
-    box.innerHTML = `${filas.map((f, j) => `<div class="lrow"><div class="hd"><span>Fila ${j + 1}</span><button type="button" class="btn sm" data-del="${j}" aria-label="Quitar fila">${IC.del}</button></div>
+    box.innerHTML = (s.guia?.filas?.length ? `<button type="button" class="gbtn" id="lGuia"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg>Ver ${esc((s.guia.titulo || 'referencia').toLowerCase())}</button>` : '') + `${filas.map((f, j) => `<div class="lrow"><div class="hd"><span>Fila ${j + 1}</span><button type="button" class="btn sm" data-del="${j}" aria-label="Quitar fila">${IC.del}</button></div>
       <div class="g">${s.columnas.map(c => celdaLista(s, c, f, j)).join('')}</div></div>`).join('')
       || '<div class="muted" style="font-size:14px;margin-bottom:12px">Sin filas. Agregue una si corresponde.</div>'}
       <button type="button" class="btn" id="lAdd">${IC.mas}Agregar fila</button>`;
@@ -698,7 +715,14 @@ function pasoLista(box, s) {
         if (s.columnas.some(c => c.unidadDe === cid)) pintar();   // cambia la unidad mostrada
       };
     });
-    box.querySelectorAll('[data-lch]').forEach(b => b.onclick = () => { const [j, cid] = b.dataset.lch.split(':'); const f = filas[Number(j)]; f[cid] = f[cid] === b.dataset.v ? '' : b.dataset.v; cambio(); pintar(); });
+    const gb = box.querySelector('#lGuia'); if (gb) gb.onclick = () => verGuia(s.guia);
+    box.querySelectorAll('[data-lch]').forEach(b => b.onclick = () => {
+      const [j, cid] = b.dataset.lch.split(':'); const f = filas[Number(j)]; f[cid] = f[cid] === b.dataset.v ? '' : b.dataset.v;
+      // cantidad sugerida: se llena con la dosis de referencia si aún está vacía
+      const col = s.columnas.find(c => c.id === cid), sug = col?.sugeridos?.[f[cid]];
+      if (sug) { const dest = s.columnas.find(c => c.unidadDe === cid); if (dest && (f[dest.id] ?? '') === '') f[dest.id] = String(sug.valor).replace('.', ','); }
+      cambio(); pintar();
+    });
     box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { filas.splice(Number(b.dataset.del), 1); cambio(); pintar(); });
     box.querySelector('#lAdd').onclick = () => { filas.push({}); cambio(); pintar(); box.querySelectorAll('.lrow')[filas.length - 1]?.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   };

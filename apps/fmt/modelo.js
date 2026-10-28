@@ -1,7 +1,7 @@
 // Modelo del aplicativo Registro de formatos: catálogos, utilidades y formatos piloto.
 
 import { SISTEMAS } from '../../core/maestros.js';
-import { QUIMICOS_OSMOSIS, CONSUMIBLES_OSMOSIS, unidadesDe } from '../../core/insumos.js';
+import { QUIMICOS_OSMOSIS, CONSUMIBLES_OSMOSIS, unidadesDe, GUIA_DOSIFICACION } from '../../core/insumos.js';
 export { SISTEMAS };
 
 export const FRECUENCIAS = ['Por turno', 'Diario', 'Semanal', 'Quincenal', 'Mensual', 'Trimestral', 'Según plan', 'Por evento'];
@@ -362,8 +362,9 @@ export function pilotos() {
       frecuencia: 'Por evento',
       datosGenerales: { turno: true, hora: true },
       secciones: [
-        { id: 'r302q', tipo: 'lista', titulo: 'Dosificación de químicos', filasImpresas: 5, columnas: [
-          sel('ins', 'Químico', QUIMICOS_OSMOSIS.map(x => x.nombre), { unidades: unidadesDe(QUIMICOS_OSMOSIS) }),
+        { id: 'r302q', tipo: 'lista', titulo: 'Dosificación de químicos', filasImpresas: 5, guia: GUIA_DOSIFICACION, columnas: [
+          sel('ins', 'Químico', QUIMICOS_OSMOSIS.map(x => x.nombre), { unidades: unidadesDe(QUIMICOS_OSMOSIS),
+            sugeridos: Object.fromEntries(QUIMICOS_OSMOSIS.filter(x => x.dosis).map(x => [x.nombre, { valor: x.dosis.kg, texto: `${String(x.dosis.kg).replace('.', ',')} kg en ${x.dosis.litros} L de agua permeada` }])) }),
           sel('mod', 'Módulo', ['OI-01', 'OI-02', 'Ambos']),
           { id: 'can', nombre: 'Cantidad', tipo: 'numero', unidadDe: 'ins' },
           { id: 'obs', nombre: 'Observación', tipo: 'texto' }

@@ -27,6 +27,17 @@ export const HOJA_CSS = `
 .hj-gen label{color:#4A5866;font-weight:600;white-space:nowrap}
 .hj-gen i{flex-grow:1;border-bottom:0.6pt solid #7B8896;min-height:4mm;font-style:normal}
 .hj-sec{margin-top:2.6mm;break-inside:avoid-page}
+.hj-ref{margin:3mm 0 3mm;border:0.6pt solid #9FCFC9;border-left:2.2mm solid #2BA6A0;border-radius:1.2mm;background:#F2FAF9;padding:1.6mm 2.4mm 1.8mm}
+.hj-ref .rt{display:flex;justify-content:space-between;align-items:baseline;gap:4mm;margin-bottom:1.2mm}
+.hj-ref .rt b{font-family:'Sora',Arial,sans-serif;font-size:7.4pt;letter-spacing:.7pt;text-transform:uppercase;color:#14625E}
+.hj-ref .rt span{font-size:6.8pt;color:#4A5866;text-align:right}
+.hj-ref table{width:100%;border-collapse:collapse}
+.hj-ref th{font-size:6.8pt;font-weight:600;color:#14625E;text-align:left;padding:0.6mm 1.4mm;border-bottom:0.6pt solid #9FCFC9}
+.hj-ref td{font-size:7.4pt;padding:0.7mm 1.4mm;border-bottom:0.4pt solid #D3E9E6;color:#1B2733}
+.hj-ref tr:last-child td{border-bottom:0}
+.hj-ref td.d{font-family:'JetBrains Mono',monospace;font-weight:600;white-space:nowrap;color:#0E1A26}
+.hj-ref th.c,.hj-ref td.d{text-align:center}
+.hj-ref .rn{margin-top:1.2mm;font-size:6.8pt;color:#4A5866;font-style:italic}
 .hj-sech{background:#1E3A5C;color:#fff;font-family:'Sora',Arial,sans-serif;font-weight:600;font-size:8pt;letter-spacing:.8pt;text-transform:uppercase;padding:1.4mm 2.5mm}
 .hj-grid{display:grid;border:0.6pt solid #9AA8B6;border-top:0;overflow:hidden}
 .hj-f{padding:1.4mm 2.5mm 1.6mm;border-right:0.6pt solid #C9D2DB;border-bottom:0.6pt solid #C9D2DB;min-width:0;margin:0 -0.6pt -0.6pt 0}
@@ -195,6 +206,15 @@ function seccionHtml(s, def, cols, R, equipos) {
   return '';
 }
 
+// notas de referencia de las secciones (p. ej. dosificación recomendada): van al pie, no se llenan
+function notasHtml(def) {
+  return (def.secciones || []).filter(s => s.guia && (s.guia.filas || []).length).map(s => { const g = s.guia;
+    return `<div class="hj-ref"><div class="rt"><b>${esc(g.titulo || 'Referencia')}</b></div>
+      <table><thead><tr>${(g.columnas || []).map((c, k) => `<th class="${k ? 'c' : ''}" style="${k ? 'width:16%' : ''}">${esc(c)}</th>`).join('')}</tr></thead>
+      <tbody>${g.filas.map(f => `<tr>${f.map((x, k) => `<td class="${k ? 'd' : ''}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      ${g.nota ? `<div class="rn">${esc(g.nota)}</div>` : ''}</div>`; }).join('');
+}
+
 function firmaHtml(f, i, R) {
   const x = R ? (R.firmas || [])[i] || {} : null;
   let nombre = '', firma = '', fecha = '';
@@ -253,6 +273,7 @@ export function renderHoja({ cfg, codigo, def, version, revision, fecha, marca =
     </div>
     ${(def.secciones || []).map(s => seccionHtml(s, def, cols, R, equipos)).join('') || '<div class="hj-sec"><div class="hj-vacio">Agregue secciones al formato</div></div>'}
     ${def.observaciones ? `<div class="hj-sec"><div class="hj-sech">Observaciones / acción correctiva</div><div class="hj-obs">${R ? (R.observaciones ? vv(R.observaciones) : '<span style="color:#8A96A3">Sin observaciones</span>') : 'Obligatoria cuando un valor está fuera de rango o un ítem es no conforme.'}</div></div>` : ''}
+    ${notasHtml(def)}
     ${firmas.length ? `<div class="hj-fir" style="grid-template-columns:repeat(${firmas.length},minmax(0,1fr))">${firmas.map((f, i) => firmaHtml(f, i, R)).join('')}</div>` : ''}
     <div class="hj-pie ${qr ? 'qr' : ''}"><span>Documento controlado · ${esc(cod)} · Versión ${esc(version || '—')} · Revisión ${esc(revTxt(revision))}${R && R.numero ? `<br>Registro ${esc(R.numero)} · ${esc(cfg.empresa || '')}` : ''}</span>${qr ? `<span class="hj-qr"><span>Verifique el original<br>escaneando el código</span>${qr}</span>` : `<span>${esc(cfg.empresa || '')}</span>`}</div>
   </div>`;
