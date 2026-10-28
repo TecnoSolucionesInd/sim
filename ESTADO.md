@@ -151,7 +151,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Tablas de lista fija: una fila puede tener rangos por columna `rangos: { '<nombre de columna>': {min, max} }` (p. ej. solo Permeado).
   El editor los muestra pero no los edita (se definen en el formato predefinido).
 - Emisión de formatos que ya existen en el manual: opción "conserva su revisión y vigencia" (revisión y mes indicados; `origenManual`).
-- Formatos predefinidos (botón "Cargar formatos predefinidos"): R-001, R-002, R-101 y R-301 Control de operación — Planta de ósmosis
+- Formatos predefinidos (botón "Cargar formatos predefinidos"): R-001, R-002, R-101, R-302 (químicos e insumos de ósmosis, alimenta Materiales e inventario) y R-301 Control de operación — Planta de ósmosis
   inversa (rev. 3, Jun-26, por turno; módulo OSM-UOI-xx; filtros multimedia/cartucho con ΔP; alimentación; permeado con % recuperación;
   calidad de agua; permeado por housing 1–5). Rangos de referencia SWRO: ΔP ≤ 1 bar, alimentación ≤ 69 bar, permeado ≤ 3 bar,
   recuperación 35–45 %, conductividad permeado/housing ≤ 1000 µS/cm, pH permeado 6.5–8.5, pH alimentación 7–8.5, dureza permeado ≤ 50,
