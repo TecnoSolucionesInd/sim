@@ -138,7 +138,7 @@ import {
   SISTEMAS, FRECUENCIAS, TIPOS_CAMPO, TIPOS_FILA, TIPOS_SECCION, CONFIG_BASE, MODOS_FIRMA,
   uid, clonar, esc, mesClave, mesAbrev, revTxt, numCodigo, formatoCodigo, sistemaDeCodigo,
   codigoCompleto, siguienteCodigo, defVacia, seccionNueva, campoNuevo, filaNueva, rangoTxt, validarDef, pilotos,
-  firmasDe, turnosDe, tablaDeEquipos, filtroTxt
+  firmasDe, turnosDe, tablaDeEquipos, filtroTxt, celdasGuia
 } from './modelo.js';
 import { columnasTabla } from './logica.js';
 
@@ -617,7 +617,7 @@ function seccionEd(s, i, n, ro) {
       </div>
       <div class="label" style="margin-top:12px">Tabla de referencia <span class="muted" style="font-weight:400">(opcional: nota al pie del impreso, consultable al llenar)</span></div>
       <input class="field sm" data-guia="${s.id}:titulo" value="${esc(s.guia?.titulo || '')}" placeholder="Título, p. ej. Dosificación de referencia" ${dis} style="margin-bottom:6px">
-      <textarea class="field sm" data-guia="${s.id}:filas" rows="4" placeholder="Una fila por línea, columnas separadas por |&#10;Químico | Dosis | Agua permeada | Función" ${dis}>${esc(s.guia ? [(s.guia.columnas || []).join(' | '), ...(s.guia.filas || []).map(f => f.join(' | '))].join('\n') : '')}</textarea>
+      <textarea class="field sm" data-guia="${s.id}:filas" rows="4" placeholder="Una fila por línea, columnas separadas por |&#10;Químico | Dosis | Agua permeada | Función" ${dis}>${esc(s.guia ? [(s.guia.columnas || []).join(' | '), ...(s.guia.filas || []).map(f => celdasGuia(f).join(' | '))].join('\n') : '')}</textarea>
       <input class="field sm" data-guia="${s.id}:nota" value="${esc(s.guia?.nota || '')}" placeholder="Nota al pie (opcional)" ${dis} style="margin-top:6px">
       ${!ro && !s.guia && guiaPredef(s) ? `<div class="addrow"><button type="button" class="btn sm" data-guiapre="${s.id}">Usar la referencia predefinida</button></div>` : ''}`;
   }
@@ -753,7 +753,7 @@ function enlazarDiseno(cont) {
   on('[data-guia]', 'input', (e) => {
     const [sid, k] = e.target.dataset.guia.split(':'); const s = secPor(sid);
     const g = s.guia || { titulo: '', nota: '', columnas: [], filas: [] };
-    if (k === 'filas') { const ls = e.target.value.split('\n').map(l => l.split('|').map(x => x.trim())).filter(f => f.some(Boolean)); g.columnas = ls[0] || []; g.filas = ls.slice(1); }
+    if (k === 'filas') { const ls = e.target.value.split('\n').map(l => l.split('|').map(x => x.trim())).filter(f => f.some(Boolean)); g.columnas = ls[0] || []; g.filas = ls.slice(1).map(c => ({ c })); }
     else g[k] = e.target.value;
     if (!g.titulo && !g.filas.length && !g.nota) delete s.guia; else s.guia = g;
     cambio(false);

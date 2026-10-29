@@ -4,7 +4,7 @@ import { toast } from '../../core/core.js';
 import { norm } from '../../core/maestros.js';
 import * as D from './datos.js';
 import { IC, modal, confirmar, reducirFoto } from './ui.js';
-import { esc, clonar, firmasDe, tablaDeEquipos, pideUbicacion, rangoTxt, ESTADOS_COLUMNA, turnosDe, SISTEMAS } from './modelo.js';
+import { esc, clonar, celdasGuia, firmasDe, tablaDeEquipos, pideUbicacion, rangoTxt, ESTADOS_COLUMNA, turnosDe, SISTEMAS } from './modelo.js';
 import {
   turnoActual, periodoClave, periodoTxt, inicioConsulta, FREC_PERIODICAS, columnasTabla, ubicacionesDe, etiquetaCol,
   numero, fueraDeRango, calculado, calcTxt, esCalculado, rangoCol, minutosEntre, duracionTxt, evaluar, calcularDuraciones, equiposDelRegistro, estadoColumna,
@@ -694,7 +694,7 @@ function celdaLista(s, c, f, j) {
 function verGuia(g) {
   modal({
     titulo: esc(g.titulo || 'Referencia'), ancho: 520,
-    cuerpo: `<div class="gl">${g.filas.map(f => `<div class="gr"><b>${esc(f[0])}</b><span class="d">${esc(f.slice(1).filter(Boolean).join(' · '))}</span></div>`).join('')}</div>
+    cuerpo: `<div class="gl">${g.filas.map(celdasGuia).map(f => `<div class="gr"><b>${esc(f[0])}</b><span class="d">${esc(f.slice(1).filter(Boolean).join(' · '))}</span></div>`).join('')}</div>
       ${g.nota ? `<div class="gn">${esc(g.nota)}</div>` : ''}`,
     pie: '<button type="button" class="btn btn-primary" data-x>Entendido</button>'
   });

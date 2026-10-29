@@ -24,6 +24,7 @@ export const GUIA_DOSIFICACION = {
   titulo: 'Dosificación recomendada',
   nota: 'Cantidades por cada preparación del tanque. Preparar con agua permeada y usar guantes, lentes y mascarilla.',
   columnas: ['Químico', 'Dosis', 'Agua permeada'],
-  filas: INSUMOS_OSMOSIS.filter(x => x.dosis).map(x => [x.nombre, `${n(x.dosis.kg)} kg`, `${x.dosis.litros} L`])
+  // cada fila es { c: [...] }: Firestore no admite listas dentro de listas
+  filas: INSUMOS_OSMOSIS.filter(x => x.dosis).map(x => ({ c: [x.nombre, `${n(x.dosis.kg)} kg`, `${x.dosis.litros} L`] }))
 };
 export const unidadesDe = (lista) => Object.fromEntries(lista.map(x => [x.nombre, x.unidad]));

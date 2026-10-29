@@ -132,6 +132,8 @@ export function seccionNueva(tipo) {
 export const campoNuevo = (tipo = 'texto') => ({ id: uid(), etiqueta: '', tipo, requerido: false, ancho: tipo === 'textoLargo' ? 2 : 1, unidad: '', min: '', max: '', opciones: [], ayuda: '', desde: '', hasta: '', filtro: { sistema: '', tipo: '' }, genera: '' });
 
 // Tabla: si toma sus columnas de la base de equipos
+// celdas de una fila de la nota de referencia ({ c: [...] }; se aceptan arreglos antiguos)
+export const celdasGuia = (f) => (Array.isArray(f) ? f : (f && f.c) || []);
 export const tablaDeEquipos = (s) => s.tipo === 'tabla' && s.fuente === 'equipos';
 // Tabla cuya ubicación se elige al llenar
 export const pideUbicacion = (def) => (def.secciones || []).some(s => tablaDeEquipos(s) && s.filtro && s.filtro.ubicacion === '*');

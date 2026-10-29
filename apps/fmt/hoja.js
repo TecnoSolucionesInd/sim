@@ -1,7 +1,7 @@
 // Renderizador de la hoja del formato (vista previa e impresión).
 // renderHoja(datos) devuelve el HTML de una hoja A4 con el encabezado de control documental.
 
-import { esc, rangoTxt, revTxt, mesAbrev, codigoCompleto, turnosDe, firmasDe, tablaDeEquipos, pideUbicacion, ESTADOS_COLUMNA } from './modelo.js';
+import { esc, rangoTxt, revTxt, mesAbrev, codigoCompleto, turnosDe, firmasDe, tablaDeEquipos, pideUbicacion, ESTADOS_COLUMNA, celdasGuia } from './modelo.js';
 import { columnasTabla, etiquetaCol, estadoColumna, fueraDeRango, calculado, calcTxt, rangoCol, minutosEntre, duracionTxt, fechaTxt, fechaHoraTxt } from './logica.js';
 
 export const HOJA_CSS = `
@@ -211,7 +211,7 @@ function notasHtml(def) {
   return (def.secciones || []).filter(s => s.guia && (s.guia.filas || []).length).map(s => { const g = s.guia;
     return `<div class="hj-ref"><div class="rt"><b>${esc(g.titulo || 'Referencia')}</b></div>
       <table><thead><tr>${(g.columnas || []).map((c, k) => `<th class="${k ? 'c' : ''}" style="${k ? 'width:16%' : ''}">${esc(c)}</th>`).join('')}</tr></thead>
-      <tbody>${g.filas.map(f => `<tr>${f.map((x, k) => `<td class="${k ? 'd' : ''}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      <tbody>${g.filas.map(celdasGuia).map(f => `<tr>${f.map((x, k) => `<td class="${k ? 'd' : ''}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table>
       ${g.nota ? `<div class="rn">${esc(g.nota)}</div>` : ''}</div>`; }).join('');
 }
 
