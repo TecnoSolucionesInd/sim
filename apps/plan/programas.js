@@ -514,18 +514,23 @@ function modalAct(aid) {
       <div><label class="label">Fecha de inicio</label><input type="date" class="field" id="maIni" value="${esc(t.ini || '')}" ${dis(full)}></div>
       <div><label class="label">Fecha de fin</label><input type="date" class="field" id="maFin" value="${esc(t.fin || '')}" ${dis(full)}></div>
       <div><label class="label">Avance (%)</label><input type="number" class="field" id="maAv" min="0" max="100" step="5" value="${t.av || 0}" ${dis(ed)}></div>
-      <div><label class="label">Estado</label><div style="padding-top:10px">${k ? stTag(k) : '—'}</div></div>
+      <div><label class="label">Estado</label><div style="padding-top:10px">${k ? stTag(k) : '—'}${k === 'fin' && t.finReal ? `<span class="muted" style="font-size:12px;margin-left:8px">el ${fmt(D(t.finReal))}</span>` : ''}</div></div>
       ${aid && (t.ini_b || t.fin_b) ? `<div class="full pp-nota">Línea base: ${t.ini_b ? fmt(D(t.ini_b)) : 'por definir'} – ${t.fin_b ? fmt(D(t.fin_b)) : 'por definir'}${reprog(t) ? ' · <b style="color:var(--pp-pro)">Reprogramada</b>' : ''}</div>` : ''}
       ${aid && verCostos() ? `<div class="full pp-nota">Costo registrado: <b style="color:var(--tx)">${sol(C.filter(c => c.aid === aid).reduce((s, c) => s + (+c.monto || 0), 0))}</b> (${C.filter(c => c.aid === aid).length} partida(s))</div>` : ''}
       <div class="full"><label class="label">Observación</label><textarea class="field" id="maObs" rows="2" ${dis(ed)}>${esc(t.obs || '')}</textarea></div>
     </div></div>
     <div class="modal-f">${aid && full ? '<button class="btn btn-danger" id="maDel" style="margin-right:auto">Eliminar</button>' : ''}${aid ? `<button class="btn" id="maEv">${CAM} Evidencias (${nEv(aid)})</button>` : ''}
-      <button class="btn" data-x>${ed ? 'Cancelar' : 'Cerrar'}</button>${ed ? '<button class="btn pp-grad" id="maOk">Guardar</button>' : ''}</div></div>`;
+      <button class="btn" data-x>${ed ? 'Cancelar' : 'Cerrar'}</button>${ed && aid && k !== 'fin' ? '<button class="btn" id="maFinOk" style="border-color:var(--pp-fin);color:var(--pp-fin)">✓ Finalizar actividad</button>' : ''}${ed ? '<button class="btn pp-grad" id="maOk">Guardar</button>' : ''}</div></div>`;
   document.body.appendChild(bg);
   const q = (s) => bg.querySelector(s);
   bg.querySelectorAll('[data-x]').forEach(b => b.onclick = () => bg.remove());
   if (q('#maEv')) q('#maEv').onclick = () => { bg.remove(); selA = aid; TAB = 'ev'; pestaña(); renderEv(); };
   if (q('#maDel')) q('#maDel').onclick = () => { bg.remove(); confirmar('Eliminar actividad', `Se eliminará la actividad N.° ${t.n} "${t.nom}".`, 'Eliminar', async () => { await API.eliminarActividad(P.id, aid); toast('Actividad eliminada'); }); };
+  // Finalizar: avance 100 % y fecha real de término
+  if (q('#maFinOk')) q('#maFinOk').onclick = async () => {
+    try { await API.guardarActividad(P.id, { id: aid, av: 100, finReal: iso(HOY), obs: q('#maObs').value.trim() }); bg.remove(); toast('Actividad finalizada'); }
+    catch (e) { toast('No se pudo guardar: ' + e.message, 'err'); }
+  };
   if (q('#maOk')) q('#maOk').onclick = async () => {
     const v = { nom: q('#maNom').value.trim(), fase: q('#maFase').value, resp: q('#maResp').value.trim(), ini: q('#maIni').value, fin: q('#maFin').value,
       av: Math.max(0, Math.min(100, +q('#maAv').value || 0)), obs: q('#maObs').value.trim() };
