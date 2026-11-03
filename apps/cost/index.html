@@ -42,6 +42,10 @@ nav a i{width:9px;height:9px;border-radius:3px;flex:0 0 9px;background:#5D7086}
 #top h1{font-size:19px;margin:0;font-weight:650}
 #top .sub{font-size:12px;color:var(--muted)}
 #top .tt{flex:1;min-width:220px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:#fff}
+.seg button{font:inherit;font-size:12.5px;border:0;background:transparent;padding:6px 11px;cursor:pointer;color:var(--ink2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--nav);color:#fff;font-weight:600}
 #top .navbtn{font-size:18px;line-height:1;padding:7px 11px;background:var(--nav);color:#fff;border-color:var(--nav)}
 #top .navbtn:hover{background:var(--nav2)}
 body.navoff #side{display:none}
@@ -163,6 +167,7 @@ body.pdfmode .toolbar{display:none}
       <label>Desde<select id="fDesde"></select></label>
       <label>Hasta<select id="fHasta"></select></label>
       <label>Tipo<select id="fTipo"><option value="">Materiales y servicios</option><option value="OCO">Materiales (OCO)</option><option value="OSR">Servicios (OSR)</option></select></label>
+      <label>Moneda<span class="seg" id="monSel"><button type="button" data-m="USD">US$</button><button type="button" data-m="PEN">S/</button></span></label>
       <button class="btn" onclick="exportExcel()">Exportar Excel</button>
       <button class="btn pri" onclick="exportPDF()">Exportar PDF</button>
     </div>
@@ -304,6 +309,23 @@ try{const s=localStorage.getItem(LS); if(s) ST=Object.assign(ST,JSON.parse(s));}
 function save(){try{localStorage.setItem(LS,JSON.stringify(ST));}catch(e){}}
 let CUR='general', SEL_EQ=null, charts={};
 const ROWS=DATA.rows;
+// ---------- moneda: dólares por defecto. Base en soles (Nisira); órdenes en US$ usan su importe original,
+// el resto se convierte con el tipo de cambio venta promedio del mes. Catálogo y meta se guardan en soles.
+const TCV=[3.363,3.361,3.450,3.447,3.448,3.409,3.406,3.372,3.380];
+const TCM=m=>TCV[Math.min(Math.max(+m||1,1),TCV.length)-1];
+const TCP=TCV.reduce((a,b)=>a+b,0)/TCV.length;
+let MON=(()=>{try{return localStorage.getItem(LS+'_mon')||'USD';}catch(e){return 'USD';}})();
+let CS='US$';
+ROWS.forEach(r=>{if(r.s0===undefined)r.s0=r.s;r.u=(r.mo==='US$'&&+r.io)?+r.io:r.s0/TCM(r.m);});
+function applyMon(m){MON=m==='PEN'?'PEN':'USD';CS=MON==='USD'?'US$':'S/';ROWS.forEach(r=>r.s=MON==='USD'?r.u:r.s0);}
+applyMon(MON);
+const aMon=v=>(v==null||v===''||isNaN(v))?v:(MON==='USD'?v/TCP:+v);
+const deMon=v=>(v==null||v===''||isNaN(v))?v:(MON==='USD'?Math.round(v*TCP*100)/100:+v);
+const monTxt=()=>MON==='USD'?'dólares':'soles';
+const tcNota=()=>MON==='USD'?' · TC promedio mensual':'';
+function setMon(m){applyMon(m);try{localStorage.setItem(LS+'_mon',MON);}catch(e){}pintaMon();buildNav();render();}
+function pintaMon(){document.querySelectorAll('#monSel button').forEach(b=>{b.classList.toggle('on',b.dataset.m===MON);b.onclick=()=>setMon(b.dataset.m);});}
+pintaMon();
 function catalog(){
   const base=DATA.cat.map(c=>Object.assign({},c,ST.catEdit[c.id]||{}));
   return base.concat(ST.catNew.map(c=>Object.assign({},c,ST.catEdit[c.id]||{})));
@@ -334,8 +356,8 @@ function facts(){
   return out;
 }
 // ---------- utils
-const fmt=v=>'S/ '+Math.round(v).toLocaleString('es-PE');
-const fmtk=v=>Math.abs(v)>=1e6?'S/ '+(v/1e6).toFixed(2)+' M':Math.abs(v)>=1e3?'S/ '+(v/1e3).toFixed(1)+' k':'S/ '+Math.round(v);
+const fmt=v=>CS+' '+Math.round(v).toLocaleString('es-PE');
+const fmtk=v=>Math.abs(v)>=1e6?CS+' '+(v/1e6).toFixed(2)+' M':Math.abs(v)>=1e3?CS+' '+(v/1e3).toFixed(1)+' k':CS+' '+Math.round(v);
 const pct=v=>(isFinite(v)?(v*100).toFixed(1):'0.0')+'%';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function sumBy(arr,key,val='v'){const m={};arr.forEach(x=>{const k=typeof key==='function'?key(x):x[key];m[k]=(m[k]||0)+(typeof val==='function'?val(x):x[val]);});return m;}
@@ -358,16 +380,16 @@ function kpi(label,val,sub,col,txt){return `<div class="kpi" style="--kc:${col||
 // ---------- nav
 function buildNav(){
   let h='',g='';
-  MODS.forEach(m=>{if(m.g!==g){g=m.g;h+=`<div class="grp">${g}</div>`;}h+=`<a data-id="${m.id}" class="${CUR===m.id?'on':''}"><i style="background:${m.c}"></i>${m.t}</a>`;});
+  MODS.forEach(m=>{if(m.g!==g){g=m.g;h+=`<div class="grp">${g}</div>`;}h+=`<a data-id="${m.id}" class="${CUR===m.id?'on':''}"><i style="background:${m.c}"></i>${m.t.replace('S/',CS)}</a>`;});
   const n=document.getElementById('nav');n.innerHTML=h;
   n.querySelectorAll('a').forEach(a=>a.onclick=()=>{CUR=a.dataset.id;buildNav();render();window.scrollTo(0,0);});
 }
-function setTitle(t,s){document.getElementById('ttl').textContent=t;document.getElementById('sub').textContent=s||'';
-  document.getElementById('ph').textContent=`Periodo: ${MES[fD.value-1]}–${MES[fH.value-1]} 2026 · ${fT.options[fT.selectedIndex].text} · Soles sin IGV · Elvis Miranda — Departamento de Mantenimiento`;}
+function setTitle(t,s){document.getElementById('ttl').textContent=t.replace('S/',CS);document.getElementById('sub').textContent=s||'';
+  document.getElementById('ph').textContent=`Periodo: ${MES[fD.value-1]}–${MES[fH.value-1]} 2026 · ${fT.options[fT.selectedIndex].text} · ${MON==='USD'?'Dólares':'Soles'} sin IGV${tcNota()} · Elvis Miranda — Departamento de Mantenimiento`;}
 function render(){
   kill(); refreshCat();
   const m=MODS.find(x=>x.id===CUR);
-  const per=`${MES[fD.value-1]}–${MES[fH.value-1]} 2026 · soles sin IGV · órdenes OCO/OSR Nisira`;
+  const per=`${MES[fD.value-1]}–${MES[fH.value-1]} 2026 · ${monTxt()} sin IGV${tcNota()} · órdenes OCO/OSR Nisira`;
   setTitle(m.t,(m.sub?m.sub+' · ':'')+per);
   const v=document.getElementById('view');
   if(CUR==='general')vGeneral(v);
@@ -427,20 +449,20 @@ function heatTable(F,rowsKey,rowsList,colorOf){
   const lerp=(t)=>{const a=[232,240,251],b=[28,92,171];return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')})`;};
   let h=`<div style="overflow:auto"><table class="heat num"><tr><th></th>${ms.map(mm=>`<th class="r">${MES[mm-1]}</th>`).join('')}<th class="r">Total</th></tr>`;
   rowsList.forEach(k=>{let t=0;h+=`<tr><td style="text-align:left;white-space:nowrap"><span class="dot" style="background:${colorOf(k)}"></span>${esc(k)}</td>`;
-    ms.forEach(mm=>{const v=(m[k]||{})[mm]||0;t+=v;const r=mx?v/mx:0;h+=`<td title="${esc(k)} · ${MES[mm-1]}: ${fmt(v)}" style="background:${v?lerp(Math.sqrt(r)):'#F3F5F7'};color:${Math.sqrt(r)>.55?'#fff':'#1B2733'}">${v?fmtk(v).replace('S/ ',''):'–'}</td>`;});
+    ms.forEach(mm=>{const v=(m[k]||{})[mm]||0;t+=v;const r=mx?v/mx:0;h+=`<td title="${esc(k)} · ${MES[mm-1]}: ${fmt(v)}" style="background:${v?lerp(Math.sqrt(r)):'#F3F5F7'};color:${Math.sqrt(r)>.55?'#fff':'#1B2733'}">${v?fmtk(v).replace(CS+' ',''):'–'}</td>`;});
     h+=`<td><b>${fmtk(t)}</b></td></tr>`;});
-  return h+'</table></div><div class="note">Intensidad del color proporcional al gasto mensual. Valores en soles (k = miles).</div>';
+  return h+'</table></div><div class="note">Intensidad del color proporcional al gasto mensual. Valores en ${monTxt()} (k = miles).</div>';
 }
 function provTable(F,n=10){
   const p=sortE(sumBy(F,x=>x.r.p)).slice(0,n); const mx=p.length?p[0][1]:1; const tot=F.reduce((a,x)=>a+x.v,0);
-  return `<div class="tw" style="max-height:none"><table><tr><th>Proveedor</th><th class="r">S/</th><th class="r">%</th></tr>${p.map(([k,v])=>`<tr><td>${esc(k)}<div class="bar"><div style="width:${v/mx*100}%"></div></div></td><td class="r num">${fmt(v)}</td><td class="r num">${pct(v/tot)}</td></tr>`).join('')}</table></div>`;
+  return `<div class="tw" style="max-height:none"><table><tr><th>Proveedor</th><th class="r">${CS}</th><th class="r">%</th></tr>${p.map(([k,v])=>`<tr><td>${esc(k)}<div class="bar"><div style="width:${v/mx*100}%"></div></div></td><td class="r num">${fmt(v)}</td><td class="r num">${pct(v/tot)}</td></tr>`).join('')}</table></div>`;
 }
 function linesTable(F,limit=300,editable=true){
   if(PDFMODE)limit=30;
   const byRow={}; F.forEach(x=>{byRow[x.r.i]=byRow[x.r.i]||{r:x.r,v:0};byRow[x.r.i].v+=x.v;});
   const list=Object.values(byRow).sort((a,b)=>b.v-a.v);
   const opts=eqOptions();
-  let h=`<div class="tw"><table><tr><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Rubro</th><th class="r">S/ en esta vista</th><th>Equipo(s)</th></tr>`;
+  let h=`<div class="tw"><table><tr><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Rubro</th><th class="r">${CS} en esta vista</th><th>Equipo(s)</th></tr>`;
   list.slice(0,limit).forEach(({r,v})=>{const eq=eqOf(r);
     h+=`<tr><td class="num">${r.f.slice(8,10)}/${r.f.slice(5,7)}</td><td class="num" style="white-space:nowrap">${esc(r.d.replace(' 0001-',' '))}</td><td>${esc(r.ds)}${r.ob?`<div class="muted" style="font-size:11px">${esc(r.ob.slice(0,90))}</div>`:''}</td><td>${esc(r.p.slice(0,28))}</td><td>${esc(r.r.slice(3))}</td><td class="r num">${fmt(v)}</td>
     <td>${editable?`<select class="eqsel" data-i="${r.i}" style="max-width:190px">${eq.length>1?`<option value="__multi" selected>Reparto: ${eq.length} equipos</option>`:''}${opts.replace(`value="${eq[0]||''}"`,`value="${eq[0]||''}" ${eq.length===1?'selected':''}`)}</select>`:eq.map(e=>`<span class="chip">${esc(eqName(e))}</span>`).join('')}</td></tr>`;});
@@ -466,7 +488,7 @@ function vGeneral(v){
    ${kpi('Promedio mensual',fmtk(tot/(ms.length||1)),'Base para presupuesto','#26405A')}
    ${kpi('Materiales (OCO)',fmtk(oco),pct(oco/tot)+' del OPEX',OCO)}
    ${kpi('Servicios (OSR)',fmtk(osr),pct(osr/tot)+' del OPEX',OSR)}
-   <div id="kRatio" style="cursor:pointer">${(()=>{const R=ratioCalc(F);return kpi('S/ por TM producida',R.acc===null?'–':fmt2(R.acc),R.acc===null?'ingresar producción →':`acumulado · ${R.mT.length} meses →`,'#2BA6A0');})()}</div>
+   <div id="kRatio" style="cursor:pointer">${(()=>{const R=ratioCalc(F);return kpi(CS+' por TM producida',R.acc===null?'–':fmt2(R.acc),R.acc===null?'ingresar producción →':`acumulado · ${R.mT.length} meses →`,'#2BA6A0');})()}</div>
    ${kpi('Asignado a equipo',pct(asig/tot),fmtk(tot-asig)+' por asignar','#2BA6A0')}
   </div>
   <div class="insight">El OPEX del periodo suma <b>${fmt(tot)}</b> (${fmt(tot/(ms.length||1))} al mes en promedio). El mes de mayor gasto fue <b>${MES[d.ms[pk]-1]||'–'}</b> con ${fmt(d.tot[pk]||0)}. El área con más gasto es <b>${topA[0]}</b> (${pct(topA[1]/tot)}), y el equipo que más consume es <b>${byE[0]?byE[0][0]:'–'}</b> (${byE[0]?fmt(byE[0][1]):''}). El <b>${pct((tot-asig)/tot)}</b> del gasto está pendiente de asignar a un equipo. El CAPEX del periodo suma ${fmtk(capT)} (ver módulo CAPEX).</div>
@@ -514,7 +536,7 @@ function vArea(v,area){
    <div class="card c7"><h3>Evolución mensual</h3><div class="hint">Materiales y servicios del área.</div><div class="ch tall"><canvas id="aTrend"></canvas></div></div>
    <div class="card c5"><h3>Rubros del área</h3><div class="hint">En qué se gasta.</div><div class="ch tall"><canvas id="aRub"></canvas></div></div>
    <div class="card c6"><h3>Ranking de equipos</h3><div class="hint">Clic en una barra para abrir el análisis del equipo.</div><div class="ch tall"><canvas id="aEq"></canvas></div></div>
-   <div class="card c6"><h3>Top 10 materiales y servicios</h3><div class="hint">Por descripción del ítem.</div><div class="tw" style="max-height:330px"><table><tr><th>Descripción</th><th class="r">S/</th><th class="r">%</th></tr>${mat.map(([k,vv])=>`<tr><td>${esc(k)}</td><td class="r num">${fmt(vv)}</td><td class="r num">${pct(vv/tot)}</td></tr>`).join('')}</table></div></div>
+   <div class="card c6"><h3>Top 10 materiales y servicios</h3><div class="hint">Por descripción del ítem.</div><div class="tw" style="max-height:330px"><table><tr><th>Descripción</th><th class="r">${CS}</th><th class="r">%</th></tr>${mat.map(([k,vv])=>`<tr><td>${esc(k)}</td><td class="r num">${fmt(vv)}</td><td class="r num">${pct(vv/tot)}</td></tr>`).join('')}</table></div></div>
    <div class="card c12"><h3>Detalle de líneas</h3><div class="hint">Puedes cambiar el equipo de cada línea desde aquí; el cambio se guarda y se recalcula todo.</div><div id="aLines">${linesTable(F)}</div></div>
   </div>`;
   trendChart('aTrend',F);
@@ -535,7 +557,7 @@ function eqStats(F){
     s.t+=x.v; if(x.r.t==='OSR')s.osr+=x.v; if(x.r.r==='S. Reparación / correctivo')s.corr+=x.v; if(x.r.r==='S. Mant. preventivo')s.prev+=x.v;
     s.docs.add(x.r.d); s.mm.add(x.r.m); if(x.r.m<mid)s.h1+=x.v; else s.h2+=x.v;});
   const n1=ms.filter(m=>m<mid).length||1, n2=ms.filter(m=>m>=mid).length||1;
-  return Object.entries(g).map(([e,s])=>{const c=CATM[e]||{};const anual=s.t/nm*12;const ratio=c.vr?anual/c.vr:null;
+  return Object.entries(g).map(([e,s])=>{const c=CATM[e]||{};const anual=s.t/nm*12;const ratio=c.vr?anual/aMon(c.vr):null;
     const tr=(s.h1/n1)>=500? ((s.h2/n2)/(s.h1/n1)-1) : null;
     let st=['na','Sin dato'];
     if(ratio!==null){st=ratio>0.30?['bad','Evaluar reemplazo']:ratio>0.15?['warn','Vigilar']:['ok','Normal'];}
@@ -556,7 +578,7 @@ function vEquipos(v){
   const stIcon={ok:'●',warn:'▲',bad:'■',na:'○'};
   v.innerHTML=`
   <div class="toolbar noprint"><label>Equipo<select id="eqPick" style="min-width:280px">${eqOptions().replace('<option value="">— Sin asignar —</option>','').replace(`value="${SEL_EQ}"`,`value="${SEL_EQ}" selected`)}</select></label>
-   <label>Valor de reposición (S/)<input type="number" id="eqVr" value="${c.vr||''}" placeholder="ingresar" style="width:140px"></label>
+   <label>Valor de reposición (${CS})<input type="number" id="eqVr" value="${c.vr?Math.round(aMon(c.vr)):''}" placeholder="ingresar" style="width:140px"></label>
    <label>Uso del periodo (horas u otra unidad)<input type="number" id="eqUso" value="${c.uso||''}" placeholder="opcional" style="width:150px"></label></div>
   <div class="kpis">
    ${kpi('Costo del equipo',fmtk(s.t),`Puesto ${rank||'–'} de ${S.length} · ${esc(c.a)}`,col)}
@@ -570,15 +592,15 @@ function vEquipos(v){
    <div class="card c7"><h3>${esc(c.n)} · gasto mensual</h3><div class="hint">Materiales y servicios asignados al equipo.</div><div class="ch tall"><canvas id="eTrend"></canvas></div></div>
    <div class="card c5"><h3>Rubros del equipo</h3><div class="hint">Composición del gasto.</div><div class="ch tall"><canvas id="eRub"></canvas></div></div>
    <div class="card c12"><h3>Ranking de equipos · indicadores de decisión</h3><label class="noprint" style="float:right;font-size:12px;display:flex;gap:6px;align-items:center;margin-top:-18px"><input type="checkbox" id="onlyEq" ${ONLY_EQ?'checked':''}> Solo equipos (ocultar grupos generales: servicios, taller, infraestructura, sistemas)</label><div class="hint">Semáforo = costo anualizado ÷ valor de reposición: hasta 15% <b style="color:var(--ok)">● Normal</b>, de 15% a 30% <b style="color:var(--warn)">▲ Vigilar</b>, más de 30% <b style="color:var(--bad)">■ Evaluar reemplazo</b>. Ingresa el valor de reposición en este módulo o en el Catálogo. Con el uso del periodo se calcula el costo por unidad de uso (eficiencia).</div>
-    <div class="tw" style="max-height:460px"><table class="num"><tr><th>Equipo</th><th>Área</th><th class="r">Costo S/</th><th class="r">Prom. mes</th><th class="r">Meses</th><th class="r">Órdenes</th><th class="r">% servicios</th><th class="r">Tendencia</th><th class="r">Anual / reposición</th><th>Estado</th><th class="r">S/ por unidad de uso</th></tr>
-    ${S.map(x=>`<tr style="cursor:pointer" data-eq="${x.e}" ${x.e===SEL_EQ?'class="selrow"':''}><td><span class="dot" style="background:${ACOL[x.a]}"></span>${esc(x.n)}</td><td>${esc(x.a)}</td><td class="r">${fmt(x.t)}</td><td class="r">${fmt(x.pm)}</td><td class="r">${x.meses}</td><td class="r">${x.docs}</td><td class="r">${pct(x.posr)}</td><td class="r">${x.tr===null?'–':(x.tr>=0?'▲ ':'▼ ')+pct(Math.abs(x.tr))}</td><td class="r">${x.ratio===null?'–':pct(x.ratio)}</td><td><span class="st ${x.st[0]}">${stIcon[x.st[0]]} ${x.st[1]}</span></td><td class="r">${x.cu===null?'–':'S/ '+x.cu.toFixed(2)}</td></tr>`).join('')}</table></div></div>
+    <div class="tw" style="max-height:460px"><table class="num"><tr><th>Equipo</th><th>Área</th><th class="r">Costo ${CS}</th><th class="r">Prom. mes</th><th class="r">Meses</th><th class="r">Órdenes</th><th class="r">% servicios</th><th class="r">Tendencia</th><th class="r">Anual / reposición</th><th>Estado</th><th class="r">${CS} por unidad de uso</th></tr>
+    ${S.map(x=>`<tr style="cursor:pointer" data-eq="${x.e}" ${x.e===SEL_EQ?'class="selrow"':''}><td><span class="dot" style="background:${ACOL[x.a]}"></span>${esc(x.n)}</td><td>${esc(x.a)}</td><td class="r">${fmt(x.t)}</td><td class="r">${fmt(x.pm)}</td><td class="r">${x.meses}</td><td class="r">${x.docs}</td><td class="r">${pct(x.posr)}</td><td class="r">${x.tr===null?'–':(x.tr>=0?'▲ ':'▼ ')+pct(Math.abs(x.tr))}</td><td class="r">${x.ratio===null?'–':pct(x.ratio)}</td><td><span class="st ${x.st[0]}">${stIcon[x.st[0]]} ${x.st[1]}</span></td><td class="r">${x.cu===null?'–':CS+' '+x.cu.toFixed(2)}</td></tr>`).join('')}</table></div></div>
    <div class="card c12"><h3>Líneas asignadas a ${esc(c.n)}</h3><div class="hint">Si una línea está repartida entre varios equipos, se muestra solo la parte que le corresponde a este.</div>${linesTable(FE)}</div>
   </div>`;
   trendChart('eTrend',FE);
   if(rubTop.length)donut('eRub',rubTop,rubCols.slice(0,rubTop.length),'Equipo','bottom');
   document.getElementById('eqPick').onchange=e=>{SEL_EQ=e.target.value;render();};
   document.getElementById('onlyEq').onchange=e=>{ONLY_EQ=e.target.checked;render();};
-  const upd=(k,val)=>{ST.catEdit[SEL_EQ]=Object.assign(ST.catEdit[SEL_EQ]||{},{[k]:val===''?null:+val});save();render();};
+  const upd=(k,val)=>{ST.catEdit[SEL_EQ]=Object.assign(ST.catEdit[SEL_EQ]||{},{[k]:val===''?null:(k==='vr'?deMon(+val):+val)});save();render();};
   document.getElementById('eqVr').onchange=e=>upd('vr',e.target.value);
   document.getElementById('eqUso').onchange=e=>upd('uso',e.target.value);
   v.querySelectorAll('tr[data-eq]').forEach(tr=>tr.onclick=()=>{SEL_EQ=tr.dataset.eq;render();window.scrollTo(0,0);});
@@ -628,7 +650,7 @@ function vAsignar(v){
     <button class="btn sm" id="bulkSplit">Repartir entre varios equipos…</button>
     <button class="btn sm" id="bulkReset">Volver a la sugerencia</button>
    </div>
-   <div class="tw" style="max-height:560px"><table><tr><th><input type="checkbox" id="pgAll"></th><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Centro de costo Nisira</th><th>Rubro</th><th class="r">S/</th><th>Equipo(s)</th><th>Origen</th></tr>
+   <div class="tw" style="max-height:560px"><table><tr><th><input type="checkbox" id="pgAll"></th><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Centro de costo Nisira</th><th>Rubro</th><th class="r">${CS}</th><th>Equipo(s)</th><th>Origen</th></tr>
    ${pg.map(r=>{const eq=eqOf(r);return `<tr><td><input type="checkbox" class="rs" data-i="${r.i}" ${SELR.has(r.i)?'checked':''}></td><td class="num">${r.f.slice(8,10)}/${r.f.slice(5,7)}</td><td class="num" style="white-space:nowrap">${esc(r.d.replace(' 0001-',' '))}</td><td>${esc(r.ds)}${r.ob?`<div class="muted" style="font-size:11px">${esc(r.ob.slice(0,90))}</div>`:''}</td><td>${esc(r.p.slice(0,26))}</td><td style="font-size:11.5px">${esc(r.cc)}</td><td style="font-size:11.5px">${esc(r.r.slice(3))}</td><td class="r num">${fmt(r.s)}</td>
     <td><select class="eqsel" data-i="${r.i}" style="max-width:200px">${eq.length>1?`<option value="__multi" selected>Reparto: ${eq.map(eqName).join(' / ').slice(0,40)}</option>`:''}${eqOptions().replace(`value="${eq[0]||''}"`,`value="${eq[0]||''}" ${eq.length===1?'selected':''}`)}</select></td><td style="font-size:11px" class="muted">${isManual(r)?'Manual':esc(r.o)}</td></tr>`;}).join('')}
    </table></div>
@@ -669,13 +691,13 @@ function vCatalogo(v){
   const F=facts(); const tot=sumBy(F,'e');
   v.innerHTML=`<div class="card"><h3>Catálogo de equipos</h3><div class="hint">Edita el nombre, el área, el valor de reposición y el uso del periodo. Agrega equipos que falten (por ejemplo, volteadoras o cajas hidráulicas) para luego asignarles materiales.</div>
   <div class="toolbar"><label>Nombre<input type="text" id="nN" placeholder="Ej. Caja hidráulica volteadora N°1" style="width:260px"></label><label>Área<select id="nA">${AREAS.slice(0,5).map(a=>`<option>${a}</option>`).join('')}</select></label><label>Tipo<input type="text" id="nT" placeholder="Ej. Hidráulico" style="width:150px"></label><button class="btn pri" id="nGo">Agregar equipo</button></div>
-  <div class="tw" style="max-height:620px"><table><tr><th>Área</th><th>Equipo</th><th>Tipo</th><th class="r">OPEX periodo</th><th>Valor de reposición S/</th><th>Uso del periodo</th><th></th></tr>
-  ${AREAS.slice(0,5).map(a=>CAT.filter(c=>c.a===a).map(c=>`<tr><td><span class="dot" style="background:${ACOL[a]}"></span><select class="cA" data-id="${c.id}">${AREAS.slice(0,5).map(x=>`<option ${x===c.a?'selected':''}>${x}</option>`).join('')}</select></td><td><input type="text" class="cN" data-id="${c.id}" value="${esc(c.n)}" style="width:100%;min-width:220px"></td><td>${esc(c.tp||'')}</td><td class="r num">${tot[c.id]?fmt(tot[c.id]):'–'}</td><td><input type="number" class="cV" data-id="${c.id}" value="${c.vr||''}" style="width:130px"></td><td><input type="number" class="cU" data-id="${c.id}" value="${c.uso||''}" style="width:110px"></td><td>${ST.catNew.find(x=>x.id===c.id)?`<button class="btn sm cD" data-id="${c.id}">Quitar</button>`:''}</td></tr>`).join('')).join('')}
+  <div class="tw" style="max-height:620px"><table><tr><th>Área</th><th>Equipo</th><th>Tipo</th><th class="r">OPEX periodo</th><th>Valor de reposición ${CS}</th><th>Uso del periodo</th><th></th></tr>
+  ${AREAS.slice(0,5).map(a=>CAT.filter(c=>c.a===a).map(c=>`<tr><td><span class="dot" style="background:${ACOL[a]}"></span><select class="cA" data-id="${c.id}">${AREAS.slice(0,5).map(x=>`<option ${x===c.a?'selected':''}>${x}</option>`).join('')}</select></td><td><input type="text" class="cN" data-id="${c.id}" value="${esc(c.n)}" style="width:100%;min-width:220px"></td><td>${esc(c.tp||'')}</td><td class="r num">${tot[c.id]?fmt(tot[c.id]):'–'}</td><td><input type="number" class="cV" data-id="${c.id}" value="${c.vr?Math.round(aMon(c.vr)):''}" style="width:130px"></td><td><input type="number" class="cU" data-id="${c.id}" value="${c.uso||''}" style="width:110px"></td><td>${ST.catNew.find(x=>x.id===c.id)?`<button class="btn sm cD" data-id="${c.id}">Quitar</button>`:''}</td></tr>`).join('')).join('')}
   </table></div></div>`;
   const ed=(id,k,val)=>{ST.catEdit[id]=Object.assign(ST.catEdit[id]||{},{[k]:val});save();refreshCat();};
   v.querySelectorAll('.cN').forEach(x=>x.onchange=()=>ed(x.dataset.id,'n',x.value));
   v.querySelectorAll('.cA').forEach(x=>x.onchange=()=>{ed(x.dataset.id,'a',x.value);render();});
-  v.querySelectorAll('.cV').forEach(x=>x.onchange=()=>ed(x.dataset.id,'vr',x.value===''?null:+x.value));
+  v.querySelectorAll('.cV').forEach(x=>x.onchange=()=>ed(x.dataset.id,'vr',x.value===''?null:deMon(+x.value)));
   v.querySelectorAll('.cU').forEach(x=>x.onchange=()=>ed(x.dataset.id,'uso',x.value===''?null:+x.value));
   v.querySelectorAll('.cD').forEach(x=>x.onclick=()=>{const id=x.dataset.id;if(Object.values(ST.asg).some(l=>l.includes(id))&&!confirm('Este equipo tiene líneas asignadas; quedarán sin asignar. ¿Continuar?'))return;
     ST.catNew=ST.catNew.filter(c=>c.id!==id);Object.keys(ST.asg).forEach(k=>ST.asg[k]=ST.asg[k].filter(e=>e!==id));save();render();});
@@ -706,7 +728,7 @@ function vCapex(v){
    <div class="card c5"><h3>Certeza de la clasificación</h3><div class="hint">Alta y media.</div><div class="ch sm"><canvas id="cC"></canvas></div>
      <h3 style="margin-top:12px">CAPEX por mes</h3><div class="ch sm"><canvas id="cM"></canvas></div></div>
    <div class="card c12"><h3>Líneas CAPEX</h3><div class="hint">Por proyecto e importe.</div>
-   <div class="tw" style="max-height:620px"><table><tr><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Criterio</th><th>Certeza</th><th class="r">S/</th><th>Dictamen</th><th>Comentario</th></tr>
+   <div class="tw" style="max-height:620px"><table><tr><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Criterio</th><th>Certeza</th><th class="r">${CS}</th><th>Dictamen</th><th>Comentario</th></tr>
    ${byP.map(([pj,pt])=>`<tr><td colspan="6" style="background:#E6E1F2;font-weight:650">${esc(pj)}</td><td class="r num" style="background:#E6E1F2;font-weight:650">${fmt(pt)}</td><td colspan="2" style="background:#E6E1F2"></td></tr>`+L.filter(r=>(r.pj||'Sin proyecto')===pj).sort((a,b)=>b.s-a.s).map(r=>`<tr><td class="num">${r.f.slice(8,10)}/${r.f.slice(5,7)}</td><td class="num" style="white-space:nowrap">${esc(r.d.replace(' 0001-',' '))}</td><td>${esc(r.ds)}</td><td>${esc(r.p.slice(0,26))}</td><td style="font-size:11px">${esc(r.cr)}</td><td><span class="pill ${r.ce==='Alta'?'a':'m'}">${r.ce}</span></td><td class="r num">${fmt(r.s)}</td>
     <td><select class="dic" data-i="${r.i}"><option value="">Por validar</option><option value="CAPEX" ${ST.dict[r.i]==='CAPEX'?'selected':''}>Conforme CAPEX</option><option value="OPEX" ${ST.dict[r.i]==='OPEX'?'selected':''}>Pasar a OPEX</option></select></td>
     <td><input type="text" class="dnote" data-i="${r.i}" value="${esc(ST.notes[r.i]||'')}" placeholder="observación" style="width:170px"></td></tr>`).join('')).join('')}
@@ -730,7 +752,7 @@ const shPT=m=>{const c=P(m,'hcon'),v=P(m,'hven');return (c+v)>0?c/(c+v):1;};
 const CAPO=()=>ST.capo?+ST.capo:500;
 const aguaPT=m=>Math.max(P(m,'aC')-P(m,'aHM'),0)+P(m,'aH')*shPT(m);
 const shOs=m=>{const d=P(m,'aC')+P(m,'aH');return d>0?Math.min(1,aguaPT(m)/d):1;};
-const fmt2=v=>'S/ '+(isFinite(v)?v.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}):'–');
+const fmt2=v=>CS+' '+(isFinite(v)?v.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}):'–');
 const fnum=(v,d=0)=>isFinite(v)?v.toLocaleString('es-PE',{maximumFractionDigits:d,minimumFractionDigits:d}):'–';
 const GCONG=['Congelado','Calderos','Resto de planta'], GHIE=['Planta de hielo','Planta de ósmosis'];
 function ratioCalc(F){
@@ -746,7 +768,7 @@ function ratioCalc(F){
 }
 function vRatio(v){
   const F=facts(); const R=ratioCalc(F); const {ms,om,am,raw,exV,mT,totO,totT,totEx,acc,rm,mm3}=R;
-  const meta=ST.meta?+ST.meta:null; const has=mT.length>0;
+  const meta=ST.meta?aMon(+ST.meta):null; const has=mT.length>0;
   const last=mT[mT.length-1];
   const best=has?mT.reduce((a,m)=>rm[m]<rm[a]?m:a,mT[0]):null, worst=has?mT.reduce((a,m)=>rm[m]>rm[a]?m:a,mT[0]):null;
   let st=['na','Sin meta definida'];
@@ -771,14 +793,14 @@ function vRatio(v){
   const na='<span class="muted">sin dato</span>';
   const ind=`<div class="tw" style="max-height:none"><table class="num"><tr><th>Indicador</th><th class="r">Valor</th><th class="r"></th><th class="r"></th><th class="r"></th></tr>
    ${grpH('Energía por grupo de medición')}
-   <tr><th style="position:static">Grupo</th><th class="r" style="position:static">kWh</th><th class="r" style="position:static">OPEX mant.</th><th class="r" style="position:static">S/ mant. por MWh</th><th class="r" style="position:static">kWh por TM</th></tr>
+   <tr><th style="position:static">Grupo</th><th class="r" style="position:static">kWh</th><th class="r" style="position:static">OPEX mant.</th><th class="r" style="position:static">${CS} mant. por MWh</th><th class="r" style="position:static">kWh por TM</th></tr>
    ${row('<span class="dot" style="background:'+ACOL['Congelado']+'"></span>Congelado (Planta de congelado + Sala Yantai)',kCong?fnum(kCong):na,fmt(oCong),kCong?fmt2(oCong/(kCong/1000)):'–',kCong&&totT?fnum(kCong/totT,1)+' /TM PT':'–')}
    ${row('<span class="dot" style="background:'+ACOL['Planta de hielo']+'"></span>Hielo + ósmosis (Planta de hielo − Sala Yantai)',kHie>0?fnum(kHie):na,fmt(oHie),kHie>0?fmt2(oHie/(kHie/1000)):'–',kHie>0&&hP?fnum(kHie/hP,1)+' /TM hielo':'–')}
    ${row('<b>Energía atribuible al producto congelado</b>',kPT?'<b>'+fnum(kPT)+'</b>':na,'','',kPT&&totT?'<b>'+fnum(kPT/totT,1)+' /TM PT</b>':'–')}
    ${grpH('Planta de hielo · capacidad '+fnum(CAPH())+' t/día')}
    ${row('Hielo producido · utilización de capacidad',hP?fnum(hP)+' TM':na,cap&&hP?pct(hP/cap):'','','')}
    ${row('Enviado a congelado · vendido',hC||hV?fnum(hC)+' · '+fnum(hV)+' TM':na,hC+hV?pct(hC/(hC+hV))+' · '+pct(hV/(hC+hV)):'','','')}
-   ${row('S/ de mantenimiento por TM de hielo',hP?fmt2(hO/hP):na,'','','')}
+   ${row(CS+' de mantenimiento por TM de hielo',hP?fmt2(hO/hP):na,'','','')}
    ${row('Mantenimiento de hielo excluido por venta',fmt(mT.reduce((s,m)=>s+((raw[m]||{})['Planta de hielo']||0)*(1-shPT(m)),0)),'','','')}
    ${row('TM de hielo por TM de producto terminado',hC&&totT?fnum(hC/totT,2):na,'','','')}
    ${grpH('Planta de ósmosis y agua · capacidad '+fnum(CAPO())+' m³/día')}
@@ -788,12 +810,12 @@ function vRatio(v){
    ${row('Planta de hielo',wH?fnum(wH)+' m³':na,wC+wH?pct(wH/(wC+wH)):'','','')}
    ${row('Agua no registrada (producción − medidores)',wNR!==null&&(wC||wH)?fnum(wNR)+' m³':na,wNR!==null&&oP&&(wC||wH)?pct(wNR/oP):'','','')}
    ${row('<b>Agua atribuible al producto congelado</b>',wPT?'<b>'+fnum(wPT)+' m³</b>':na,wC+wH?pct(wPT/(wC+wH)):'','',wPT&&totT?'<b>'+fnum(wPT/totT,2)+' m³/TM</b>':'')}
-   ${row('S/ de mantenimiento por m³ producido',oP?fmt2(oO/oP):na,'','','')}
+   ${row(CS+' de mantenimiento por m³ producido',oP?fmt2(oO/oP):na,'','','')}
    ${row('Mantenimiento de ósmosis excluido (harina, muelle e hielo vendido)',fmt(mT.reduce((s,m)=>s+((raw[m]||{})['Planta de ósmosis']||0)*(1-shOs(m)),0)),'','','')}
    </table></div>`;
   const groups=[...new Set(PF.map(f=>f.g))];
   const entry=`<div class="card c12" id="prodCard"><h3>Producción y datos de operación por mes</h3><div class="hint">Totales del mes. Puedes pegar una columna copiada de Excel en la celda de enero y se llena hacia abajo. Los datos se guardan en este navegador, van en el respaldo y en el Excel exportado.</div>
-   <div class="toolbar"><label>Meta S/ por TM<input type="number" id="pMeta" value="${meta||''}" placeholder="opcional" style="width:120px"></label><label>Capacidad planta de hielo (t/día)<input type="number" id="pCap" value="${CAPH()}" style="width:120px"></label><label>Capacidad ósmosis (m³/día)<input type="number" id="pCapO" value="${CAPO()}" style="width:120px"></label></div>
+   <div class="toolbar"><label>Meta ${CS} por TM<input type="number" id="pMeta" value="${meta?Math.round(meta*100)/100:''}" placeholder="opcional" style="width:120px"></label><label>Capacidad planta de hielo (t/día)<input type="number" id="pCap" value="${CAPH()}" style="width:120px"></label><label>Capacidad ósmosis (m³/día)<input type="number" id="pCapO" value="${CAPO()}" style="width:120px"></label></div>
    <div class="tw" style="max-height:none"><table class="num"><tr><th rowspan="2">Mes</th>${groups.map(g=>`<th colspan="${PF.filter(f=>f.g===g).length}" style="text-align:center;border-left:2px solid var(--line)">${g}</th>`).join('')}</tr>
    <tr>${PF.map((f,i)=>`<th class="r" style="${i&&PF[i-1].g!==f.g?'border-left:2px solid var(--line)':''}">${f.l}<br><span class="muted" style="font-weight:400">${f.u}</span></th>`).join('')}</tr>
    ${MES.slice(0,12).map((mn,i)=>{const m=i+1;return `<tr><td>${mn}</td>${PF.map((f,j)=>`<td class="r" style="${j&&PF[j-1].g!==f.g?'border-left:2px solid var(--line)':''}"><input type="number" class="pin" data-m="${m}" data-k="${f.k}" value="${P(m,f.k)||''}" placeholder="${f.k==='hdias'?dim(m):''}" style="width:100%;min-width:84px;text-align:right"></td>`).join('')}</tr>`;}).join('')}
@@ -802,7 +824,7 @@ function vRatio(v){
   const top=has?sortE(Object.fromEntries(aAcc))[0]:null;
   const body=`
   <div class="kpis">
-   ${kpi('S/ por TM acumulado',acc===null?'–':fmt2(acc),has?`${mT.length} meses con producción`:'ingresar producción','#1D2E40')}
+   ${kpi(CS+' por TM acumulado',acc===null?'–':fmt2(acc),has?`${mT.length} meses con producción`:'ingresar producción','#1D2E40')}
    ${kpi('TM producidas',has?fnum(totT):'–','producto terminado congelado','#26405A')}
    ${kpi('OPEX atribuible',fmtk(totO),totEx?`excluye ${fmtk(totEx)} de hielo vendido y agua a otros usos`:'meses con producción',OCO)}
    ${kpi('Media móvil 3 meses',has?fmt2(mm3[last]):'–',has?'a '+MES[last-1]:'','#2BA6A0')}
@@ -812,15 +834,15 @@ function vRatio(v){
   ${has?`<div class="insight">En ${mT.length} meses con producción, el mantenimiento costó <b>${fmt2(acc)} por TM</b> de producto terminado (${fmt(totO)} para ${fnum(totT)} TM). El mejor mes fue <b>${MES[best-1]}</b> (${fmt2(rm[best])}) y el de mayor costo <b>${MES[worst-1]}</b> (${fmt2(rm[worst])}). El área que más aporta es <b>${top[0]}</b> con ${fmt2(top[1])} por TM.${reg?` ${reg.a>0?`El mantenimiento tiene un componente fijo estimado de <b>${fmt(reg.a)} al mes</b> y uno variable de <b>${fmt2(reg.b)} por TM adicional</b>`:`El gasto de mantenimiento crece casi en proporción a la producción, unos <b>${fmt2(reg.b)} por TM adicional</b>`} (R² ${reg.r2.toFixed(2)}${reg.r2<0.3?': el gasto depende poco del volumen producido, por eso en los meses de baja producción el ratio sube':''}).`:''}</div>`:''}
   <div class="grid">
    <div class="card c6"><h3>Producción mensual</h3><div class="hint">TM de producto terminado congelado.</div><div class="ch"><canvas id="rTM"></canvas></div></div>
-   <div class="card c6"><h3>S/ de mantenimiento por TM</h3><div class="hint">Barras: mes. Líneas: media móvil de 3 meses y acumulado${meta?' · meta':''}.</div><div class="ch"><canvas id="rR"></canvas></div></div>
-   <div class="card c7"><h3>Aporte de cada área al S/ por TM</h3><div class="hint">Cada área dividida entre la misma producción; la suma es el ratio del mes. Hielo y ósmosis solo con la parte que va a congelado.</div><div class="ch tall"><canvas id="rA"></canvas></div></div>
-   <div class="card c5"><h3>S/ por TM acumulado por área</h3><div class="hint">Periodo con producción.</div><div class="ch tall"><canvas id="rAA"></canvas></div></div>
+   <div class="card c6"><h3>${CS} de mantenimiento por TM</h3><div class="hint">Barras: mes. Líneas: media móvil de 3 meses y acumulado${meta?' · meta':''}.</div><div class="ch"><canvas id="rR"></canvas></div></div>
+   <div class="card c7"><h3>Aporte de cada área al ${CS} por TM</h3><div class="hint">Cada área dividida entre la misma producción; la suma es el ratio del mes. Hielo y ósmosis solo con la parte que va a congelado.</div><div class="ch tall"><canvas id="rA"></canvas></div></div>
+   <div class="card c5"><h3>${CS} por TM acumulado por área</h3><div class="hint">Periodo con producción.</div><div class="ch tall"><canvas id="rAA"></canvas></div></div>
    <div class="card c6"><h3>Planta de hielo · destino y utilización</h3><div class="hint">TM enviadas a congelado y vendidas; línea: utilización de la capacidad.</div><div class="ch tall"><canvas id="rH"></canvas></div></div>
    <div class="card c6"><h3>Energía por TM producida</h3><div class="hint">kWh atribuibles al producto congelado por TM, por grupo de medición.</div><div class="ch tall"><canvas id="rE"></canvas></div></div>
    <div class="card c6"><h3>Agua de ósmosis · destino</h3><div class="hint">m³ por mes según medidores; el porcentaje es la utilización de la capacidad de ósmosis.</div><div class="ch tall"><canvas id="rW"></canvas></div></div>
    <div class="card c6"><h3>Gasto fijo y variable</h3><div class="hint">Cada punto es un mes: OPEX atribuible frente a TM producidas.</div><div class="ch tall"><canvas id="rS"></canvas></div></div>
    <div class="card c12"><h3>Indicadores de operación</h3><div class="hint">Acumulado de los meses con producción.</div>${ind}</div>
-   <div class="card c12"><h3>Detalle mensual</h3><div class="tw" style="max-height:none"><table class="num"><tr><th>Mes</th><th class="r">TM</th><th class="r">OPEX atribuible</th><th class="r">S/ por TM</th><th class="r">Media móvil 3M</th>${areasU.map(a=>`<th class="r"><span class="dot" style="background:${ACOL[a]}"></span>${a}</th>`).join('')}<th class="r">kWh por TM</th></tr>
+   <div class="card c12"><h3>Detalle mensual</h3><div class="tw" style="max-height:none"><table class="num"><tr><th>Mes</th><th class="r">TM</th><th class="r">OPEX atribuible</th><th class="r">${CS} por TM</th><th class="r">Media móvil 3M</th>${areasU.map(a=>`<th class="r"><span class="dot" style="background:${ACOL[a]}"></span>${a}</th>`).join('')}<th class="r">kWh por TM</th></tr>
     ${ms.map(m=>{const t=P(m,'tm');const k=P(m,'kC')+P(m,'kY')+(P(m,'kH')-P(m,'kY'))*shPT(m);return `<tr><td>${MES[m-1]}</td><td class="r">${t?fnum(t):'–'}</td><td class="r">${fmt(om[m]||0)}</td><td class="r"><b>${rm[m]!==undefined?fmt2(rm[m]):'–'}</b></td><td class="r">${mm3[m]!==undefined?fmt2(mm3[m]):'–'}</td>${areasU.map(a=>`<td class="r">${t?fmt2(((am[m]||{})[a]||0)/t):'–'}</td>`).join('')}<td class="r">${t&&k?fnum(k/t,1):'–'}</td></tr>`;}).join('')}
     <tr><td><b>Acumulado</b></td><td class="r"><b>${fnum(totT)}</b></td><td class="r"><b>${fmt(totO)}</b></td><td class="r"><b>${acc===null?'–':fmt2(acc)}</b></td><td></td>${aAcc.map(e=>`<td class="r"><b>${fmt2(e[1])}</b></td>`).join('')}<td class="r"><b>${kPT&&totT?fnum(kPT/totT,1):'–'}</b></td></tr></table></div>
     <div class="note">Los meses sin producción ingresada no entran en el ratio.</div></div>
@@ -828,15 +850,15 @@ function vRatio(v){
   v.innerHTML=(has?body+`<div class="grid" style="margin-top:14px">${entry}</div>`:`<div class="insight">Ingresa la producción mensual en TM de producto terminado para calcular el ratio. Los datos de hielo, agua y energía activan los indicadores de operación.</div><div class="grid">${entry}</div>`+body);
   const lab=ms.map(m=>MES[m-1]);
   mk('rTM',{type:'bar',data:{labels:lab,datasets:[{label:'TM',data:ms.map(m=>P(m,'tm')||null),backgroundColor:'#26405A',borderRadius:4,borderSkipped:'start',maxBarThickness:38}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fnum(c.parsed.y)+' TM'}}},scales:{x:{grid:{display:false}},y:{grid:GRID,ticks:{callback:v=>fnum(v)}}}}});
-  const ds=[{label:'S/ por TM del mes',data:ms.map(m=>rm[m]??null),backgroundColor:OSR,borderRadius:4,borderSkipped:'start',maxBarThickness:38,order:3},
+  const ds=[{label:CS+' por TM del mes',data:ms.map(m=>rm[m]??null),backgroundColor:OSR,borderRadius:4,borderSkipped:'start',maxBarThickness:38,order:3},
     {label:'Media móvil 3 meses',type:'line',data:ms.map(m=>mm3[m]??null),borderColor:OCO,borderWidth:2,pointRadius:3,pointBackgroundColor:OCO,spanGaps:true,order:1},
     {label:'Acumulado',type:'line',data:ms.map(()=>acc),borderColor:'#1B2733',borderWidth:1.5,borderDash:[5,4],pointRadius:0,order:2}];
   if(meta)ds.push({label:'Meta',type:'line',data:ms.map(()=>meta),borderColor:'#cc3d3d',borderWidth:1.5,borderDash:[2,3],pointRadius:0,order:0});
-  mk('rR',{type:'bar',data:{labels:lab,datasets:ds},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt2(c.parsed.y)}}},scales:{x:{grid:{display:false}},y:{grid:GRID,beginAtZero:true,ticks:{callback:v=>'S/ '+fnum(v)}}}}});
+  mk('rR',{type:'bar',data:{labels:lab,datasets:ds},options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt2(c.parsed.y)}}},scales:{x:{grid:{display:false}},y:{grid:GRID,beginAtZero:true,ticks:{callback:v=>CS+' '+fnum(v)}}}}});
   mk('rA',{type:'bar',data:{labels:lab,datasets:areasU.map(a=>({label:a,data:ms.map(m=>P(m,'tm')?((am[m]||{})[a]||0)/P(m,'tm'):null),backgroundColor:ACOL[a],stack:'s',borderColor:'#F3F5F7',borderWidth:{top:2},maxBarThickness:38}))},
-    options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt2(c.parsed.y),footer:it=>'Total: '+fmt2(rm[ms[it[0].dataIndex]])}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:GRID,ticks:{callback:v=>'S/ '+fnum(v)}}}}});
+    options:{interaction:{mode:'index',intersect:false},plugins:{tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt2(c.parsed.y),footer:it=>'Total: '+fmt2(rm[ms[it[0].dataIndex]])}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:GRID,ticks:{callback:v=>CS+' '+fnum(v)}}}}});
   mk('rAA',{type:'bar',data:{labels:aAcc.map(e=>e[0]),datasets:[{data:aAcc.map(e=>e[1]),backgroundColor:aAcc.map(e=>ACOL[e[0]]),borderRadius:4,borderSkipped:'start',maxBarThickness:22}]},
-    options:{indexAxis:'y',layout:{padding:{right:60}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt2(c.parsed.x)+' por TM'}}},scales:{x:{grid:GRID,ticks:{callback:v=>'S/ '+fnum(v)}},y:{grid:{display:false}}}},
+    options:{indexAxis:'y',layout:{padding:{right:60}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt2(c.parsed.x)+' por TM'}}},scales:{x:{grid:GRID,ticks:{callback:v=>CS+' '+fnum(v)}},y:{grid:{display:false}}}},
     plugins:[{id:'lbl',afterDatasetsDraw(ch){const{ctx}=ch;ctx.save();ctx.font='11px Segoe UI, sans-serif';ctx.fillStyle='#1B2733';ctx.textBaseline='middle';ch.getDatasetMeta(0).data.forEach((b,i)=>ctx.fillText(fmt2(aAcc[i][1]),b.x+6,b.y));ctx.restore();}}]});
   // hielo destino + utilización (porcentaje en etiqueta, sin segundo eje)
   const util=ms.map(m=>P(m,'hie')?P(m,'hie')/(CAPH()*(P(m,'hdias')||dim(m))):null);
@@ -871,7 +893,7 @@ function vRatio(v){
       e.preventDefault();const m0=+inp.dataset.m,k0=PF.findIndex(f=>f.k===inp.dataset.k);
       lines.forEach((ln,i)=>ln.split('\t').forEach((c,j)=>{const m=m0+i,f=PF[k0+j];if(m<=12&&f)setv(m,f.k,parse(c));}));save();render();};
   });
-  document.getElementById('pMeta').onchange=e=>{ST.meta=e.target.value===''?null:+e.target.value;save();render();};
+  document.getElementById('pMeta').onchange=e=>{ST.meta=e.target.value===''?null:deMon(+e.target.value);save();render();};
   document.getElementById('pCap').onchange=e=>{ST.caph=e.target.value===''?null:+e.target.value;save();render();};
   document.getElementById('pCapO').onchange=e=>{ST.capo=e.target.value===''?null:+e.target.value;save();render();};
 }
@@ -884,14 +906,14 @@ function xTitle(ws,ref,t,size=12){const c=ws.getCell(ref);c.value=t;c.font={name
 function xNote(ws,ref,t){const c=ws.getCell(ref);c.value=t;c.font={name:XF,italic:true,size:9,color:{argb:'FF595959'}};}
 function xCell(ws,r,c,v,o={}){const x=ws.getCell(r,c);x.value=v;x.font={name:XF,size:10,bold:!!o.b,color:o.blue?{argb:'FF0000FF'}:undefined};if(o.nf)x.numFmt=o.nf;if(o.fill)x.fill=o.fill;if(o.wrap)x.alignment={wrapText:true,vertical:'top'};return x;}
 const F_=(f,res)=>({formula:f,result:res});
-async function exportExcel(){
+async function exportExcel(){const m0=MON;applyMon('PEN');try{await exportExcelSoles();}finally{applyMon(m0);}}
+async function exportExcelSoles(){
   if(typeof ExcelJS==='undefined')return alert('No se pudo cargar la librería de Excel (requiere conexión a internet).');
   busy(true,'Generando Excel…');
   try{
   const wb=new ExcelJS.Workbook(); wb.creator='Elvis Miranda — Departamento de Mantenimiento'; wb.calcProperties.fullCalcOnLoad=true;
   const sR=wb.addWorksheet('Resumen'), sQ=wb.addWorksheet('Producción y ratio'), sC=wb.addWorksheet('CAPEX'), sE=wb.addWorksheet('Equipos'), sP=wb.addWorksheet('Proveedores'),
         sB=wb.addWorksheet('Base'), sA=wb.addWorksheet('Asignación equipos'), sK=wb.addWorksheet('Catálogo equipos'), sT=wb.addWorksheet('TC y criterios');
-  const TCV=[3.363,3.361,3.450,3.447,3.448,3.409,3.406,3.372,3.380];
   // TC
   xTitle(sT,'A1','Tipo de cambio venta promedio mensual 2026');
   xHdr(sT,2,['Mes','US$ → S/','€ → S/']);
@@ -1103,12 +1125,12 @@ async function exportPDF(){
       if(nxt.length&&Math.min(...nxt)-2<cut)start=cut;
     }
     const {jsPDF}=window.jspdf; const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-    const m=MODS.find(x=>x.id===CUR); const per=`${MES[fD.value-1]}–${MES[fH.value-1]} 2026 · ${fT.options[fT.selectedIndex].text} · soles sin IGV`;
+    const m=MODS.find(x=>x.id===CUR); const per=`${MES[fD.value-1]}–${MES[fH.value-1]} 2026 · ${fT.options[fT.selectedIndex].text} · ${monTxt()} sin IGV${tcNota()}`;
     slices.forEach(([a,b],i)=>{
       if(i)pdf.addPage();
       pdf.setFillColor(205,213,222);pdf.rect(0,0,PW,PH,'F');
       pdf.setFillColor(29,46,64);pdf.rect(0,0,PW,HD,'F');pdf.setFillColor(43,166,160);pdf.rect(0,HD,PW,0.8,'F');
-      pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(13);pdf.text('Costos de Mantenimiento 2026 · '+m.t,M,9.5);
+      pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(13);pdf.text('Costos de Mantenimiento 2026 · '+m.t.replace('S/',CS),M,9.5);
       pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);pdf.setTextColor(201,212,223);pdf.text(per,PW-M,9.5,{align:'right'});
       const h=Math.round((b-a)*SC); const pc=document.createElement('canvas');pc.width=canvas.width;pc.height=h;
       pc.getContext('2d').drawImage(canvas,0,Math.round(a*SC),canvas.width,h,0,0,canvas.width,h);
@@ -1116,7 +1138,7 @@ async function exportPDF(){
       pdf.setFontSize(8);pdf.setTextColor(70,83,95);pdf.text('Elvis Miranda — Departamento de Mantenimiento',M,PH-4);
       pdf.text(`Página ${i+1} de ${slices.length}`,PW-M,PH-4,{align:'right'});
     });
-    pdf.save(`Costos_Mantenimiento_${m.t.replace(/[^\wáéíóúñ ]/gi,'').replace(/ +/g,'_')}_${MES[fD.value-1]}-${MES[fH.value-1]}_2026.pdf`);
+    pdf.save(`Costos_Mantenimiento_${m.t.replace('S/',CS).replace(/[^\wáéíóúñ ]/gi,'').replace(/ +/g,'_')}_${MES[fD.value-1]}-${MES[fH.value-1]}_2026.pdf`);
   }catch(e){alert('No se pudo generar el PDF: '+e.message);}
   PDFMODE=false; document.body.classList.remove('pdfmode'); Chart.defaults.animation=anim; render(); busy(false);
 }

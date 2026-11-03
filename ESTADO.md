@@ -255,6 +255,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-11-03: Costos — dólares por defecto con selector US$ / S/ (preferencia por navegador). Órdenes en US$ usan su importe original; el resto, TC venta promedio del mes (TCV ene–set; meses posteriores usan el último). Catálogo (valor de reposición) y meta se guardan en soles y se convierten al mostrar. Excel siempre en soles.
 - 2026-11-02: Programas — botón "Finalizar actividad" (avance 100 % y fecha real de término `finReal`).
 - 2026-10-28: Formatos — nota de referencia en listas (s.guia: título, columnas, filas, nota): al pie del impreso tras Observaciones y botón de consulta al llenar; cantidad sugerida por opción (sugeridos). R-302 con dosificación recomendada (core/insumos.js → GUIA_DOSIFICACION). En R-302 ya cargados: editor → "Usar la referencia predefinida" y emitir.
 - 2026-10-28: Materiales e inventario — químicos e insumos de ósmosis (tablero de análisis, kardex, catálogo). Formatos: columnas de selección con unidad y R-302 predefinido. Reglas actualizadas (volver a publicar `firestore.rules`).
