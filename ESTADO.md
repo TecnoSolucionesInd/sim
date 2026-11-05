@@ -257,6 +257,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-11-05: Formatos — logo de la empresa por defecto en el encabezado (apps/plan/logo.png; Configuración puede subir otro). Menú del editor: "Reemplazar con el formato predefinido" para actualizar un formato ya cargado (p. ej. R-101 antiguo) y emitir nueva revisión.
 - 2026-11-05: Formatos — R-101 Gram y R-102 Copeland (Sala de Máquinas 1) como predefinidos: columnas por marca (filtro `marca` en tablas de equipos), fila calculada `diferencia` en tablas (diferencial de aceite), frecuencia "Cada 2 horas" (rondas por bloque horario), tablas largas compactas al imprimir. Límites vacíos: se registran en el editor.
 - 2026-11-03: Costos — dólares por defecto con selector US$ / S/ (preferencia por navegador). Órdenes en US$ usan su importe original; el resto, TC venta promedio del mes (TCV ene–set; meses posteriores usan el último). Catálogo (valor de reposición) y meta se guardan en soles y se convierten al mostrar. Excel siempre en soles.
 - 2026-11-02: Programas — botón "Finalizar actividad" (avance 100 % y fecha real de término `finReal`).

@@ -130,7 +130,7 @@
 import { iniciarApp, toast } from '../../core/core.js';
 import { listarEquipos, valoresDe } from '../../core/equipos.js';
 import * as D from './datos.js';
-import { renderHoja, HOJA_CSS } from './hoja.js';
+import { renderHoja, HOJA_CSS, LOGO_EMPRESA } from './hoja.js';
 import { IC, imprimir, modal, confirmar, cargarXlsx, reducirImagen } from './ui.js';
 import { vistaLlenar, salirLlenado } from './llenado.js';
 import { vistaRegistros } from './registros.js';
@@ -469,6 +469,7 @@ function pintarCabecera() {
     if (editable()) {
       ops.push(['dup', `${IC.copy} Duplicar como formato nuevo`]);
       if (p.estado === 'vigente' && p.trabajo) ops.push(['desc', 'Descartar cambios sin emitir']);
+      if (pilotos().some(pl => pl.codigo === p.codigo)) ops.push(['pre', 'Reemplazar con el formato predefinido']);
       if (p.estado === 'vigente') ops.push(['obs', 'Marcar como obsoleto']);
       if (p.estado === 'borrador') ops.push(['elim', `${IC.del} Eliminar borrador`, 'del']);
     }
@@ -504,6 +505,13 @@ async function accionMenu(op) {
     clearTimeout(ED.timer); ED.sucio = false;
     try { await D.guardarTrabajo(p.id, { trabajo: null }, usuario()); p.trabajo = null; ED.trabajo = clonar(p.def); toast('Cambios descartados.'); }
     catch (e) { toast('No se pudo descartar: ' + (e.code || e.message), 'err'); }
+    return render();
+  }
+  if (op === 'pre') {
+    const pl = pilotos().find(x => x.codigo === p.codigo); if (!pl) return;
+    if (!await confirmar('Reemplazar con el predefinido', `El contenido de ${esc(p.codigo)} se reemplaza por el formato predefinido "${esc(pl.def.nombre)}". La revisión vigente no cambia hasta que emita; los registros ya llenados conservan su revisión.`, { boton: 'Reemplazar' })) return;
+    ED.trabajo = clonar(pl.def); cambio(false);
+    try { await guardarAhora(); toast('Contenido reemplazado. Revise y emita la nueva revisión.'); } catch (e) { toast('No se pudo guardar: ' + (e.code || e.message), 'err'); }
     return render();
   }
   if (op === 'obs') return modalObsoleto(p);
@@ -1084,7 +1092,7 @@ function vistaMaestra(main) {
 const hoyTxt = () => new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 function hojaMaestra(filas) {
-  const logo = CFG.logo ? `<img src="${CFG.logo}" alt="">` : `<span>${esc(CFG.empresa)}</span>`;
+  const logo = `<img src="${CFG.logo || LOGO_EMPRESA}" alt="${esc(CFG.empresa)}">`;
   const tit = FIL_M.estado === 'obsoletos' ? 'Formatos obsoletos' : 'Lista maestra de formatos';
   return `<div class="hoja h">
     <div class="hj-cab" style="grid-template-columns:34mm minmax(0,1fr) 62mm">
@@ -1157,8 +1165,8 @@ function vistaConfig(main) {
             <div><label class="label" for="kDep">Departamento</label><input class="field" id="kDep" value="${esc(c.departamento)}" ${dis}></div>
           </div>
           <div><div class="label">Logo</div>
-            <div class="logo-prev" id="kLogoPrev">${c.logo ? `<img src="${c.logo}" alt="Logo">` : '<span style="color:#6B7886;font-size:13px">Sin logo · se muestra el nombre de la empresa</span>'}</div>
-            ${ro ? '' : `<div class="acciones" style="margin-top:10px"><label class="btn sm" style="cursor:pointer">Subir imagen<input type="file" accept="image/*" id="kLogo" hidden></label><button type="button" class="btn sm" id="kLogoX" ${c.logo ? '' : 'hidden'}>Quitar logo</button></div>`}
+            <div class="logo-prev" id="kLogoPrev"><img src="${c.logo || LOGO_EMPRESA}" alt="Logo"></div>
+            ${ro ? '' : `<div class="acciones" style="margin-top:10px"><label class="btn sm" style="cursor:pointer">Subir imagen<input type="file" accept="image/*" id="kLogo" hidden></label><button type="button" class="btn sm" id="kLogoX" ${c.logo ? '' : 'hidden'}>Usar el logo predeterminado</button></div>`}
           </div>
         </div>
       </div>
@@ -1193,7 +1201,7 @@ function vistaConfig(main) {
     try { c.logo = await reducirImagen(f); $('#kLogoPrev').innerHTML = `<img src="${c.logo}" alt="Logo">`; $('#kLogoX').hidden = false; }
     catch { toast('No se pudo leer la imagen.', 'err'); }
   };
-  $('#kLogoX').onclick = () => { c.logo = ''; $('#kLogoPrev').innerHTML = '<span style="color:#6B7886;font-size:13px">Sin logo · se muestra el nombre de la empresa</span>'; $('#kLogoX').hidden = true; };
+  $('#kLogoX').onclick = () => { c.logo = ''; $('#kLogoPrev').innerHTML = `<img src="${LOGO_EMPRESA}" alt="Logo">`; $('#kLogoX').hidden = true; };
   $('#kVer').onclick = modalVersion;
   $('#kSave').onclick = async () => {
     const prefijo = $('#kPre').value.trim().replace(/\/+$/, '');

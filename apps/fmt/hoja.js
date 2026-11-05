@@ -4,6 +4,9 @@
 import { esc, rangoTxt, revTxt, mesAbrev, codigoCompleto, turnosDe, firmasDe, tablaDeEquipos, pideUbicacion, ESTADOS_COLUMNA, celdasGuia } from './modelo.js';
 import { columnasTabla, etiquetaCol, estadoColumna, fueraDeRango, valorFila, calculado, calcTxt, rangoCol, minutosEntre, duracionTxt, fechaTxt, fechaHoraTxt } from './logica.js';
 
+// logo de la empresa por defecto (si no se sube otro en Configuración)
+export const LOGO_EMPRESA = new URL('../plan/logo.png', import.meta.url).href;
+
 export const HOJA_CSS = `
 .hoja{position:relative;box-sizing:border-box;background:#fff;color:#14202B;font-family:'IBM Plex Sans',Arial,sans-serif;font-size:9pt;line-height:1.3;padding:8mm 10mm 7mm;width:210mm;min-height:297mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
 .hoja.h{width:297mm;min-height:210mm}
@@ -255,7 +258,7 @@ export function renderHoja({ cfg, codigo, def, version, revision, fecha, marca =
   if (dg.turno) gen.push(['Turno', tur.length ? `<span class="hj-ops" style="margin:0">${tur.map(t => caja(t, R && R.turno === t)).join('')}</span>` : '']);
   if (dg.hora) gen.push(['Hora', R && R.hora ? vv(R.hora) : '']);
   if (pideUbicacion(def)) gen.push(['Ubicación', R && R.ubicacion ? vv(R.ubicacion) : '']);
-  const logo = cfg.logo ? `<img src="${cfg.logo}" alt="">` : `<span>${esc(cfg.empresa || '')}</span>`;
+  const logo = `<img src="${cfg.logo || LOGO_EMPRESA}" alt="${esc(cfg.empresa || '')}">`;
   const firmas = firmasDe(def);
   const cod = codigoCompleto(cfg, codigo || 'R-000');
   return `<div class="hoja ${h ? 'h' : ''}">
