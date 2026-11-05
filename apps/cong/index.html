@@ -2212,39 +2212,132 @@ function renderTimelineDebounced() {
   }, 350);
 }
 
+// ============================================================
+// CARGA EN DOS NIVELES (control de lecturas de Firebase)
+// ------------------------------------------------------------
+// Antes se escuchaban las colecciones completas: cada apertura en frío leía
+// los ~10,600 registros y agotaba la cuota diaria del plan gratuito (50,000
+// lecturas), tras lo cual el aplicativo dejaba de actualizarse hasta el día
+// siguiente. Ahora:
+//   · En vivo  : últimos DIAS_VIVOS días MÁS todo lo que esté abierto o
+//                pendiente, sin importar su antigüedad (para no perder de
+//                vista un registro sin cerrar).
+//   · Histórico: se descarga solo cuando una vista lo necesita, una vez por
+//                sesión, y prefiere la caché local del navegador — los
+//                registros antiguos ya no cambian.
+// NO se borra, resume ni recorta nada: los cálculos siguen saliendo de los
+// mismos documentos y dan exactamente las mismas cifras.
+// ============================================================
+// 30 días cubre la operación diaria (día en curso, mes corriente, registros
+// recientes). Con 90 la ventana abarcaba casi todo el histórico y no ahorraba.
+const DIAS_VIVOS = 30;
+function fechaCorteVivo(){
+  const d = new Date();
+  d.setDate(d.getDate() - DIAS_VIVOS);
+  return fechaLocal(d);
+}
+
+const _fuentes = {
+  bachadas: { recientes: [], abiertos: [], hist: null },
+  eventos:  { recientes: [], abiertos: [], hist: null }
+};
+let _histEstado = 'vacio';      // vacio | cargando | listo | error
+let _histPromesa = null;
+
+// Une las tres fuentes sin duplicar: lo reciente y lo abierto (en vivo)
+// prevalece sobre la copia histórica.
+function mezclarFuente(nombre){
+  const f = _fuentes[nombre];
+  const m = new Map();
+  (f.hist || []).forEach(d => { if(d._fid) m.set(d._fid, d); });
+  f.recientes.forEach(d => { if(d._fid) m.set(d._fid, d); });
+  f.abiertos.forEach(d => { if(d._fid) m.set(d._fid, d); });
+  // Mismo orden que entregaba Firestore antes (ts descendente): la tabla de
+  // Registros no ordena por su cuenta y se apoyaba en él.
+  const arr = [...m.values()].sort((a, b) => {
+    const ka = a.ts || ((a.fecha || a.fechaIni || '') + ' ' + (a.inicio || ''));
+    const kb = b.ts || ((b.fecha || b.fechaIni || '') + ' ' + (b.inicio || ''));
+    return String(kb).localeCompare(String(ka));
+  });
+  CACHE.set(nombre, arr);
+  refrescarVistas(nombre);
+}
+
+function refrescarVistas(nombre){
+  try{
+    if(nombre === 'bachadas' && document.getElementById('tab-cong-registros')?.classList.contains('active')) filtrarBachadas();
+    if(nombre === 'eventos'  && document.getElementById('tab-cong-eventos')?.classList.contains('active'))   renderEventos();
+    renderBachadasCards();
+    if(document.getElementById('tab-cong-sala')?.classList.contains('active')) { try{ renderSala(); }catch(e){} }
+    if(document.getElementById('dash-page-3')?.classList.contains('active')) renderTimelineDebounced();
+    else if(document.querySelector('.dash-page.active')) renderDashboardDebounced();
+  }catch(e){ console.warn('refrescarVistas:', e); }
+}
+
+// Descarga el histórico completo UNA vez por sesión.
+// Prefiere la caché local del navegador (persistencia de Firestore): los
+// documentos antiguos no cambian, así que volver a pedirlos al servidor solo
+// gastaría cuota. Lo reciente ya llega por los listeners en vivo.
+async function traerTodo(col){
+  try{
+    const c = await col().get({ source: 'cache' });
+    if(!c.empty) return c;
+  }catch(e){ /* sin caché disponible: se pide al servidor */ }
+  return col().get();
+}
+
+function cargarHistorico(){
+  if(_histEstado === 'listo')    return Promise.resolve();
+  if(_histEstado === 'cargando') return _histPromesa;
+  _histEstado = 'cargando';
+  _histPromesa = (async () => {
+    try{
+      const [b, e] = await Promise.all([traerTodo(COL.bachadas), traerTodo(COL.eventos)]);
+      _fuentes.bachadas.hist = b.docs.map(d => ({...d.data(), _fid: d.id}));
+      _fuentes.eventos.hist  = e.docs.map(d => ({...d.data(), _fid: d.id}));
+      _histEstado = 'listo';
+      console.log('Histórico cargado:', _fuentes.bachadas.hist.length, 'bachadas ·', _fuentes.eventos.hist.length, 'eventos');
+      mezclarFuente('bachadas');
+      mezclarFuente('eventos');
+    }catch(err){
+      _histEstado = 'error';
+      console.warn('No se pudo cargar el histórico:', err);
+      try{ showToast('No se pudo cargar el histórico completo. Se muestran los últimos '+DIAS_VIVOS+' días.','warn'); }catch(e){}
+    }
+  })();
+  return _histPromesa;
+}
+
+// Pide el histórico solo si la vista mira más atrás que la ventana viva.
+function quizasHistorico(desde){
+  if(_histEstado === 'listo' || _histEstado === 'cargando') return;
+  if(!desde || String(desde) < fechaCorteVivo()) cargarHistorico();
+}
+
 function startListeners() {
   stopListeners();
 
-  // Bachadas
-  _listeners.push(COL.bachadas().orderBy('ts','desc').onSnapshot(snap => {
-    const data = snap.docs.map(d => ({...d.data(), _fid: d.id}));
-    CACHE.set('bachadas', data);
-    // Solo refrescar la tabla si la pestaña Registros está visible
-    if(document.getElementById('tab-cong-registros')?.classList.contains('active')) filtrarBachadas();
-    // Actualizar portada (ligero) y dashboard/timeline (debounced)
-    renderBachadasCards();
-    if(document.getElementById('tab-cong-sala')?.classList.contains('active')) { try{renderSala();}catch(e){} }
-    if(document.getElementById('dash-page-3')?.classList.contains('active')) {
-      renderTimelineDebounced();
-    } else if(document.querySelector('.dash-page.active')) {
-      renderDashboardDebounced();
-    }
-  }, err => console.warn('bachadas:', err)));
+  // Bachadas — ventana viva + registros pendientes de cualquier antigüedad
+  _listeners.push(COL.bachadas().where('fecha','>=',fechaCorteVivo()).orderBy('fecha','desc').onSnapshot(snap => {
+    _fuentes.bachadas.recientes = snap.docs.map(d => ({...d.data(), _fid: d.id}));
+    mezclarFuente('bachadas');
+  }, err => console.warn('bachadas recientes:', err)));
 
-  // Eventos
-  _listeners.push(COL.eventos().orderBy('ts','desc').onSnapshot(snap => {
-    const data = snap.docs.map(d => ({...d.data(), _fid: d.id}));
-    CACHE.set('eventos', data);
-    if(document.getElementById('tab-cong-eventos')?.classList.contains('active')) renderEventos();
-    // Actualizar portada (ligero) y dashboard/timeline (debounced)
-    renderBachadasCards();
-    if(document.getElementById('tab-cong-sala')?.classList.contains('active')) { try{renderSala();}catch(e){} }
-    if(document.getElementById('dash-page-3')?.classList.contains('active')) {
-      renderTimelineDebounced();
-    } else if(document.querySelector('.dash-page.active')) {
-      renderDashboardDebounced();
-    }
-  }, err => console.warn('eventos:', err)));
+  _listeners.push(COL.bachadas().where('estado','==','pendiente').onSnapshot(snap => {
+    _fuentes.bachadas.abiertos = snap.docs.map(d => ({...d.data(), _fid: d.id}));
+    mezclarFuente('bachadas');
+  }, err => console.warn('bachadas pendientes:', err)));
+
+  // Eventos — ventana viva + eventos abiertos de cualquier antigüedad
+  _listeners.push(COL.eventos().where('fechaIni','>=',fechaCorteVivo()).orderBy('fechaIni','desc').onSnapshot(snap => {
+    _fuentes.eventos.recientes = snap.docs.map(d => ({...d.data(), _fid: d.id}));
+    mezclarFuente('eventos');
+  }, err => console.warn('eventos recientes:', err)));
+
+  _listeners.push(COL.eventos().where('estado','==','abierto').onSnapshot(snap => {
+    _fuentes.eventos.abiertos = snap.docs.map(d => ({...d.data(), _fid: d.id}));
+    mezclarFuente('eventos');
+  }, err => console.warn('eventos abiertos:', err)));
 
   // Usuarios
   _listeners.push(COL.users().onSnapshot(snap => {
@@ -4019,6 +4112,7 @@ function startSala(){
 // ======== FILTRAR BACHADAS ========
 function filtrarBachadas(resetPage){
   if(resetPage) _bachPage = 1;
+  quizasHistorico(document.getElementById('filt-b-fecha')?.value || '');
   let bachs = DB.get('bachadas', []);
   const equipo  = document.getElementById('filt-b-equipo')?.value || '';
   const fecha   = document.getElementById('filt-b-fecha')?.value || '';
@@ -4323,6 +4417,7 @@ function renderEventos(){
 
 function filtrarEventos(resetPage){
   if(resetPage) _evPage = 1;
+  quizasHistorico(document.getElementById('ev-from')?.value || '');
   let evs=DB.get('eventos',[]).slice();
   const totalAll = evs.length;
 
@@ -4446,6 +4541,7 @@ async function delEvento(id){
 // ======== DASHBOARD ========
 function renderDashboard(){
   const from=document.getElementById('dash-from')?.value;
+  quizasHistorico(from);   // trae el histórico si el filtro mira más atrás
   const to=document.getElementById('dash-to')?.value;
   const equipoF=document.getElementById('dash-equipo')?.value;
   const turnoF=document.getElementById('dash-turno')?.value;
@@ -5232,6 +5328,14 @@ function renderProdMensual(){
   const strip  = document.getElementById('pm-strip');
   const leyEl  = document.getElementById('pm-leyenda');
   if(!sel || !canvas) return;
+
+  // Esta gráfica es la única que necesita TODO el histórico. Se pide una vez
+  // por sesión; al terminar, la mezcla vuelve a llamar a esta función sola.
+  if(_histEstado !== 'listo'){
+    cargarHistorico();
+    if(strip) strip.innerHTML = '';
+    if(leyEl) leyEl.innerHTML = '<span style="color:var(--text3);font-size:11px;">Cargando histórico…</span>';
+  }
 
   const bachsAll = DB.get('bachadas', []);
 
@@ -6378,6 +6482,7 @@ document.addEventListener('keydown', function(e) {
 
 // ======== TIMELINE POR EQUIPO ========
 function renderTimeline() {
+  quizasHistorico(document.getElementById('dash-from')?.value || '');
   // ----------------------------------------------------------
   // CONFIGURACIÓN BASE
   // ----------------------------------------------------------

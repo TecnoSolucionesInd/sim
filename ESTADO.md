@@ -269,6 +269,16 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-25: Formatos — visualización por área (áreas por usuario en Administración; filtra Llenar y Registros).
 - 2026-10-25: Formatos — campos calculados (diferencia, porcentaje), rangos por columna, emisión con revisión del manual y R-301 ósmosis.
 - 2026-10-25: Equipos — ubicaciones como lista controlada (módulo Ubicaciones, aviso de tipeo, unificar).
+- 2026-11-05: Congelamiento (F1) — carga en dos niveles para no agotar la cuota de Firebase. Los listeners escuchaban
+  las colecciones completas (~10,600 documentos) en cada apertura en frío; con 50,000 lecturas/día del plan gratuito
+  el aplicativo se quedaba sin cuota en ~4 aperturas y dejaba de actualizarse hasta la medianoche del Pacífico.
+  Ahora se escuchan los últimos `DIAS_VIVOS` (30) días **más todo lo que esté abierto o pendiente de cualquier
+  antigüedad** (dos listeners por colección, unidos sin duplicar en `mezclarFuente`, con el dato en vivo por encima
+  del histórico y el mismo orden `ts` descendente que entregaba Firestore). El histórico completo se descarga una
+  vez por sesión, solo cuando una vista mira más atrás que la ventana (`quizasHistorico`) o se abre la gráfica
+  mensual, y se pide primero a la caché local de Firestore (`get({source:'cache'})`), que no se factura: los
+  documentos antiguos no cambian. No se borra ni se resume ningún dato; los cálculos salen de los mismos documentos.
+  Estimado: de ~10,600 a ~1,600 documentos por carga en frío.
 - 2026-11-05: Congelamiento (F1) — correcciones críticas de eventos y mejoras del dashboard, aplicadas con
   `tools/parche_cong_2026_11_05.py`. (a) La caché pasa a memoria: `localStorage` superaba su cuota (~5 MB) y el
   `QuotaExceededError` cortaba el `onSnapshot`, dejando los datos congelados — de ahí los `_fid` fantasma
