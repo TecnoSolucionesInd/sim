@@ -282,7 +282,7 @@ function ficha(e, base = null) {
   const nuevo = !e;
   const ro = !puede();
   const dis = ro ? 'disabled' : '';
-  const v = e || { codigo: '', descripcion: '', sistema: base?.sistema ?? (FIL.sistema === 'all' ? '' : FIL.sistema), ubicacion: base?.ubicacion ?? FIL.ubicacion, tipo: base?.tipo ?? FIL.tipo, marca: base?.marca || '', modelo: base?.modelo || '', serie: '', potencia: base?.potencia || '', criticidad: base?.criticidad || '', estado: 'operativo', notas: '', ...Object.fromEntries(MOTOR.map(([k]) => [k, base?.[k] || ''])) };
+  const v = e || { codigo: '', descripcion: '', sistema: base?.sistema ?? (FIL.sistema === 'all' ? '' : FIL.sistema), ubicacion: base?.ubicacion ?? FIL.ubicacion, tipo: base?.tipo ?? FIL.tipo, marca: base?.marca || '', modelo: base?.modelo || '', serie: '', potencia: base?.potencia || '', criticidad: base?.criticidad || '', estado: 'operativo', notas: '', circuito: base?.circuito || '', ...Object.fromEntries(MOTOR.map(([k]) => [k, base?.[k] || ''])) };
   const dl = (id, campo) => `<datalist id="${id}">${valoresDe(EQ, campo).map(x => `<option value="${esc(x)}">`).join('')}</datalist>`;
   const nombresTipo = [...new Map([...listaTipos().map(t => t.nombre), ...valoresDe(EQ, 'tipo')].map(x => [norm(x), x])).values()];
   const recodificable = !nuevo && !ro && CTX.rol === 'admin' && !sigueFormato(v);
@@ -305,6 +305,7 @@ function ficha(e, base = null) {
           </select>
           <div id="eUbiN" hidden style="margin-top:8px"><input class="field" id="eUbiTx" placeholder="Nombre de la nueva ubicación" autocomplete="off"><div class="hint" id="eUbiH"></div></div></div>
         <div style="grid-column:1/-1"><label class="label" for="eDes">Descripción</label><input class="field" id="eDes" value="${esc(v.descripcion)}" placeholder="Compresor de tornillo N° 1" ${dis}></div>
+        <div style="grid-column:1/-1"><label class="label" for="eCir">Circuito <span class="muted" style="font-weight:400">(opcional · equipos que se revisan juntos en la ronda, p. ej. el compresor con sus bombas y ventiladores)</span></label><input class="field" id="eCir" list="dlCir" value="${esc(v.circuito || '')}" placeholder="Yantai placas" ${dis}>${dl('dlCir', 'circuito')}</div>
         <div><label class="label" for="eMar">Marca</label><input class="field" id="eMar" list="dlMar" value="${esc(v.marca)}" ${dis}>${dl('dlMar', 'marca')}</div>
         <div><label class="label" for="eMod">Modelo</label><input class="field" id="eMod" value="${esc(v.modelo)}" ${dis}></div>
         <div><label class="label" for="eSer">N° de serie</label><input class="field" id="eSer" value="${esc(v.serie)}" ${dis}></div>
@@ -404,7 +405,8 @@ function ficha(e, base = null) {
       sistema: m.$('#eSis').value === '' ? '' : Number(m.$('#eSis').value),
       ubicacion: m.$('#eUbi').value === '__nueva' ? m.$('#eUbiTx').value.trim().replace(/\s+/g, ' ') : m.$('#eUbi').value, tipo: tp.nombre, marca: m.$('#eMar').value.trim(),
       modelo: m.$('#eMod').value.trim(), serie: m.$('#eSer').value.trim(), potencia: m.$('#ePot').value.trim(),
-      criticidad: m.$('#eCri').value, estado: m.$('#eEst').value, notas: m.$('#eNot').value.trim()
+      criticidad: m.$('#eCri').value, estado: m.$('#eEst').value, notas: m.$('#eNot').value.trim(),
+      circuito: m.$('#eCir').value.trim().replace(/\s+/g, ' ')
     };
     MOTOR.forEach(([k]) => { d[k] = m.$('#' + k).value.trim().replace(',', k === 'mCarcasa' || k.startsWith('mRod') ? ',' : '.'); });
     if (d.sistema === '') return m.err('Seleccione el sistema.');
@@ -511,9 +513,10 @@ const aplica = (e, f) => {
 const COLS = [
   ['codigo', 'Código'], ['descripcion', 'Descripción'], ['sistema', 'Sistema'], ['ubicacion', 'Ubicación'], ['tipo', 'Tipo'],
   ['marca', 'Marca'], ['modelo', 'Modelo'], ['serie', 'N° serie'], ['potencia', 'Potencia'], ['criticidad', 'Criticidad'], ['estado', 'Estado'], ['notas', 'Notas'],
-  ...MOTOR.map(([k, l, u]) => [k, `Motor ${l.toLowerCase()}${u ? ` (${u})` : ''}`])
+  ...MOTOR.map(([k, l, u]) => [k, `Motor ${l.toLowerCase()}${u ? ` (${u})` : ''}`]),
+  ['circuito', 'Circuito']
 ];
-const ANCHOS = [12, 34, 22, 20, 18, 14, 14, 14, 12, 10, 16, 30, 12, 14, 12, 12, 14, 18, 18];
+const ANCHOS = [12, 34, 22, 20, 18, 14, 14, 14, 12, 10, 16, 30, 12, 14, 12, 12, 14, 18, 18, 18];
 
 function vistaCarga(main) {
   if (!puede()) { main.innerHTML = '<div class="alert warn">Su rol en Equipos es de solo consulta.</div>'; return; }
@@ -620,7 +623,7 @@ function XLSXlib() {
   return xlsxCarga;
 }
 
-const filaExcel = (e) => [e.codigo, e.descripcion, sisNom(e.sistema), e.ubicacion || '', e.tipo || '', e.marca || '', e.modelo || '', e.serie || '', e.potencia || '', e.criticidad || '', (ESTADOS_EQUIPO.find(s => s.id === (e.estado || 'operativo')) || {}).label, e.notas || '', ...MOTOR.map(([k]) => e[k] || '')];
+const filaExcel = (e) => [e.codigo, e.descripcion, sisNom(e.sistema), e.ubicacion || '', e.tipo || '', e.marca || '', e.modelo || '', e.serie || '', e.potencia || '', e.criticidad || '', (ESTADOS_EQUIPO.find(s => s.id === (e.estado || 'operativo')) || {}).label, e.notas || '', ...MOTOR.map(([k]) => e[k] || ''), e.circuito || ''];
 
 async function plantillaExcel() {
   try {
@@ -683,7 +686,7 @@ async function leerExcel(file, box) {
     const vistos = new Set(), nuevosT = new Map(), nuevasU = new Map(), pl = planificador();
     const items = datos.map((r, n) => {
       const g = (k) => idx[k] == null ? '' : String(r[idx[k]] ?? '').trim();
-      const d = { codigo: g('codigo').toUpperCase(), descripcion: g('descripcion'), sistemaTxt: g('sistema'), ubicacion: g('ubicacion'), tipo: g('tipo'), marca: g('marca'), modelo: g('modelo'), serie: g('serie'), potencia: g('potencia'), criticidad: g('criticidad').slice(0, 1).toUpperCase(), estadoTxt: g('estado'), notas: g('notas'), ...Object.fromEntries(MOTOR.map(([k]) => [k, g(k)])) };
+      const d = { codigo: g('codigo').toUpperCase(), descripcion: g('descripcion'), sistemaTxt: g('sistema'), ubicacion: g('ubicacion'), tipo: g('tipo'), marca: g('marca'), modelo: g('modelo'), serie: g('serie'), potencia: g('potencia'), criticidad: g('criticidad').slice(0, 1).toUpperCase(), estadoTxt: g('estado'), notas: g('notas'), ...(idx.circuito != null ? { circuito: g('circuito') } : {}), ...Object.fromEntries(MOTOR.map(([k]) => [k, g(k)])) };
       const errs = [];
       const ex = d.codigo ? EQ.find(e => norm(e.codigo) === norm(d.codigo)) : null;
       if (d.codigo && !ex) errs.push(`el código ${d.codigo} no existe (para un equipo nuevo deje el código vacío)`);
@@ -786,7 +789,7 @@ function previa(box, items, origen, pl, nuevosT) {
         }
         ok.slice(i, i + 400).forEach(x => {
           const d = {};
-          ['codigo', 'descripcion', 'sistema', 'ubicacion', 'tipo', 'marca', 'modelo', 'serie', 'potencia', 'criticidad', 'notas', 'origenCosto', ...MOTOR.map(([k]) => k)].forEach(k => { if (x.d[k] !== '' && x.d[k] != null) d[k] = x.d[k]; });
+          ['codigo', 'descripcion', 'sistema', 'ubicacion', 'tipo', 'marca', 'modelo', 'serie', 'potencia', 'criticidad', 'notas', 'origenCosto', 'circuito', ...MOTOR.map(([k]) => k)].forEach(k => { if (x.d[k] !== '' && x.d[k] != null) d[k] = x.d[k]; });
           if (x.d.estadoTxt || !x.ex) d.estado = x.d.estado || 'operativo';
           ['ubicacion', 'marca'].forEach(k => { if (d[k]) d[k] = forma(k, d[k]); });
           const ref = x.ex ? doc(colEquipos(), x.ex.id) : doc(colEquipos());

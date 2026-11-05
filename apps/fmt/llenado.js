@@ -365,12 +365,50 @@ function guardarBorrador(inmediato = false) {
 // =====================================================================
 // FORMULARIO
 // =====================================================================
-const nPasos = () => F.def.secciones.length + 2;
-const tituloPaso = (i) => i === 0 ? 'Datos generales' : i === nPasos() - 1 ? 'Cierre y firmas' : (F.def.secciones[i - 1].titulo || `Sección ${i}`);
+// Pasos del llenado. Si el formato se llena "por circuito", los equipos con el mismo circuito (compresor y sus
+// auxiliares, de distintas tablas) se llenan juntos en un paso, en el orden de la ronda. El impreso no cambia.
+function armarPasos() {
+  const P = [{ t: 'gen', titulo: 'Datos generales' }], def = F.def;
+  if (!def.recorrido) def.secciones.forEach((s, k) => P.push({ t: 'sec', k, s, titulo: s.titulo || `Sección ${k + 1}` }));
+  else {
+    const circ = new Map(), resto = new Map();
+    def.secciones.forEach((s, k) => {
+      if (s.tipo !== 'tabla') return;
+      (F.reg.v[s.id]?.cols || []).forEach(col => {
+        const c = String(col.circuito || '').trim();
+        if (c) { const kk = norm(c); if (!circ.has(kk)) circ.set(kk, { nombre: c, items: [] }); circ.get(kk).items.push({ s, col }); }
+        else { if (!resto.has(k)) resto.set(k, []); resto.get(k).push(col); }
+      });
+    });
+    circ.forEach(c => P.push({ t: 'circ', titulo: c.nombre, items: c.items }));
+    def.secciones.forEach((s, k) => {
+      if (s.tipo !== 'tabla') return P.push({ t: 'sec', k, s, titulo: s.titulo || `Sección ${k + 1}` });
+      const r = resto.get(k), todas = F.reg.v[s.id]?.cols || [];
+      if ((r && r.length) || (!todas.length && !s.sinEquiposOk)) P.push({ t: 'sec', k, s, titulo: s.titulo, cols: r });
+    });
+  }
+  P.push({ t: 'cierre', titulo: 'Cierre y firmas' });
+  F.pasos = P;
+  if (F.paso >= P.length) F.paso = P.length - 1;
+}
+const nPasos = () => F.pasos.length;
+const tituloPaso = (i) => F.pasos[i]?.titulo || '';
+// paso de la pantalla al que pertenece un faltante o alerta de evaluar()
+function pasoUI(x) {
+  if (x.paso === 0) return 0;
+  const ref = String(x.ref || '');
+  for (let i = 1; i < F.pasos.length - 1; i++) {
+    const p = F.pasos[i];
+    if (p.t === 'circ' && p.items.some(it => ref.startsWith(`${it.s.id}:${it.col.id}`))) return i;
+    if (p.t === 'sec' && p.k === x.paso - 1 && (!p.cols || ref === p.s.id || p.cols.some(c => ref.startsWith(`${p.s.id}:${c.id}`)))) return i;
+  }
+  return F.pasos.length - 1;
+}
 
 function pintarFormulario() {
+  armarPasos();
   const ev = evaluar(F.def, F.reg, A.cfg);
-  const fal = new Set(ev.faltantes.map(x => x.paso));
+  const fal = new Set(ev.faltantes.map(pasoUI));
   MAIN.innerHTML = `<div class="ll">
     <div class="lf-top">
       <div class="r1">
@@ -389,12 +427,16 @@ function pintarFormulario() {
   const body = MAIN.querySelector('#lfBody');
   if (F.paso === 0) pasoGenerales(body);
   else if (F.paso === nPasos() - 1) pasoCierre(body, ev);
-  else {
-    const s = F.def.secciones[F.paso - 1];
+  else if (F.pasos[F.paso].t === 'circ') {
+    const P = F.pasos[F.paso];
+    body.innerHTML = `<h2>${esc(P.titulo)}</h2><div class="muted" style="margin:-6px 0 14px;font-size:13.5px">Circuito · ${P.items.length} equipo${P.items.length > 1 ? 's' : ''}</div><div id="lfSec"></div>`;
+    pasoItems(body.querySelector('#lfSec'), P.items, 'c:' + norm(P.titulo), true);
+  } else {
+    const P = F.pasos[F.paso], s = P.s;
     body.innerHTML = `<h2>${esc(s.titulo)}</h2><div id="lfSec"></div>`;
     const box = body.querySelector('#lfSec');
     if (s.tipo === 'campos') pasoCampos(box, s);
-    else if (s.tipo === 'tabla') pasoTabla(box, s);
+    else if (s.tipo === 'tabla') pasoTabla(box, s, P.cols);
     else if (s.tipo === 'checklist') pasoChecklist(box, s);
     else if (s.tipo === 'lista') pasoLista(box, s);
   }
@@ -431,7 +473,7 @@ function aplicarTurno() {
 }
 function actualizarProgreso() {
   const ev = evaluar(F.def, F.reg, A.cfg);
-  const fal = new Set(ev.faltantes.map(x => x.paso));
+  const fal = new Set(ev.faltantes.map(pasoUI));
   MAIN.querySelectorAll('.lf-prog [data-ir]').forEach(b => {
     const i = Number(b.dataset.ir);
     b.className = i === F.paso ? 'on' : (F.intento || i < F.paso) ? (fal.has(i) ? 'fal' : 'ok') : '';
@@ -439,7 +481,7 @@ function actualizarProgreso() {
   if (F.intento) marcarFaltantes(ev);
 }
 function marcarFaltantes(ev) {
-  const refs = new Set(ev.faltantes.filter(x => x.paso === F.paso).map(x => x.ref));
+  const refs = new Set(ev.faltantes.filter(x => pasoUI(x) === F.paso).map(x => x.ref));
   MAIN.querySelectorAll('[data-ref]').forEach(el => el.classList.toggle('err', refs.has(el.dataset.ref)));
 }
 
@@ -613,21 +655,27 @@ function estadoCol(s, col) {
   return al ? 'al' : fal ? 'fal' : 'ok';
 }
 
-function pasoTabla(box, s) {
+function pasoTabla(box, s, solo) {
   const t = F.reg.v[s.id] || (F.reg.v[s.id] = { cols: columnasTabla(s, A.equipos, F.reg.ubicacion), est: {}, c: {} });
-  const cols = t.cols;
+  const cols = solo || t.cols;
   if (!cols.length) {
-    box.innerHTML = `<div class="res fa" data-ref="${s.id}">${pideUbicacion(F.def) && !F.reg.ubicacion ? 'Seleccione primero la ubicación en Datos generales.' : 'No hay equipos de la base que correspondan a esta tabla. Revise la base de equipos o la configuración del formato.'}</div>`;
+    box.innerHTML = `<div class="res ${s.sinEquiposOk ? '' : 'fa'}" data-ref="${s.id}">${pideUbicacion(F.def) && !F.reg.ubicacion ? 'Seleccione primero la ubicación en Datos generales.' : s.sinEquiposOk ? 'Aún no hay equipos registrados para esta tabla. Puede continuar.' : 'No hay equipos de la base que correspondan a esta tabla. Revise la base de equipos o la configuración del formato.'}</div>`;
     return;
   }
-  let i = Math.min(F.col[s.id] || 0, cols.length - 1);
+  pasoItems(box, cols.map(col => ({ s, col })), s.id, false);
+}
+
+// Llenado de una lista de equipos (de una tabla, o de un circuito con equipos de varias tablas)
+function pasoItems(box, items, key, conTipo) {
+  let i = Math.min(F.col[key] || 0, items.length - 1);
   const pintar = () => {
-    const col = cols[i];
+    const { s, col } = items[i];
+    const t = F.reg.v[s.id];
     const e = estadoColumna(F.reg, s, col);
     box.innerHTML = `
-      <div class="tcols" role="tablist">${cols.map((c, j) => `<button type="button" role="tab" data-col="${j}" class="${j === i ? 'on' : ''}" aria-selected="${j === i}"><b><i class="dot ${estadoCol(s, c)}"></i>${esc(etiquetaCol(c))}</b><small>${esc(estadoColumna(F.reg, s, c) === 'operando' ? (estadoCol(s, c) === 'ok' ? 'Completo' : estadoCol(s, c) === 'al' ? 'Con alerta' : 'Pendiente') : ESTADOS_COLUMNA.find(x => x.id === estadoColumna(F.reg, s, c)).label)}</small></button>`).join('')}</div>
+      <div class="tcols" role="tablist">${items.map(({ s: sx, col: c }, j) => `<button type="button" role="tab" data-col="${j}" class="${j === i ? 'on' : ''}" aria-selected="${j === i}"><b><i class="dot ${estadoCol(sx, c)}"></i>${esc(conTipo ? String(c.descripcion || etiquetaCol(c)).split(/\s+[—–-]\s+/)[0] : etiquetaCol(c))}</b><small>${esc(estadoColumna(F.reg, sx, c) === 'operando' ? (estadoCol(sx, c) === 'ok' ? 'Completo' : estadoCol(sx, c) === 'al' ? 'Con alerta' : 'Pendiente') : ESTADOS_COLUMNA.find(x => x.id === estadoColumna(F.reg, sx, c)).label)}</small></button>`).join('')}</div>
       <div class="tpanel">
-        <div class="eqn">${esc(col.codigo || col.descripcion)}${col.codigo ? `<small>${esc(col.descripcion)}</small>` : ''}</div>
+        <div class="eqn">${esc(col.codigo || col.descripcion)}${col.codigo ? `<small>${esc(col.descripcion)}</small>` : ''}${conTipo ? `<small style="color:var(--mint)">${esc(String(s.titulo || '').replace(/^Auxiliares\s*·\s*/i, ''))}</small>` : ''}</div>
         ${s.estadoEquipo ? `<div class="lf-f"><div class="lb">Estado del equipo</div><div class="chs" id="tEst">${estadosDe(s).map(x => `<button type="button" data-v="${x.id}" class="${x.id === e ? 'on' : ''}${x.id !== 'operando' && x.id === e ? ' na' : ''}">${x.label}</button>`).join('')}</div></div>` : ''}
         ${e === 'operando' ? s.filas.map(fl => {
           const x = t.c?.[fl.id]?.[col.id];
@@ -646,7 +694,7 @@ function pasoTabla(box, s) {
         }).join('') : `<div class="muted" style="font-size:14px;padding:4px 0 8px">Sin lecturas: el equipo no está operando.</div>`}
         <div class="tnav">
           <button type="button" class="btn" id="tAnt" ${i === 0 ? 'disabled' : ''}>${IC.back}</button>
-          ${i < cols.length - 1 ? `<button type="button" class="btn btn-primary" id="tSig" style="flex:1">Siguiente: ${esc(etiquetaCol(cols[i + 1]))}</button>` : ''}
+          ${i < items.length - 1 ? `<button type="button" class="btn btn-primary" id="tSig" style="flex:1">Siguiente: ${esc(conTipo ? String(items[i + 1].col.descripcion || etiquetaCol(items[i + 1].col)).split(/\s+[—–-]\s+/)[0] : etiquetaCol(items[i + 1].col))}</button>` : ''}
         </div>
       </div>`;
     const setC = (fid, val) => {
@@ -655,7 +703,7 @@ function pasoTabla(box, s) {
       cambio();
       const d = box.querySelector(`[data-col="${i}"] .dot`); if (d) d.className = 'dot ' + estadoCol(s, col);
     };
-    box.querySelectorAll('[data-col]').forEach(b => b.onclick = () => { i = Number(b.dataset.col); F.col[s.id] = i; pintar(); });
+    box.querySelectorAll('[data-col]').forEach(b => b.onclick = () => { i = Number(b.dataset.col); F.col[key] = i; pintar(); });
     const est = box.querySelector('#tEst');
     if (est) est.querySelectorAll('button').forEach(b => b.onclick = () => { t.est = t.est || {}; t.est[col.id] = b.dataset.v; cambio(); pintar(); });
     s.filas.forEach(fl => {
@@ -674,8 +722,8 @@ function pasoTabla(box, s) {
       const chs = box.querySelector(`.chs[data-tf="${fl.id}"]`);
       if (chs) chs.querySelectorAll('button').forEach(b => b.onclick = () => { const ya = t.c?.[fl.id]?.[col.id] === b.dataset.v; setC(fl.id, ya ? '' : b.dataset.v); chs.querySelectorAll('button').forEach(x => x.classList.toggle('on', !ya && x === b)); });
     });
-    box.querySelector('#tAnt').onclick = () => { i--; F.col[s.id] = i; pintar(); };
-    const sg = box.querySelector('#tSig'); if (sg) sg.onclick = () => { i++; F.col[s.id] = i; pintar(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    box.querySelector('#tAnt').onclick = () => { i--; F.col[key] = i; pintar(); };
+    const sg = box.querySelector('#tSig'); if (sg) sg.onclick = () => { i++; F.col[key] = i; pintar(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     if (F.intento) marcarFaltantes(evaluar(F.def, F.reg, A.cfg));
   };
   pintar();
@@ -767,7 +815,7 @@ function pasoLista(box, s) {
 function pasoCierre(body, ev) {
   const fir = firmasDe(F.def);
   body.innerHTML = `<h2>Cierre y firmas</h2>
-    ${ev.alertas.length ? `<div class="res al"><h3>${IC.alert}${ev.alertas.length} alerta${ev.alertas.length > 1 ? 's' : ''}</h3><ul>${ev.alertas.map(a => `<li><button type="button" class="lk" data-ir="${a.paso}">${esc(a.texto)}</button></li>`).join('')}</ul></div>` : '<div class="res ok">Sin valores fuera de rango ni no conformidades.</div>'}
+    ${ev.alertas.length ? `<div class="res al"><h3>${IC.alert}${ev.alertas.length} alerta${ev.alertas.length > 1 ? 's' : ''}</h3><ul>${ev.alertas.map(a => `<li><button type="button" class="lk" data-ir="${pasoUI(a)}">${esc(a.texto)}</button></li>`).join('')}</ul></div>` : '<div class="res ok">Sin valores fuera de rango ni no conformidades.</div>'}
     ${F.def.observaciones ? `<div class="lf-f" data-ref="obs"><label for="cObs">Observaciones / acción correctiva${ev.alertas.length ? ' <sup>*</sup>' : ''}</label>
       <textarea class="field" id="cObs" rows="4" style="height:auto;padding:12px 16px;line-height:1.5" placeholder="${ev.alertas.length ? 'Describa la acción tomada frente a las alertas' : 'Opcional'}">${esc(F.reg.observaciones || '')}</textarea><span class="falta">Obligatoria cuando hay alertas</span></div>` : ''}
     ${fir.map((f, i) => {
@@ -783,7 +831,7 @@ function pasoCierre(body, ev) {
   const pintarFal = () => {
     const e2 = evaluar(F.def, F.reg, A.cfg);
     const box = body.querySelector('#cFal');
-    box.innerHTML = e2.faltantes.length && F.intento ? `<div class="res fa"><h3>${IC.alert}Falta completar</h3><ul>${e2.faltantes.slice(0, 30).map(a => `<li><button type="button" class="lk" data-ir="${a.paso}">${esc(tituloPaso(a.paso))}: ${esc(a.texto)}</button></li>`).join('')}</ul></div>` : '';
+    box.innerHTML = e2.faltantes.length && F.intento ? `<div class="res fa"><h3>${IC.alert}Falta completar</h3><ul>${e2.faltantes.slice(0, 30).map(a => `<li><button type="button" class="lk" data-ir="${pasoUI(a)}">${esc(tituloPaso(pasoUI(a)))}: ${esc(a.texto)}</button></li>`).join('')}</ul></div>` : '';
     body.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => irPaso(Number(b.dataset.ir)));
   };
   body.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => irPaso(Number(b.dataset.ir)));

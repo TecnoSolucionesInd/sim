@@ -551,6 +551,7 @@ function pintarDiseno() {
         <label class="check"><input type="checkbox" id="dTur" ${d.datosGenerales?.turno ? 'checked' : ''} ${dis}>Registrar turno</label>
         <label class="check"><input type="checkbox" id="dHor" ${d.datosGenerales?.hora ? 'checked' : ''} ${dis}>Registrar hora</label>
         <label class="check"><input type="checkbox" id="dObs" ${d.observaciones ? 'checked' : ''} ${dis}>Observaciones / acción correctiva</label>
+        <label class="check"><input type="checkbox" id="dRec" ${d.recorrido ? 'checked' : ''} ${dis}>Llenar por circuito: el técnico registra juntos los equipos del mismo circuito (campo "Circuito" en Equipos); el impreso no cambia</label>
       </div>
     </div>
     <datalist id="dlTipos">${valoresDe(EQ, 'tipo').map(t => `<option value="${esc(t)}">`).join('')}</datalist>
@@ -676,6 +677,7 @@ function enlazarDiseno(cont) {
   q('#dTur').onchange = (e) => { d.datosGenerales = { ...d.datosGenerales, turno: e.target.checked }; cambio(false); };
   q('#dHor').onchange = (e) => { d.datosGenerales = { ...d.datosGenerales, hora: e.target.checked }; cambio(false); };
   q('#dObs').onchange = (e) => { d.observaciones = e.target.checked; cambio(false); };
+  q('#dRec').onchange = (e) => { if (e.target.checked) d.recorrido = true; else delete d.recorrido; cambio(false); };
 
   // secciones
   on('[data-addsec]', 'click', (e) => { const s = seccionNueva(e.currentTarget.dataset.addsec); d.secciones.push(s); cambio(); setTimeout(() => { const el = cont.querySelector(`[data-sectit="${s.id}"]`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.select(); }, 60); });

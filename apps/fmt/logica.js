@@ -104,7 +104,7 @@ export function columnasTabla(sec, equipos = [], ubicacion = '') {
   if (!tablaDeEquipos(sec)) return (sec.columnas || []).map((n, i) => ({ id: 'c' + i, codigo: '', descripcion: n }));
   const f = { ...(sec.filtro || {}) };
   if (f.ubicacion === '*') f.ubicacion = ubicacion || '';
-  return filtrarEquiposPor(equipos, f).map(e => ({ id: e.id, codigo: e.codigo, descripcion: e.descripcion, ...(e.estado === 'fuera' ? { fuera: true } : {}) }));
+  return filtrarEquiposPor(equipos, f).map(e => ({ id: e.id, codigo: e.codigo, descripcion: e.descripcion, ...(e.circuito ? { circuito: e.circuito } : {}), ...(e.estado === 'fuera' ? { fuera: true } : {}) }));
 }
 
 // Ubicaciones que tienen equipos para las tablas "ubicación al llenar"

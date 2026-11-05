@@ -339,7 +339,7 @@ export function pilotos() {
     filtro: { sistema: 1, tipo: 'Compresor', ...filtro }, estadoEquipo: true, columnas: [], filas });
   const generales = (titulo, campos) => ({ id: uid(), tipo: 'campos', titulo, columnas: 3, campos });
   const sala = (codigo, nombre, secciones) => ({ codigo, def: {
-    ...defVacia(nombre), frecuencia: 'Cada 2 horas', orientacion: 'vertical',
+    ...defVacia(nombre), frecuencia: 'Cada 2 horas', orientacion: 'vertical', recorrido: true,
     datosGenerales: { turno: true, hora: true }, secciones, firmas: [FU, FA] } });
   const SM = (n) => `Sala de Máquinas ${n}`;
 
