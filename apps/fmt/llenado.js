@@ -70,6 +70,8 @@ const CSS = `
 .num{display:flex;align-items:center;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(14,22,30,.32);height:52px;transition:border-color .2s,box-shadow .2s}
 .num:focus-within{border-color:var(--mint);box-shadow:0 0 0 4px rgba(111,227,207,.15)}
 .num input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:var(--tx);font-size:19px;font-family:var(--f-mono);padding:0 14px;outline:none}
+.est-f select.field{height:46px;font-weight:600;color:var(--mint)}
+.est-f select.field.no-op{color:#FFC36B;border-color:rgba(255,195,107,.45)}
 .num.calc{background:rgba(111,227,207,.06);border-style:dashed}
 .num.calc input{color:var(--mint)}
 .num .u{padding:0 14px;color:var(--tx-3);font-size:14px;white-space:nowrap}
@@ -676,7 +678,7 @@ function pasoItems(box, items, key, conTipo) {
       <div class="tcols" role="tablist">${items.map(({ s: sx, col: c }, j) => `<button type="button" role="tab" data-col="${j}" class="${j === i ? 'on' : ''}" aria-selected="${j === i}"><b><i class="dot ${estadoCol(sx, c)}"></i>${esc(conTipo ? String(c.descripcion || etiquetaCol(c)).split(/\s+[—–-]\s+/)[0] : etiquetaCol(c))}</b><small>${esc(estadoColumna(F.reg, sx, c) === 'operando' ? (estadoCol(sx, c) === 'ok' ? 'Completo' : estadoCol(sx, c) === 'al' ? 'Con alerta' : 'Pendiente') : ESTADOS_COLUMNA.find(x => x.id === estadoColumna(F.reg, sx, c)).label)}</small></button>`).join('')}</div>
       <div class="tpanel">
         <div class="eqn">${esc(col.codigo || col.descripcion)}${col.codigo ? `<small>${esc(col.descripcion)}</small>` : ''}${conTipo ? `<small style="color:var(--mint)">${esc(String(s.titulo || '').replace(/^Auxiliares\s*·\s*/i, ''))}</small>` : ''}</div>
-        ${s.estadoEquipo ? `<div class="lf-f"><div class="lb">Estado del equipo</div><div class="chs" id="tEst">${estadosDe(s).map(x => `<button type="button" data-v="${x.id}" class="${x.id === e ? 'on' : ''}${x.id !== 'operando' && x.id === e ? ' na' : ''}">${x.label}</button>`).join('')}</div></div>` : ''}
+        ${s.estadoEquipo ? `<div class="lf-f est-f"><label for="tEst">Estado del equipo</label><select class="field ${e !== 'operando' ? 'no-op' : ''}" id="tEst">${estadosDe(s).map(x => `<option value="${x.id}" ${x.id === e ? 'selected' : ''}>${x.label}</option>`).join('')}</select></div>` : ''}
         ${e === 'operando' ? s.filas.map(fl => {
           const x = t.c?.[fl.id]?.[col.id];
           const ref = `${s.id}:${col.id}:${fl.id}`;
@@ -705,7 +707,7 @@ function pasoItems(box, items, key, conTipo) {
     };
     box.querySelectorAll('[data-col]').forEach(b => b.onclick = () => { i = Number(b.dataset.col); F.col[key] = i; pintar(); });
     const est = box.querySelector('#tEst');
-    if (est) est.querySelectorAll('button').forEach(b => b.onclick = () => { t.est = t.est || {}; t.est[col.id] = b.dataset.v; cambio(); pintar(); });
+    if (est) est.onchange = () => { t.est = t.est || {}; t.est[col.id] = est.value; cambio(); pintar(); };
     s.filas.forEach(fl => {
       const inp = box.querySelector(`input[data-tf="${fl.id}"]`);
       if (inp && fl.tipo === 'numero') inp.oninput = () => {
