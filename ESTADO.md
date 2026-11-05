@@ -153,7 +153,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Tablas de lista fija: una fila puede tener rangos por columna `rangos: { '<nombre de columna>': {min, max} }` (p. ej. solo Permeado).
   El editor los muestra pero no los edita (se definen en el formato predefinido).
 - Emisión de formatos que ya existen en el manual: opción "conserva su revisión y vigencia" (revisión y mes indicados; `origenManual`).
-- Formatos predefinidos (botón "Cargar formatos predefinidos"): R-001, R-002, R-101, R-302 (químicos e insumos de ósmosis, alimenta Materiales e inventario) y R-301 Control de operación — Planta de ósmosis
+- Formatos predefinidos (botón "Cargar formatos predefinidos"): R-001, R-002, R-101 (Gram), R-102 (Copeland), R-302 (químicos e insumos de ósmosis, alimenta Materiales e inventario) y R-301 Control de operación — Planta de ósmosis
   inversa (rev. 3, Jun-26, por turno; módulo OSM-UOI-xx; filtros multimedia/cartucho con ΔP; alimentación; permeado con % recuperación;
   calidad de agua; permeado por housing 1–5). Rangos de referencia SWRO: ΔP ≤ 1 bar, alimentación ≤ 69 bar, permeado ≤ 3 bar,
   recuperación 35–45 %, conductividad permeado/housing ≤ 1000 µS/cm, pH permeado 6.5–8.5, pH alimentación 7–8.5, dureza permeado ≤ 50,
@@ -257,6 +257,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-11-05: Formatos — R-101 Gram y R-102 Copeland (Sala de Máquinas 1) como predefinidos: columnas por marca (filtro `marca` en tablas de equipos), fila calculada `diferencia` en tablas (diferencial de aceite), frecuencia "Cada 2 horas" (rondas por bloque horario), tablas largas compactas al imprimir. Límites vacíos: se registran en el editor.
 - 2026-11-03: Costos — dólares por defecto con selector US$ / S/ (preferencia por navegador). Órdenes en US$ usan su importe original; el resto, TC venta promedio del mes (TCV ene–set; meses posteriores usan el último). Catálogo (valor de reposición) y meta se guardan en soles y se convierten al mostrar. Excel siempre en soles.
 - 2026-11-02: Programas — botón "Finalizar actividad" (avance 100 % y fecha real de término `finReal`).
 - 2026-10-28: Formatos — nota de referencia en listas (s.guia: título, columnas, filas, nota): al pie del impreso tras Observaciones y botón de consulta al llenar; cantidad sugerida por opción (sugeridos). R-302 con dosificación recomendada (core/insumos.js → GUIA_DOSIFICACION). En R-302 ya cargados: editor → "Usar la referencia predefinida" y emitir.

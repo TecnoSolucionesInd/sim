@@ -41,13 +41,16 @@ function semanaISO(iso) {
   return { y, w: 1 + Math.round(((d - p) / 864e5 - 3 + ((p.getDay() + 6) % 7)) / 7) };
 }
 
-export const FREC_PERIODICAS = ['Por turno', 'Diario', 'Semanal', 'Quincenal', 'Mensual', 'Trimestral'];
+export const FREC_PERIODICAS = ['Cada 2 horas', 'Por turno', 'Diario', 'Semanal', 'Quincenal', 'Mensual', 'Trimestral'];
 
 // Clave del periodo al que pertenece un registro (null = formato por evento)
-export function periodoClave(frec, fechaOp, turno) {
+// bloque de 2 horas según la hora del registro (00, 02, … 22)
+const bloque2h = (hora) => { const h = Number(String(hora || '').split(':')[0]); return Number.isFinite(h) ? Math.floor(h / 2) * 2 : null; };
+export function periodoClave(frec, fechaOp, turno, hora) {
   if (!fechaOp) return null;
   const [y, m, d] = fechaOp.split('-').map(Number);
   switch (frec) {
+    case 'Cada 2 horas': { const b = bloque2h(hora); return b === null ? null : `${fechaOp}|H${pad(b)}`; }
     case 'Por turno': return `${fechaOp}|${norm(turno)}`;
     case 'Diario': return fechaOp;
     case 'Semanal': { const s = semanaISO(fechaOp); return `${s.y}-S${pad(s.w)}`; }
@@ -58,9 +61,10 @@ export function periodoClave(frec, fechaOp, turno) {
   }
 }
 
-export function periodoTxt(frec, fechaOp, turno) {
+export function periodoTxt(frec, fechaOp, turno, hora) {
   const [, m, d] = fechaOp.split('-').map(Number);
   switch (frec) {
+    case 'Cada 2 horas': { const b = bloque2h(hora); return b === null ? '' : `Ronda ${pad(b)}:00–${pad((b + 2) % 24)}:00`; }
     case 'Por turno': return `Turno ${turno}`;
     case 'Diario': return 'Hoy';
     case 'Semanal': return `Semana ${semanaISO(fechaOp).w}`;
@@ -81,12 +85,13 @@ export function inicioConsulta(fechaOp) {
 
 // ---------------- columnas de tablas ----------------
 export function filtrarEquiposPor(equipos, f) {
-  const tipo = norm(f.tipo), ubi = norm(f.ubicacion);
+  const tipo = norm(f.tipo), ubi = norm(f.ubicacion), mar = norm(f.marca);
   const sis = f.sistema === '' || f.sistema == null ? null : Number(f.sistema);
   return equipos.filter(e => e.estado !== 'baja'
     && (sis === null || Number(e.sistema) === sis)
     && (!tipo || norm(e.tipo) === tipo)
-    && (!ubi || norm(e.ubicacion) === ubi))
+    && (!ubi || norm(e.ubicacion) === ubi)
+    && (!mar || norm(e.marca) === mar))
     .sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es', { numeric: true }));
 }
 
@@ -119,6 +124,14 @@ export const fueraDeRango = (x, v) => {
   if (n === null || Number.isNaN(n)) return false;
   return (x.min !== '' && x.min != null && n < Number(x.min)) || (x.max !== '' && x.max != null && n > Number(x.max));
 };
+
+// Valor de una fila de tabla en una columna; las filas "diferencia" se calculan (fila desde − fila hasta)
+export function valorFila(t, fl, col) {
+  if (fl.tipo !== 'diferencia') return t?.c?.[fl.id]?.[col.id];
+  const a = numero(t?.c?.[fl.desde]?.[col.id]), b = numero(t?.c?.[fl.hasta]?.[col.id]);
+  if (a === null || b === null || Number.isNaN(a) || Number.isNaN(b)) return '';
+  return String(Math.round((a - b) * 100) / 100);
+}
 
 // Campos calculados a partir de dos campos numéricos: diferencia (A − B) y porcentaje (A ÷ B × 100)
 export const esCalculado = (c) => c && (c.tipo === 'diferencia' || c.tipo === 'porcentaje');
@@ -195,6 +208,11 @@ export function evaluar(def, reg, cfg) {
       cols.forEach(col => {
         if (estadoColumna(reg, s, col) !== 'operando') return;
         s.filas.forEach(fl => {
+          if (fl.tipo === 'diferencia') {
+            const y = valorFila(t, fl, col);
+            if (y !== '' && fueraDeRango(rangoCol(fl, col), y)) A(paso, `${etiquetaCol(col)} · ${fl.etiqueta}: ${y}${fl.unidad ? ' ' + fl.unidad : ''} (rango ${rangoTxt(rangoCol(fl, col))})`, `${s.id}:${col.id}:${fl.id}`);
+            return;
+          }
           const x = t.c?.[fl.id]?.[col.id];
           if (fl.requerido !== false && vacio(x)) { F(paso, `${etiquetaCol(col)} · ${fl.etiqueta}`, `${s.id}:${col.id}:${fl.id}`); return; }
           if (fl.tipo === 'numero' && !vacio(x)) {

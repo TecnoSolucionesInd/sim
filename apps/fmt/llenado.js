@@ -8,7 +8,7 @@ import { esc, clonar, celdasGuia, firmasDe, tablaDeEquipos, pideUbicacion, rango
 import {
   turnoActual, periodoClave, periodoTxt, inicioConsulta, FREC_PERIODICAS, columnasTabla, ubicacionesDe, etiquetaCol,
   numero, fueraDeRango, calculado, calcTxt, esCalculado, rangoCol, minutosEntre, duracionTxt, evaluar, calcularDuraciones, equiposDelRegistro, estadoColumna,
-  fechaISO, horaHM, fechaHoraLocal, fechaLarga, filtrarEquiposPor
+  fechaISO, horaHM, fechaHoraLocal, fechaLarga, filtrarEquiposPor, valorFila
 } from './logica.js';
 
 const CSS = `
@@ -70,6 +70,8 @@ const CSS = `
 .num{display:flex;align-items:center;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(14,22,30,.32);height:52px;transition:border-color .2s,box-shadow .2s}
 .num:focus-within{border-color:var(--mint);box-shadow:0 0 0 4px rgba(111,227,207,.15)}
 .num input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:var(--tx);font-size:19px;font-family:var(--f-mono);padding:0 14px;outline:none}
+.num.calc{background:rgba(111,227,207,.06);border-style:dashed}
+.num.calc input{color:var(--mint)}
 .num .u{padding:0 14px;color:var(--tx-3);font-size:14px;white-space:nowrap}
 .num.al{border-color:#FF8F8F;background:rgba(255,143,143,.1)}
 .num.al input{color:#FFB3B3}
@@ -200,13 +202,14 @@ function calcularPendientes(hoy) {
   const per = [], hechos = [];
   vigentes().filter(p => FREC_PERIODICAS.includes(p.def.frecuencia)).forEach(p => {
     const frec = p.def.frecuencia;
-    const clave = periodoClave(frec, hoy.fechaOp, hoy.turno);
+    const ahora = horaHM(new Date());
+    const clave = periodoClave(frec, hoy.fechaOp, hoy.turno, ahora);
     let ubis = [''];
     if (pideUbicacion(p.def)) { ubis = ubicacionesDe(p.def, A.equipos); if (!ubis.length) return; }
     ubis.forEach(ubi => {
-      const mismo = (r) => r.plantillaId === p.id && periodoClave(frec, r.fechaOp, r.turno) === clave && norm(r.ubicacion || '') === norm(ubi);
+      const mismo = (r) => r.plantillaId === p.id && periodoClave(frec, r.fechaOp, r.turno, r.hora) === clave && norm(r.ubicacion || '') === norm(ubi);
       const hecho = todos.find(mismo);
-      const item = { p, ubi, periodo: periodoTxt(frec, hoy.fechaOp, hoy.turno) };
+      const item = { p, ubi, periodo: periodoTxt(frec, hoy.fechaOp, hoy.turno, ahora) };
       if (hecho) hechos.push({ ...item, reg: hecho });
       else if (!borrs.some(b => mismo(b.reg))) per.push(item);
     });
@@ -587,6 +590,7 @@ function estadoCol(s, col) {
   if (e !== 'operando') return 'no';
   let fal = false, al = false;
   s.filas.forEach(fl => {
+    if (fl.tipo === 'diferencia') { const y = valorFila(t, fl, col); if (y !== '' && fueraDeRango(rangoCol(fl, col), y)) al = true; return; }
     const x = t.c?.[fl.id]?.[col.id];
     if (x == null || x === '') { if (fl.requerido !== false) fal = true; }
     else if (fl.tipo === 'numero' && fueraDeRango(rangoCol(fl, col), x)) al = true;
@@ -614,6 +618,12 @@ function pasoTabla(box, s) {
           const x = t.c?.[fl.id]?.[col.id];
           const ref = `${s.id}:${col.id}:${fl.id}`;
           if (fl.tipo === 'seleccion') return `<div class="lf-f" data-ref="${ref}"><div class="lb">${esc(fl.etiqueta)}${fl.requerido !== false ? ' <sup>*</sup>' : ''}</div><div class="chs" data-tf="${fl.id}">${fl.opciones.map(o => `<button type="button" data-v="${esc(o)}" class="${o === x ? 'on' : ''}">${esc(o)}</button>`).join('')}</div><span class="falta">Dato obligatorio</span></div>`;
+          if (fl.tipo === 'diferencia') {
+            const y = valorFila(t, fl, col), a = s.filas.find(k => k.id === fl.desde), b = s.filas.find(k => k.id === fl.hasta);
+            return `<div class="lf-f" data-ref="${ref}"><div class="lb">${esc(fl.etiqueta)} <span class="muted" style="font-weight:400;font-size:12.5px">· se calcula</span></div>
+              <div class="num calc ${fueraDeRango(rangoCol(fl, col), y) ? 'al' : ''}" data-cv="${fl.id}"><input readonly tabindex="-1" value="${esc(String(y).replace('.', ','))}" placeholder="${esc(a && b ? `${a.etiqueta} − ${b.etiqueta}` : '—')}" style="font-size:${y === '' ? '14px' : ''}">${fl.unidad ? `<span class="u">${esc(fl.unidad)}</span>` : ''}</div>
+              <div class="rg"><span>${rangoTxt(rangoCol(fl, col)) ? 'Rango ' + esc(rangoTxt(rangoCol(fl, col))) : ''}</span><span class="alx">${IC.alert} Fuera de rango</span></div></div>`;
+          }
           if (fl.tipo === 'texto') return `<div class="lf-f" data-ref="${ref}"><label for="tf_${fl.id}">${esc(fl.etiqueta)}${fl.requerido !== false ? ' <sup>*</sup>' : ''}</label><input class="field" id="tf_${fl.id}" data-tf="${fl.id}" value="${esc(x || '')}"><span class="falta">Dato obligatorio</span></div>`;
           return `<div class="lf-f" data-ref="${ref}"><label for="tf_${fl.id}">${esc(fl.etiqueta)}${fl.requerido !== false ? ' <sup>*</sup>' : ''}</label>
             <div class="num ${fueraDeRango(rangoCol(fl, col), x) ? 'al' : ''}"><input id="tf_${fl.id}" data-tf="${fl.id}" inputmode="decimal" autocomplete="off" value="${esc(x ?? '')}" placeholder="—">${fl.unidad ? `<span class="u">${esc(fl.unidad)}</span>` : ''}</div>
@@ -635,7 +645,16 @@ function pasoTabla(box, s) {
     if (est) est.querySelectorAll('button').forEach(b => b.onclick = () => { t.est = t.est || {}; t.est[col.id] = b.dataset.v; cambio(); pintar(); });
     s.filas.forEach(fl => {
       const inp = box.querySelector(`input[data-tf="${fl.id}"]`);
-      if (inp && fl.tipo === 'numero') inp.oninput = () => { const val = inp.value.replace(/[^\d.,-]/g, ''); if (val !== inp.value) inp.value = val; setC(fl.id, val); inp.parentElement.classList.toggle('al', fueraDeRango(rangoCol(fl, col), val)); };
+      if (inp && fl.tipo === 'numero') inp.oninput = () => {
+        const val = inp.value.replace(/[^\d.,-]/g, ''); if (val !== inp.value) inp.value = val; setC(fl.id, val); inp.parentElement.classList.toggle('al', fueraDeRango(rangoCol(fl, col), val));
+        // filas calculadas que dependen de este parámetro
+        s.filas.filter(k => k.tipo === 'diferencia' && (k.desde === fl.id || k.hasta === fl.id)).forEach(k => {
+          const w = box.querySelector(`[data-cv="${k.id}"]`); if (!w) return;
+          const y = valorFila(t, k, col); const ci = w.querySelector('input'); ci.value = String(y).replace('.', ','); ci.style.fontSize = y === '' ? '14px' : '';
+          w.classList.toggle('al', fueraDeRango(rangoCol(k, col), y));
+        });
+        const d = box.querySelector(`[data-col="${i}"] .dot`); if (d) d.className = 'dot ' + estadoCol(s, col);
+      };
       else if (inp) inp.oninput = () => setC(fl.id, inp.value);
       const chs = box.querySelector(`.chs[data-tf="${fl.id}"]`);
       if (chs) chs.querySelectorAll('button').forEach(b => b.onclick = () => { const ya = t.c?.[fl.id]?.[col.id] === b.dataset.v; setC(fl.id, ya ? '' : b.dataset.v); chs.querySelectorAll('button').forEach(x => x.classList.toggle('on', !ya && x === b)); });

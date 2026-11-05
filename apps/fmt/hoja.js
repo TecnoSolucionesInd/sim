@@ -2,7 +2,7 @@
 // renderHoja(datos) devuelve el HTML de una hoja A4 con el encabezado de control documental.
 
 import { esc, rangoTxt, revTxt, mesAbrev, codigoCompleto, turnosDe, firmasDe, tablaDeEquipos, pideUbicacion, ESTADOS_COLUMNA, celdasGuia } from './modelo.js';
-import { columnasTabla, etiquetaCol, estadoColumna, fueraDeRango, calculado, calcTxt, rangoCol, minutosEntre, duracionTxt, fechaTxt, fechaHoraTxt } from './logica.js';
+import { columnasTabla, etiquetaCol, estadoColumna, fueraDeRango, valorFila, calculado, calcTxt, rangoCol, minutosEntre, duracionTxt, fechaTxt, fechaHoraTxt } from './logica.js';
 
 export const HOJA_CSS = `
 .hoja{position:relative;box-sizing:border-box;background:#fff;color:#14202B;font-family:'IBM Plex Sans',Arial,sans-serif;font-size:9pt;line-height:1.3;padding:8mm 10mm 7mm;width:210mm;min-height:297mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
@@ -53,6 +53,8 @@ export const HOJA_CSS = `
 .hj-t th{background:#EEF2F6;color:#1E3A5C;font-size:7.6pt;font-weight:600;text-align:center;padding:1.3mm 1.6mm;border:0.6pt solid #9AA8B6}
 .hj-t td{border:0.6pt solid #9AA8B6;padding:0.9mm 1.8mm;font-size:8pt;height:5.8mm;vertical-align:middle}
 .hj-t th.l,.hj-t td.l{text-align:left}
+.hj-t.cmp td{height:4.9mm;padding:0.5mm 1.8mm}
+.hj-t.cmp td small{display:inline;margin-left:1.5mm}
 .hj-t td.c{text-align:center;color:#4A5866}
 .hj-t td.r{text-align:center;font-family:'JetBrains Mono',monospace;font-size:7.4pt;color:#4A5866;white-space:nowrap}
 .hj-t td small{display:block;font-size:6.8pt;color:#6B7886}
@@ -163,18 +165,18 @@ function seccionHtml(s, def, cols, R, equipos) {
       const e = estadoColumna(R, s, c);
       return `<td class="est ${e !== 'operando' ? 'no' : ''}">${esc((ESTADOS_COLUMNA.find(x => x.id === e) || {}).label || '')}</td>`;
     }).join('')}</tr>` : '';
-    return `<div class="hj-sec">${tit}<table class="hj-t">
+    return `<div class="hj-sec">${tit}<table class="hj-t ${filas.length >= 12 ? 'cmp' : ''}">
       <thead><tr><th class="l" style="width:${columnas.length > 4 ? 24 : 28}%">Parámetro</th><th style="width:7%">Unidad</th><th style="width:10%">Rango</th>${head}</tr></thead>
       <tbody>${filaEstado}${filas.length ? filas.map(fl => `<tr>
-        <td class="l">${esc(fl.etiqueta || 'Parámetro')}${fl.tipo === 'seleccion' && fl.opciones.length && !R ? `<small>${fl.opciones.map(esc).join(' / ')}</small>` : ''}</td>
-        <td class="c">${esc(fl.unidad || '')}</td><td class="r">${fl.tipo !== 'numero' ? '' : fl.rangos ? Object.entries(fl.rangos).filter(([, x]) => rangoTxt(x)).map(([k, x]) => `<small style="font-size:6.6pt;color:#4A5866;font-family:'IBM Plex Sans',Arial,sans-serif">${esc(k)}</small>${esc(rangoTxt(x))}`).join('<br>') : esc(rangoTxt(fl))}</td>
+        <td class="l">${esc(fl.etiqueta || 'Parámetro')}${fl.tipo === 'seleccion' && fl.opciones.length && !R ? `<small>${fl.opciones.map(esc).join(' / ')}</small>` : ''}${fl.tipo === 'diferencia' ? `<small>${esc((() => { const a = filas.find(k => k.id === fl.desde), b = filas.find(k => k.id === fl.hasta); return a && b ? `= ${a.etiqueta} − ${b.etiqueta}` : 'Calculado'; })())}</small>` : ''}</td>
+        <td class="c">${esc(fl.unidad || '')}</td><td class="r">${fl.tipo !== 'numero' && fl.tipo !== 'diferencia' ? '' : fl.rangos ? Object.entries(fl.rangos).filter(([, x]) => rangoTxt(x)).map(([k, x]) => `<small style="font-size:6.6pt;color:#4A5866;font-family:'IBM Plex Sans',Arial,sans-serif">${esc(k)}</small>${esc(rangoTxt(x))}`).join('<br>') : esc(rangoTxt(fl))}</td>
         ${columnas.map(c => {
           if (!R) return '<td></td>';
           if (estadoColumna(R, s, c) !== 'operando') return '<td class="na">—</td>';
-          const x = t.c?.[fl.id]?.[c.id];
+          const x = valorFila(t, fl, c);
           if (x == null || x === '') return '<td class="na"></td>';
-          const al = fl.tipo === 'numero' && fueraDeRango(rangoCol(fl, c), x);
-          return `<td class="vv ${al ? 'al' : ''}">${esc(fl.tipo === 'numero' ? String(x).replace('.', ',') : x)}</td>`;
+          const al = (fl.tipo === 'numero' || fl.tipo === 'diferencia') && fueraDeRango(rangoCol(fl, c), x);
+          return `<td class="vv ${al ? 'al' : ''}">${esc(fl.tipo === 'numero' || fl.tipo === 'diferencia' ? String(x).replace('.', ',') : x)}</td>`;
         }).join('')}</tr>`).join('')
         : `<tr><td colspan="${3 + columnas.length}" class="c">Sin parámetros</td></tr>`}</tbody></table></div>`;
   }

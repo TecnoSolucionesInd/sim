@@ -4,7 +4,7 @@ import { SISTEMAS } from '../../core/maestros.js';
 import { QUIMICOS_OSMOSIS, CONSUMIBLES_OSMOSIS, unidadesDe, GUIA_DOSIFICACION } from '../../core/insumos.js';
 export { SISTEMAS };
 
-export const FRECUENCIAS = ['Por turno', 'Diario', 'Semanal', 'Quincenal', 'Mensual', 'Trimestral', 'Según plan', 'Por evento'];
+export const FRECUENCIAS = ['Cada 2 horas', 'Por turno', 'Diario', 'Semanal', 'Quincenal', 'Mensual', 'Trimestral', 'Según plan', 'Por evento'];
 
 export const TIPOS_CAMPO = [
   { id: 'texto',     nombre: 'Texto corto' },
@@ -40,7 +40,8 @@ export const ESTADOS_COLUMNA = [
 export const TIPOS_FILA = [
   { id: 'numero',    nombre: 'Número' },
   { id: 'seleccion', nombre: 'Selección' },
-  { id: 'texto',     nombre: 'Texto' }
+  { id: 'texto',     nombre: 'Texto' },
+  { id: 'diferencia', nombre: 'Diferencia (calculada)' }
 ];
 
 export const TIPOS_SECCION = [
@@ -143,6 +144,7 @@ export function filtroTxt(f, sistemas = SISTEMAS) {
   const p = [];
   if (f.sistema !== '' && f.sistema != null) p.push((sistemas.find(x => x.id === Number(f.sistema)) || {}).nombre || '');
   if (f.tipo) p.push(f.tipo);
+  if (f.marca) p.push(f.marca);
   if (f.ubicacion === '*') p.push('ubicación al llenar'); else if (f.ubicacion) p.push(f.ubicacion);
   return p.filter(Boolean).join(' · ');
 }
@@ -161,6 +163,7 @@ export function validarDef(def) {
   const err = [];
   if (!def.nombre || !def.nombre.trim()) err.push('El formato no tiene nombre.');
   if (!def.secciones.length) err.push('Agregue al menos una sección.');
+  if (def.frecuencia === 'Cada 2 horas' && !def.datosGenerales?.hora) err.push('La frecuencia "Cada 2 horas" necesita registrar la hora (Datos generales).');
   def.secciones.forEach((s, i) => {
     const t = s.titulo?.trim() || `Sección ${i + 1}`;
     if (!s.titulo?.trim()) err.push(`La sección ${i + 1} no tiene título.`);
@@ -184,6 +187,7 @@ export function validarDef(def) {
         if (!f.etiqueta.trim()) err.push(`"${t}": el parámetro ${j + 1} no tiene nombre.`);
         if (f.tipo === 'seleccion' && !f.opciones.length) err.push(`"${t}": "${f.etiqueta || 'parámetro ' + (j + 1)}" no tiene opciones.`);
         if (f.tipo === 'numero' && f.min !== '' && f.max !== '' && Number(f.min) > Number(f.max)) err.push(`"${t}": en "${f.etiqueta}" el mínimo es mayor que el máximo.`);
+        if (f.tipo === 'diferencia' && (!f.desde || !f.hasta || !s.filas.some(k => k.id === f.desde) || !s.filas.some(k => k.id === f.hasta))) err.push(`"${t}": "${f.etiqueta || 'parámetro ' + (j + 1)}" debe indicar los dos parámetros con que se calcula.`);
       });
     }
     if (s.tipo === 'checklist') {
@@ -282,26 +286,57 @@ export function pilotos() {
     }
   };
 
+  // R-101 y R-102: compresores de Sala de Máquinas 1 (una columna por compresor, tomados de la base de equipos por marca).
+  // Los límites quedan vacíos para registrarlos en el editor (mín / máx de cada parámetro).
+  const filasCompresor = ({ culatas = 0, aceiteTemp = false } = {}) => {
+    const pS = f('Presión de succión', 'numero', { unidad: 'bar' });
+    const pA = f('Presión de aceite', 'numero', { unidad: 'bar' });
+    return [
+      pS,
+      f('Presión de descarga', 'numero', { unidad: 'bar' }),
+      pA,
+      f('Diferencial de presión de aceite', 'diferencia', { unidad: 'bar', desde: pA.id, hasta: pS.id }),
+      f('Temperatura de descarga', 'numero', { unidad: '°C' }),
+      ...Array.from({ length: culatas }, (_, k) => f(`Temperatura de culata ${k + 1}`, 'numero', { unidad: '°C' })),
+      ...(aceiteTemp ? [f('Temperatura de aceite (cárter)', 'numero', { unidad: '°C' })] : []),
+      f('Nivel de aceite (visor)', 'seleccion', { opciones: ['Normal', 'Bajo', 'Alto'] }),
+      f('Corriente del motor', 'numero', { unidad: 'A' }),
+      f('Horómetro', 'numero', { unidad: 'h' }),
+      f('Ruido o vibración anormal', 'seleccion', { opciones: ['No', 'Sí'] })
+    ];
+  };
+  const tablaCompresores = (titulo, marca, extra) => ({ id: uid(), tipo: 'tabla', titulo, fuente: 'equipos',
+    filtro: { sistema: 1, tipo: 'Compresor', ubicacion: 'Sala de Máquinas 1', marca }, estadoEquipo: true, columnas: [], filas: filasCompresor(extra) });
   const r101 = {
     codigo: 'R-101',
     def: {
-      ...defVacia('Registro de parámetros de sala de máquinas'),
-      frecuencia: 'Por turno',
+      ...defVacia('Parámetros de compresores Gram — Sala de Máquinas 1'),
+      frecuencia: 'Cada 2 horas',
       orientacion: 'horizontal',
       datosGenerales: { turno: true, hora: true },
       secciones: [
-        { id: uid(), tipo: 'tabla', titulo: 'Compresores', fuente: 'equipos', filtro: { sistema: 1, tipo: 'Compresor', ubicacion: '' }, estadoEquipo: true, columnas: [], filas: [
-          f('Presión de succión', 'numero', { unidad: 'psi' }),
-          f('Presión de descarga', 'numero', { unidad: 'psi' }),
-          f('Presión de aceite', 'numero', { unidad: 'psi' }),
-          f('Temperatura de aceite', 'numero', { unidad: '°C' }),
-          f('Temperatura de descarga', 'numero', { unidad: '°C' }),
-          f('Corriente', 'numero', { unidad: 'A' }),
-          f('Horómetro', 'numero', { unidad: 'h' })
-        ] },
-        { id: uid(), tipo: 'campos', titulo: 'Generales de sala', columnas: 0, campos: [
+        tablaCompresores('Compresores Gram', 'Gram', { culatas: 3, aceiteTemp: true }),
+        { id: uid(), tipo: 'campos', titulo: 'Generales de sala', columnas: 3, campos: [
           c('Nivel del recibidor de líquido', 'numero', { requerido: true, unidad: '%' }),
+          c('Presión de condensación', 'numero', { requerido: true, unidad: 'bar' }),
           c('Condensadores en servicio', 'numero', { requerido: true, unidad: 'und' })
+        ] }
+      ],
+      firmas: [FU, FA]
+    }
+  };
+  const r102 = {
+    codigo: 'R-102',
+    def: {
+      ...defVacia('Parámetros de compresores Copeland — Cámaras 1 y 2'),
+      frecuencia: 'Cada 2 horas',
+      orientacion: 'horizontal',
+      datosGenerales: { turno: true, hora: true },
+      secciones: [
+        tablaCompresores('Compresores Copeland', 'Copeland'),
+        { id: uid(), tipo: 'campos', titulo: 'Cámaras', columnas: 2, campos: [
+          c('Temperatura de Cámara 1', 'numero', { requerido: true, unidad: '°C' }),
+          c('Temperatura de Cámara 2', 'numero', { requerido: true, unidad: '°C' })
         ] }
       ],
       firmas: [FU, FA]
@@ -384,5 +419,5 @@ export function pilotos() {
     }
   };
 
-  return [r001, r002, r101, r301, r302];
+  return [r001, r002, r101, r102, r301, r302];
 }
