@@ -153,7 +153,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Tablas de lista fija: una fila puede tener rangos por columna `rangos: { '<nombre de columna>': {min, max} }` (p. ej. solo Permeado).
   El editor los muestra pero no los edita (se definen en el formato predefinido).
 - Emisión de formatos que ya existen en el manual: opción "conserva su revisión y vigencia" (revisión y mes indicados; `origenManual`).
-- Formatos predefinidos (botón "Cargar formatos predefinidos"): R-001, R-002, R-101 (Gram), R-102 (Copeland), R-302 (químicos e insumos de ósmosis, alimenta Materiales e inventario) y R-301 Control de operación — Planta de ósmosis
+- Formatos predefinidos (botón "Cargar formatos predefinidos"): R-001, R-002, R-101/R-102/R-103 (compresores por sala de máquinas), R-302 (químicos e insumos de ósmosis, alimenta Materiales e inventario) y R-301 Control de operación — Planta de ósmosis
   inversa (rev. 3, Jun-26, por turno; módulo OSM-UOI-xx; filtros multimedia/cartucho con ΔP; alimentación; permeado con % recuperación;
   calidad de agua; permeado por housing 1–5). Rangos de referencia SWRO: ΔP ≤ 1 bar, alimentación ≤ 69 bar, permeado ≤ 3 bar,
   recuperación 35–45 %, conductividad permeado/housing ≤ 1000 µS/cm, pH permeado 6.5–8.5, pH alimentación 7–8.5, dureza permeado ≤ 50,
@@ -257,6 +257,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-11-05: Formatos — un formato por sala de máquinas: R-101 Sala 1 (tablas Gram y Copeland), R-102 Sala 2 (pistón productor de hielo y tornillo Cámara 3), R-103 Sala 3 (tornillo Yantai R-22 y Bingshan amoniaco). Cada tipo en su tabla con sus parámetros y límites propios. Tablas de equipos: filtro "Contiene" (incluye) y selección manual de equipos (codigos). Hojas en vertical (caben en una página).
 - 2026-11-05: Formatos — logo de la empresa por defecto en el encabezado (apps/plan/logo.png; Configuración puede subir otro). Menú del editor: "Reemplazar con el formato predefinido" para actualizar un formato ya cargado (p. ej. R-101 antiguo) y emitir nueva revisión.
 - 2026-11-05: Formatos — R-101 Gram y R-102 Copeland (Sala de Máquinas 1) como predefinidos: columnas por marca (filtro `marca` en tablas de equipos), fila calculada `diferencia` en tablas (diferencial de aceite), frecuencia "Cada 2 horas" (rondas por bloque horario), tablas largas compactas al imprimir. Límites vacíos: se registran en el editor.
 - 2026-11-03: Costos — dólares por defecto con selector US$ / S/ (preferencia por navegador). Órdenes en US$ usan su importe original; el resto, TC venta promedio del mes (TCV ene–set; meses posteriores usan el último). Catálogo (valor de reposición) y meta se guardan en soles y se convierten al mostrar. Excel siempre en soles.

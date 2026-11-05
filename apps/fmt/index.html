@@ -140,7 +140,7 @@ import {
   codigoCompleto, siguienteCodigo, defVacia, seccionNueva, campoNuevo, filaNueva, rangoTxt, validarDef, pilotos,
   firmasDe, turnosDe, tablaDeEquipos, filtroTxt, celdasGuia
 } from './modelo.js';
-import { columnasTabla } from './logica.js';
+import { columnasTabla, filtrarEquiposPor } from './logica.js';
 
 document.head.insertAdjacentHTML('beforeend', `<style>${HOJA_CSS}</style>`);
 
@@ -595,6 +595,10 @@ function seccionEd(s, i, n, ro) {
           <div><label class="label" for="fm_${s.id}">Marca <span class="muted" style="font-weight:400">(opcional)</span></label><select class="field sm" id="fm_${s.id}" data-filt="${s.id}:marca" ${dis}><option value="">Todas</option>${valoresDe(EQ, 'marca').map(u => `<option ${u === fl.marca ? 'selected' : ''}>${esc(u)}</option>`).join('')}${fl.marca && !valoresDe(EQ, 'marca').includes(fl.marca) ? `<option selected>${esc(fl.marca)}</option>` : ''}</select></div>
           <div><label class="label" for="fu_${s.id}">Ubicación</label><select class="field sm" id="fu_${s.id}" data-filt="${s.id}:ubicacion" ${dis}><option value="">Todas</option><option value="*" ${fl.ubicacion === '*' ? 'selected' : ''}>Se elige al llenar</option>${valoresDe(EQ, 'ubicacion').map(u => `<option ${u === fl.ubicacion ? 'selected' : ''}>${esc(u)}</option>`).join('')}${fl.ubicacion && fl.ubicacion !== '*' && !valoresDe(EQ, 'ubicacion').includes(fl.ubicacion) ? `<option selected>${esc(fl.ubicacion)}</option>` : ''}</select></div>
         </div>
+        <div><label class="label" for="fi_${s.id}">Contiene <span class="muted" style="font-weight:400">(opcional · palabras separadas por /, se buscan en descripción, marca y modelo)</span></label><input class="field sm" id="fi_${s.id}" data-filt="${s.id}:incluye" value="${esc(fl.incluye || '')}" placeholder="tornillo / yantai" ${dis} ${fl.codigos?.length ? 'disabled' : ''}></div>
+        ${(() => { const cand = filtrarEquiposPor(EQ, { sistema: fl.sistema, tipo: fl.tipo, ubicacion: fl.ubicacion === '*' ? '' : fl.ubicacion }); const ya = new Set(cols.map(c => c.codigo));
+          return cand.length ? `<div class="label" style="margin-top:12px">Equipos de esta tabla ${fl.codigos?.length ? `<span class="muted" style="font-weight:400">· selección manual</span>${ro ? '' : ` <button type="button" class="btn sm" data-eqauto="${s.id}" style="margin-left:6px">Volver al filtro automático</button>`}` : '<span class="muted" style="font-weight:400">· marque o desmarque para elegirlos a mano</span>'}</div>
+            <div class="chips" style="margin:6px 0 4px">${cand.map(e => `<label class="chipx" style="cursor:pointer;gap:6px;${ya.has(e.codigo) ? '' : 'opacity:.55'}"><input type="checkbox" data-eqsel="${s.id}" value="${esc(e.codigo)}" ${ya.has(e.codigo) ? 'checked' : ''} ${dis}>${esc(e.codigo)} · ${esc(e.descripcion || '')}</label>`).join('')}</div>` : ''; })()}
         <div class="eqprev ${cols.length ? '' : 'warn'}">${cols.length ? `<b>${cols.length} equipo${cols.length > 1 ? 's' : ''}${fl.ubicacion === '*' ? ' en total' : ''}:</b> ${cols.slice(0, 12).map(c => esc(c.codigo)).join(', ')}${cols.length > 12 ? '…' : ''}` : EQ.length ? 'Ningún equipo de la base coincide con este filtro.' : 'La base de equipos está vacía. Cárguela en el aplicativo Equipos.'}</div>
         <label class="check" style="margin:12px 0 16px"><input type="checkbox" data-esteq="${s.id}" ${s.estadoEquipo ? 'checked' : ''} ${dis}>Registrar el estado de cada equipo (operando, parado, en mantenimiento). Solo se exigen lecturas a los que operan.</label>`
       : `<div class="chips" style="margin-bottom:16px">${s.columnas.map((c, j) => `<span class="chipx">${esc(c)}${ro ? '' : `<button type="button" data-delcol="${s.id}:${j}" aria-label="Quitar ${esc(c)}">${IC.x}</button>`}</span>`).join('')}
@@ -712,6 +716,14 @@ function enlazarDiseno(cont) {
     if (!s.columnas) s.columnas = [];
     cambio();
   });
+  on('[data-eqsel]', 'change', (e) => {
+    const s = secPor(e.target.dataset.eqsel);
+    const marc = [...document.querySelectorAll(`[data-eqsel="${s.id}"]:checked`)].map(x => x.value);
+    s.filtro = { ...(s.filtro || {}), codigos: marc };
+    if (!marc.length) s.filtro.codigos = [];
+    cambio();
+  });
+  on('[data-eqauto]', 'click', (e) => { const s = secPor(e.currentTarget.dataset.eqauto); s.filtro = { ...(s.filtro || {}) }; delete s.filtro.codigos; cambio(); });
   on('[data-filt]', 'change', (e) => {
     const [sid, k] = e.target.dataset.filt.split(':');
     const s = secPor(sid);

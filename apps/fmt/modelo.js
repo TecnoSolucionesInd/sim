@@ -286,62 +286,79 @@ export function pilotos() {
     }
   };
 
-  // R-101 y R-102: compresores de Sala de Máquinas 1 (una columna por compresor, tomados de la base de equipos por marca).
-  // Los límites quedan vacíos para registrarlos en el editor (mín / máx de cada parámetro).
-  const filasCompresor = ({ culatas = 0, aceiteTemp = false } = {}) => {
-    const pS = f('Presión de succión', 'numero', { unidad: 'bar' });
-    const pA = f('Presión de aceite', 'numero', { unidad: 'bar' });
+  // R-101, R-102 y R-103: un formato por sala de máquinas. Cada tipo de compresor va en su propia tabla
+  // (parámetros y límites propios), con una columna por compresor tomada de la base de equipos.
+  // Los límites quedan vacíos para registrarlos en el editor (mín / máx por parámetro o por compresor).
+  const bar = { unidad: 'bar' }, gc = { unidad: '°C' }, opc = { requerido: false };
+  const comunesFin = () => [
+    f('Corriente del motor', 'numero', { unidad: 'A' }),
+    f('Horómetro', 'numero', { unidad: 'h' }),
+    f('Ruido o vibración anormal', 'seleccion', { opciones: ['No', 'Sí'] })
+  ];
+  const filasPiston = ({ culatas = 0, culataMax = false, carter = false } = {}) => {
+    const pS = f('Presión de succión', 'numero', bar), pA = f('Presión de aceite', 'numero', bar);
     return [
-      pS,
-      f('Presión de descarga', 'numero', { unidad: 'bar' }),
-      pA,
-      f('Diferencial de presión de aceite', 'diferencia', { unidad: 'bar', desde: pA.id, hasta: pS.id }),
-      f('Temperatura de descarga', 'numero', { unidad: '°C' }),
-      ...Array.from({ length: culatas }, (_, k) => f(`Temperatura de culata ${k + 1}`, 'numero', { unidad: '°C' })),
-      ...(aceiteTemp ? [f('Temperatura de aceite (cárter)', 'numero', { unidad: '°C' })] : []),
+      pS, f('Presión de descarga', 'numero', bar), pA,
+      f('Diferencial de presión de aceite', 'diferencia', { ...bar, desde: pA.id, hasta: pS.id }),
+      f('Temperatura de descarga', 'numero', gc),
+      ...Array.from({ length: culatas }, (_, k) => f(`Temperatura de culata ${k + 1}`, 'numero', gc)),
+      ...(culataMax ? [f('Temperatura de culatas (la más alta)', 'numero', gc)] : []),
+      ...(carter ? [f('Temperatura de aceite (cárter)', 'numero', gc)] : []),
       f('Nivel de aceite (visor)', 'seleccion', { opciones: ['Normal', 'Bajo', 'Alto'] }),
-      f('Corriente del motor', 'numero', { unidad: 'A' }),
-      f('Horómetro', 'numero', { unidad: 'h' }),
-      f('Ruido o vibración anormal', 'seleccion', { opciones: ['No', 'Sí'] })
+      ...comunesFin()
     ];
   };
-  const tablaCompresores = (titulo, marca, extra) => ({ id: uid(), tipo: 'tabla', titulo, fuente: 'equipos',
-    filtro: { sistema: 1, tipo: 'Compresor', ubicacion: 'Sala de Máquinas 1', marca }, estadoEquipo: true, columnas: [], filas: filasCompresor(extra) });
-  const r101 = {
-    codigo: 'R-101',
-    def: {
-      ...defVacia('Parámetros de compresores Gram — Sala de Máquinas 1'),
-      frecuencia: 'Cada 2 horas',
-      orientacion: 'horizontal',
-      datosGenerales: { turno: true, hora: true },
-      secciones: [
-        tablaCompresores('Compresores Gram', 'Gram', { culatas: 3, aceiteTemp: true }),
-        { id: uid(), tipo: 'campos', titulo: 'Generales de sala', columnas: 3, campos: [
-          c('Nivel del recibidor de líquido', 'numero', { requerido: true, unidad: '%' }),
-          c('Presión de condensación', 'numero', { requerido: true, unidad: 'bar' }),
-          c('Condensadores en servicio', 'numero', { requerido: true, unidad: 'und' })
-        ] }
-      ],
-      firmas: [FU, FA]
-    }
-  };
-  const r102 = {
-    codigo: 'R-102',
-    def: {
-      ...defVacia('Parámetros de compresores Copeland — Cámaras 1 y 2'),
-      frecuencia: 'Cada 2 horas',
-      orientacion: 'horizontal',
-      datosGenerales: { turno: true, hora: true },
-      secciones: [
-        tablaCompresores('Compresores Copeland', 'Copeland'),
-        { id: uid(), tipo: 'campos', titulo: 'Cámaras', columnas: 2, campos: [
-          c('Temperatura de Cámara 1', 'numero', { requerido: true, unidad: '°C' }),
-          c('Temperatura de Cámara 2', 'numero', { requerido: true, unidad: '°C' })
-        ] }
-      ],
-      firmas: [FU, FA]
-    }
-  };
+  const filasTornillo = ({ amoniaco = false } = {}) => [
+    f('Presión de succión', 'numero', bar),
+    f('Presión de descarga', 'numero', bar),
+    f('Presión de aceite', 'numero', bar),
+    f('Temperatura de succión', 'numero', { ...gc, ...opc }),
+    f('Temperatura de descarga', 'numero', gc),
+    f('Temperatura de aceite', 'numero', gc),
+    f('Capacidad (válvula de corredera)', 'numero', { unidad: '%', ...opc }),
+    f('Nivel de aceite (separador)', 'seleccion', { opciones: ['Normal', 'Bajo', 'Alto'] }),
+    ...comunesFin(),
+    ...(amoniaco ? [f('Olor o fuga de amoniaco', 'seleccion', { opciones: ['No', 'Sí'] })] : [])
+  ];
+  const tabla = (titulo, filtro, filas) => ({ id: uid(), tipo: 'tabla', titulo, fuente: 'equipos',
+    filtro: { sistema: 1, tipo: 'Compresor', ...filtro }, estadoEquipo: true, columnas: [], filas });
+  const generales = (titulo, campos) => ({ id: uid(), tipo: 'campos', titulo, columnas: 3, campos });
+  const sala = (codigo, nombre, secciones) => ({ codigo, def: {
+    ...defVacia(nombre), frecuencia: 'Cada 2 horas', orientacion: 'vertical',
+    datosGenerales: { turno: true, hora: true }, secciones, firmas: [FU, FA] } });
+  const SM = (n) => `Sala de Máquinas ${n}`;
+
+  const r101 = sala('R-101', 'Parámetros de compresores — Sala de Máquinas 1', [
+    tabla('Compresores de pistón Gram', { ubicacion: SM(1), marca: 'Gram' }, filasPiston({ culatas: 3, carter: true })),
+    tabla('Compresores Copeland', { ubicacion: SM(1), marca: 'Copeland' }, filasPiston()),
+    generales('Generales de sala', [
+      c('Nivel del recibidor de líquido', 'numero', { requerido: true, unidad: '%' }),
+      c('Presión de condensación', 'numero', { requerido: true, unidad: 'bar' }),
+      c('Condensadores en servicio', 'numero', { requerido: true, unidad: 'und' }),
+      c('Temperatura de Cámara 1', 'numero', { requerido: true, unidad: '°C' }),
+      c('Temperatura de Cámara 2', 'numero', { requerido: true, unidad: '°C' })
+    ])
+  ]);
+  const r102 = sala('R-102', 'Parámetros de compresores — Sala de Máquinas 2', [
+    tabla('Compresor de pistón · productor de hielo', { ubicacion: SM(2), incluye: 'pistón / piston / hielo' }, filasPiston({ culataMax: true, carter: true })),
+    tabla('Compresores de tornillo · Cámara 3', { ubicacion: SM(2), incluye: 'tornillo / cámara 3 / backup' }, filasTornillo()),
+    generales('Generales de sala', [
+      c('Nivel del recibidor de líquido', 'numero', { requerido: true, unidad: '%' }),
+      c('Presión de condensación', 'numero', { requerido: true, unidad: 'bar' }),
+      c('Temperatura de Cámara 3', 'numero', { requerido: true, unidad: '°C' })
+    ])
+  ]);
+  const r103 = sala('R-103', 'Parámetros de compresores — Sala de Máquinas 3', [
+    tabla('Compresores de tornillo Yantai · R-22', { ubicacion: SM(3), incluye: 'yantai' }, filasTornillo()),
+    tabla('Compresores de tornillo Bingshan · amoniaco', { ubicacion: SM(3), incluye: 'bingshan' }, filasTornillo({ amoniaco: true })),
+    generales('Generales de sala', [
+      c('Presión de condensación R-22', 'numero', { requerido: true, unidad: 'bar' }),
+      c('Presión de condensación amoniaco', 'numero', { requerido: true, unidad: 'bar' }),
+      c('Nivel del recibidor R-22', 'numero', { requerido: true, unidad: '%' }),
+      c('Nivel del recibidor amoniaco', 'numero', { requerido: true, unidad: '%' }),
+      c('Amoniaco en el ambiente (detector)', 'numero', { unidad: 'ppm' })
+    ])
+  ]);
 
   // R-301: viene del manual de mantenimiento (revisión 3, vigente desde junio 2026)
   const R = (min, max) => ({ min: min ?? '', max: max ?? '' });
@@ -419,5 +436,5 @@ export function pilotos() {
     }
   };
 
-  return [r001, r002, r101, r102, r301, r302];
+  return [r001, r002, r101, r102, r103, r301, r302];
 }

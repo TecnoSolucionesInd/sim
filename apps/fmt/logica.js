@@ -87,11 +87,16 @@ export function inicioConsulta(fechaOp) {
 export function filtrarEquiposPor(equipos, f) {
   const tipo = norm(f.tipo), ubi = norm(f.ubicacion), mar = norm(f.marca);
   const sis = f.sistema === '' || f.sistema == null ? null : Number(f.sistema);
+  // "contiene": palabras separadas por / que se buscan en descripción, marca y modelo (basta una)
+  const inc = String(f.incluye || '').split('/').map(norm).filter(Boolean);
+  // selección manual de equipos: si existe, manda sobre marca y "contiene"
+  const cods = Array.isArray(f.codigos) && f.codigos.length ? new Set(f.codigos) : null;
   return equipos.filter(e => e.estado !== 'baja'
     && (sis === null || Number(e.sistema) === sis)
     && (!tipo || norm(e.tipo) === tipo)
     && (!ubi || norm(e.ubicacion) === ubi)
-    && (!mar || norm(e.marca) === mar))
+    && (cods ? cods.has(e.codigo) : (!mar || norm(e.marca) === mar)
+      && (!inc.length || inc.some(w => norm(`${e.descripcion || ''} ${e.marca || ''} ${e.modelo || ''}`).includes(w)))))
     .sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es', { numeric: true }));
 }
 
