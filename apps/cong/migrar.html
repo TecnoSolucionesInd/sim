@@ -45,6 +45,7 @@
       <button class="btn btn-primary" id="bCopiar">Copiar datos</button>
     </div>
     <label class="check" style="margin-top:16px"><input type="checkbox" id="chkTodo">Volver a copiar también las colecciones que ya coinciden (usar el día del cambio definitivo)</label>
+    <label class="check" style="margin-top:10px"><input type="checkbox" id="chkEspejo">Dejar el SIM idéntico al sistema actual: retira del SIM los registros que allá fueron eliminados (necesario el día del cambio definitivo)</label>
   </div>
 </div>
 
@@ -80,7 +81,7 @@ function pintar() {
   $('tb').innerHTML = MAPA.map(([o, d, l]) => {
     const e = estado[d] || {};
     const ok = e.orig != null && e.orig === e.dest;
-    const det = e.leidos != null ? `<div style="font-size:12px;color:var(--tx-3);margin-top:4px">Leídos ${e.leidos} · escritos ${e.escritos ?? 0}</div>` : '';
+    const det = e.leidos != null ? `<div style="font-size:12px;color:var(--tx-3);margin-top:4px">Leídos ${e.leidos} · escritos ${e.escritos ?? 0}${e.borrados ? ' · retirados ' + e.borrados : ''}</div>` : '';
     return `<tr><td>${l}${det}</td><td class="num">${e.orig ?? '—'}</td><td class="num">${e.dest ?? '—'}</td>
       <td>${e.err ? `<span class="pill" style="background:rgba(255,143,143,.14);color:#FFB3B3;white-space:normal">${esc(e.err)}</span>`
         : e.trabajando ? '<span class="pill" style="background:rgba(169,180,255,.16);color:#C5CCFF">Copiando…</span>'
@@ -104,9 +105,9 @@ async function contar() { for (const [o, d] of MAPA) await contarUna(o, d); }
 const MAX_DOCS = 200, MAX_BYTES = 4 * 1024 * 1024;
 const peso = (obj) => { try { return JSON.stringify(obj).length + 200; } catch { return 50000; } };
 
-async function copiarUna(o, d) {
+async function copiarUna(o, d, espejo) {
   const e = estado[d];
-  e.trabajando = true; e.err = null; e.leidos = null; e.escritos = 0; pintar();
+  e.trabajando = true; e.err = null; e.leidos = null; e.escritos = 0; e.borrados = 0; pintar();
   try {
     const snap = await getDocs(collection(dbOrigen, o));
     e.leidos = snap.docs.length; pintar();
@@ -119,6 +120,20 @@ async function copiarUna(o, d) {
       b.set(doc(db, 'datos', 'cong', d, s.id), data); n++; bytes += w;
     }
     await enviar();
+
+    // Espejo exacto: retirar del SIM lo que ya no existe en el sistema actual.
+    // Sin esto, un registro borrado en el origen queda huérfano en el SIM y los
+    // totales nunca llegan a coincidir.
+    if (espejo) {
+      const idsOrigen = new Set(snap.docs.map(s => s.id));
+      const sobran = (await getDocs(destino(d))).docs.filter(s => !idsOrigen.has(s.id));
+      let bd = writeBatch(db), m = 0;
+      for (const s of sobran) {
+        if (m >= MAX_DOCS) { await bd.commit(); e.borrados += m; pintar(); bd = writeBatch(db); m = 0; }
+        bd.delete(doc(db, 'datos', 'cong', d, s.id)); m++;
+      }
+      if (m) { await bd.commit(); e.borrados += m; pintar(); }
+    }
   } catch (x) { e.err = errTxt(x); console.error('[copia]', o, x); }
   e.trabajando = false;
   await contarUna(o, d);
@@ -130,11 +145,12 @@ async function copiar() {
   $('prog').hidden = false; $('progBar').style.width = '0%';
   if (!MAPA.every(([, d]) => estado[d] && estado[d].orig != null)) await contar();
   let i = 0;
+  const todo   = $('chkTodo').checked;
+  const espejo = $('chkEspejo').checked;
   for (const [o, d] of MAPA) {
     const e = estado[d];
     // Copia completa la primera vez; luego solo lo que no coincide
-    const todo = $('chkTodo').checked;
-    if (todo || !(e.orig != null && e.orig === e.dest)) await copiarUna(o, d);
+    if (todo || espejo || !(e.orig != null && e.orig === e.dest)) await copiarUna(o, d, espejo);
     $('progBar').style.width = Math.round(++i / MAPA.length * 100) + '%';
   }
   const fallos = MAPA.filter(([, d]) => estado[d].err || estado[d].orig !== estado[d].dest);

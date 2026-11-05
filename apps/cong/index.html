@@ -924,6 +924,29 @@ tr.clickable-row:hover td { background: var(--surface2); }
   grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
 }
+/* ===== Producción mensual · histórico ===== */
+.pm-yr-wrap{display:flex;align-items:center;gap:7px;}
+.pm-yr-label{font-size:10.5px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--text3);}
+.pm-yr-sel{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:7px;
+  padding:5px 10px;font-size:12.5px;font-weight:600;cursor:pointer;outline:none;font-family:inherit;}
+.pm-yr-sel:focus{border-color:var(--accent);}
+.pm-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px;}
+.pm-sc{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;
+  border-left:3px solid var(--accent);}
+.pm-sc.g{border-left-color:var(--success);}
+.pm-sc.w{border-left-color:var(--warn);}
+.pm-sc.p{border-left-color:#a855f7;}
+.pm-sc-l{font-size:9.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.pm-sc-v{font-size:18px;font-weight:800;font-family:'DM Mono',monospace;color:var(--text);letter-spacing:-.5px;}
+.pm-sc-v small{font-size:10.5px;color:var(--text2);font-weight:500;margin-left:2px;}
+.pm-sc-s{font-size:10px;color:var(--text2);margin-top:2px;}
+.pm-sc-s.up{color:var(--success);}
+.pm-sc-s.dn{color:var(--danger);}
+.pm-vacio{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12.5px;}
+@media(max-width:768px){
+  .pm-strip{grid-template-columns:repeat(2,1fr);}
+  #card-prod-mensual .pbi-card-head{flex-wrap:wrap;gap:8px;}
+}
 .dash-kpis-card { padding: 14px; }
 .dash-kpi-grid {
   display: grid;
@@ -996,6 +1019,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
 @media (max-width: 1100px) {
   .dash-zona-superior, .dash-zona-inferior { grid-template-columns: 1fr; }
   .dash-zona-inferior > .pbi-card[style*="span 2"] { grid-column: span 1 !important; }
+  .dash-zona-inferior > .pbi-card[style*="span 3"] { grid-column: span 1 !important; }
 }
 
 @keyframes pulsoAlarma {
@@ -1299,7 +1323,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
                 <div class="pbi-card-head"><div class="pbi-card-title">📊 Indicadores clave</div></div>
                 <div class="dash-kpi-grid">
                   <div class="dash-mini-kpi c-blue">
-                    <div class="dash-mini-label">Producción día</div>
+                    <div class="dash-mini-label" id="kpi-prod-label">Producción día</div>
                     <div class="dash-mini-value" id="kpi-prod">0<span class="dash-mini-unit">t</span></div>
                   </div>
                   <div class="dash-mini-kpi c-teal">
@@ -1312,7 +1336,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
                     <div id="kpi-egc-semaforo" style="font-size:9px;margin-top:2px;font-weight:600;"></div>
                   </div>
                   <div class="dash-mini-kpi c-blue">
-                    <div class="dash-mini-label">Acumulado mes</div>
+                    <div class="dash-mini-label" id="kpi-acum-label">Acumulado mes</div>
                     <div class="dash-mini-value" id="kpi-acum-mes">0<span class="dash-mini-unit">t</span></div>
                   </div>
                   <div class="dash-mini-kpi c-green">
@@ -1408,6 +1432,20 @@ tr.clickable-row:hover td { background: var(--surface2); }
                   <button class="dash-tend-reset" onclick="resetTendenciaFechas()" title="Volver a últimas 2 semanas">↺</button>
                 </div>
                 <div style="position:relative;height:340px;"><canvas id="chart-prod-dia"></canvas></div>
+              </div>
+
+              <!-- Producción mensual · histórico (ancho completo, filtro de año propio) -->
+              <div class="pbi-card" id="card-prod-mensual" style="grid-column:span 3;">
+                <div class="pbi-card-head">
+                  <div class="pbi-card-title">📆 Producción mensual · histórico</div>
+                  <div class="dash-legend-inline" id="pm-leyenda"></div>
+                  <div class="pm-yr-wrap">
+                    <span class="pm-yr-label">Año</span>
+                    <select class="pm-yr-sel" id="pm-anio" onchange="renderProdMensual()"></select>
+                  </div>
+                </div>
+                <div style="position:relative;height:320px;"><canvas id="chart-prod-mensual"></canvas></div>
+                <div class="pm-strip" id="pm-strip"></div>
               </div>
             </div>
 
@@ -2093,9 +2131,49 @@ function _evtBtn() {
 // ======== DB LOCAL (caché) ========
 // Usamos localStorage solo como caché para acceso rápido
 // Firebase es la fuente de verdad para todos los datos compartidos
+// ------------------------------------------------------------------
+// CORRECCIÓN CRÍTICA: la fuente de lectura ahora es MEMORIA, no localStorage.
+// localStorage tiene un límite de ~5 MB. Al superarlo, setItem lanzaba
+// QuotaExceededError dentro del onSnapshot y cortaba la ejecución, dejando
+// la caché congelada en una versión antigua. Eso producía: _fid fantasma
+// ("No document to update"), borrados sin efecto, eventos duplicados y
+// eventos que nunca se cerraban.
+// Ahora: MEM siempre se actualiza (no puede fallar); localStorage es solo
+// apoyo para el arranque en frío y, si no cabe, se guarda una ventana
+// reciente o se omite — sin romper nada.
+// ------------------------------------------------------------------
+const MEM = Object.create(null);
 const CACHE = {
-  get:(k,d)=>{try{return JSON.parse(localStorage.getItem('smf_'+k))??d;}catch{return d;}},
-  set:(k,v)=>localStorage.setItem('smf_'+k,JSON.stringify(v))
+  get:(k,d)=>{
+    if(MEM[k] !== undefined) return MEM[k];
+    try{
+      const raw = localStorage.getItem('smf_'+k);
+      if(raw !== null){ const v = JSON.parse(raw); if(v !== null && v !== undefined){ MEM[k] = v; return v; } }
+    }catch(e){}
+    return d;
+  },
+  set:(k,v)=>{
+    MEM[k] = v;                         // 1) memoria: SIEMPRE, nunca falla
+    try{                                // 2) localStorage: best-effort
+      localStorage.setItem('smf_'+k, JSON.stringify(v));
+    }catch(e){
+      // Cuota excedida → conservar solo los registros más recientes
+      // (los arrays llegan ordenados por ts desc) para el arranque en frío.
+      try{ localStorage.removeItem('smf_'+k); }catch(e2){}
+      if(Array.isArray(v) && v.length > 1){
+        for(const n of [500, 200, 60, 20, 5]){
+          if(n >= v.length && n !== 5) continue;   // no reintentar el tamaño que ya falló
+          try{ localStorage.setItem('smf_'+k, JSON.stringify(v.slice(0, n))); break; }
+          catch(e3){ try{ localStorage.removeItem('smf_'+k); }catch(e4){} }
+        }
+      }
+      if(!CACHE._avisoCuota){
+        CACHE._avisoCuota = true;
+        console.warn('[CACHE] localStorage lleno — se trabaja en memoria (sin impacto funcional).');
+      }
+    }
+  },
+  _avisoCuota:false
 };
 
 // ======== DB FIREBASE - colecciones ========
@@ -2851,37 +2929,37 @@ async function saveBachada(){
       docData.id=Date.now();
       // ANTES DE GUARDAR LA NUEVA BACHADA: cerrar evento abierto previo del mismo equipo
       // usando la hora de inicio de esta bachada como hora fin del evento
+      // CORRECCIÓN: se cierran TODOS los eventos abiertos del equipo, no solo el
+      // más reciente. Antes se tomaba sort(...)[0] y los demás quedaban abiertos
+      // indefinidamente (de ahí los eventos con 400+ horas).
       try {
-        const evsAbiertos = DB.get('eventos', []).filter(e => 
-          e.equipo === eq && 
+        const evsAbiertos = DB.get('eventos', []).filter(e =>
+          e.equipo === eq &&
           e.estado === 'abierto' &&
-          !e.fin // sin hora fin registrada
+          !e.fin &&                       // sin hora fin registrada
+          e.tipo !== 'fin_proceso' &&     // fin de proceso no se autocierra
+          e._fid                          // sin _fid no hay documento que actualizar
         );
-        if(evsAbiertos.length > 0) {
-          // Tomar el más reciente (mayor ts)
-          const evCerrar = evsAbiertos.sort((a,b) => 
-            (b.ts || '').localeCompare(a.ts || '')
-          )[0];
-          // Calcular duración
-          const fechaIni = evCerrar.fechaIni || fecha;
-          const fechaFin = fecha; // fecha de la nueva bachada
-          const horaIni = evCerrar.inicio;
-          const horaFin = inicio; // hora inicio de la nueva bachada
-          if(horaIni && horaFin) {
-            // Calcular durH considerando posible cruce de día
-            const [h1,m1] = horaIni.split(':').map(Number);
-            const [h2,m2] = horaFin.split(':').map(Number);
-            const dt1 = new Date(fechaIni + 'T' + horaIni + ':00');
-            const dt2 = new Date(fechaFin + 'T' + horaFin + ':00');
-            const durH = Math.max(0, (dt2 - dt1) / 3600000);
+        for(const evCerrar of evsAbiertos){
+          const fechaIniEv = evCerrar.fechaIni || fecha;
+          const horaIni    = evCerrar.inicio;
+          const horaFin    = inicio;      // hora inicio de la nueva bachada
+          if(!horaIni || !horaFin) continue;
+          const dt1 = new Date(fechaIniEv + 'T' + horaIni + ':00');
+          const dt2 = new Date(fecha      + 'T' + horaFin + ':00');
+          const durH = Math.max(0, (dt2 - dt1) / 3600000);
+          try{
             await COL.eventos().doc(evCerrar._fid).update({
-              fechaFin: fechaFin,
+              fechaFin: fecha,
               fin: horaFin,
               durH: parseFloat(durH.toFixed(2)),
               estado: 'cerrado',
-              autoClosed: true // marcador para identificar cierres automáticos
+              autoClosed: true            // marcador de cierre automático
             });
-            console.log('Evento auto-cerrado:', evCerrar._fid, 'durH:', durH);
+            console.log('Evento auto-cerrado:', evCerrar._fid, 'durH:', durH.toFixed(2));
+          }catch(e1){
+            // "No document to update" = registro fantasma (ya no existe en Firebase)
+            console.warn('Auto-cierre falló para', evCerrar._fid, e1.message);
           }
         }
       } catch(err) {
@@ -3346,8 +3424,8 @@ function renderCardsEventos(evs, totalFiltrado){
       (e.desc ? '<div class="rc-obs"><b style="color:var(--text2);">Descripción:</b> ' + e.desc + '</div>' : '') +
       (e.accion ? '<div class="rc-obs"><b style="color:var(--text2);">Acción:</b> ' + e.accion + '</div>' : '') +
       '<div class="rc-btns">' +
-        '<button class="rc-btn" onclick="openEventoModal(' + e.id + ')">\u270F\uFE0F Editar</button>' +
-        '<button class="rc-btn rc-btn-del" onclick="delEvento(' + e.id + ')">\u{1F5D1}</button>' +
+        '<button class="rc-btn" onclick="openEventoModal(\'' + (e._fid || e.id) + '\')">\u270F\uFE0F Editar</button>' +
+        '<button class="rc-btn rc-btn-del" onclick="delEvento(\'' + (e._fid || e.id) + '\')">\u{1F5D1}</button>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -3985,6 +4063,24 @@ async function delBachada(id){
 }
 
 // ======== EVENTOS ========
+// Resolución de identidad de un evento.
+// PRIORIDAD ESTRICTA: _fid (ID real del documento en Firestore). El campo
+// numérico `id` se genera con Date.now() y puede repetirse entre documentos;
+// si se busca primero por `id`, find() devuelve el PRIMER coincidente y se
+// termina editando o borrando un registro distinto al de la tarjeta.
+function resolverEvento(ref){
+  const evs = DB.get('eventos', []);
+  if(ref === null || ref === undefined) return null;
+  const s = String(ref);
+  // 1) coincidencia exacta por _fid
+  let ev = evs.find(e => e._fid === s);
+  if(ev) return ev;
+  // 2) fallback por id numérico (registros antiguos sin _fid en caché)
+  const cand = evs.filter(e => String(e.id) === s);
+  if(cand.length > 1) console.warn('resolverEvento: id duplicado', s, '→', cand.length, 'coincidencias');
+  return cand[0] || null;
+}
+
 function openEventoModal(id){
   if(!canEdit()){alert('Sin permiso.');return;}
   populateSelects();
@@ -3995,11 +4091,12 @@ function openEventoModal(id){
   if(isEdit) editingEventoId = id;
 
   if(isEdit){
-    // Buscar por id numérico O por _fid de Firestore
-    const ev=DB.get('eventos',[]).find(x=>x.id===id || x._fid===id || String(x.id)===String(id));
+    // Buscar priorizando el _fid de Firestore (ver resolverEvento)
+    const ev=resolverEvento(id);
     if(!ev){
-      console.error('Evento no encontrado con id:', id);
-      alert('Error: no se pudo cargar el evento para editar.');
+      console.error('Evento no encontrado con ref:', id);
+      alert('Este evento ya no existe en la base de datos.\n\nLa pantalla se actualizará.');
+      try{ renderEventos(); renderBachadasCards(); }catch(e){}
       return;
     }
     // Guardar referencia al _fid para que saveEvento pueda actualizar correctamente
@@ -4120,13 +4217,8 @@ async function saveEvento(){
 
     if(enModoEdicion){
       // ----------------- MODO EDICIÓN (UPDATE) -----------------
-      // Buscar el evento existente — múltiples criterios de match
-      const existing = DB.get('eventos',[]).find(e =>
-        (editingEventoFid && e._fid === editingEventoFid) ||
-        e._fid === editingEventoId ||
-        e.id === editingEventoId ||
-        String(e.id) === String(editingEventoId)
-      );
+      // Buscar el evento existente priorizando _fid (ver resolverEvento)
+      const existing = resolverEvento(editingEventoFid || editingEventoId);
       if(!existing){
         document.getElementById('e-alert').innerHTML = '<div class="alert alert-error">No se encontró el evento original en la base de datos. Recarga la página e intenta de nuevo. Se ha CANCELADO el guardado para evitar duplicar.</div>';
         return;
@@ -4147,7 +4239,23 @@ async function saveEvento(){
       docData.modifiedAt = new Date().toISOString();
       docData.modifiedBy = (currentUser && currentUser.email) || 'unknown';
       // UPDATE PURO (no INSERT — Firestore .update() no crea documento si no existe)
-      await COL.eventos().doc(fid).update(docData);
+      try{
+        await COL.eventos().doc(fid).update(docData);
+      }catch(eUp){
+        // Registro fantasma: el documento ya no existe en Firebase.
+        // Antes esto se mostraba como "No document to update: .../sim_eventos/xxx".
+        if(/No document to update/i.test(eUp.message||'')){
+          document.getElementById('e-alert').innerHTML =
+            '<div class="alert alert-error"><b>Este evento ya fue eliminado de la base de datos.</b><br>'+
+            'No se puede cerrar porque el registro no existe. La pantalla se actualizará sola; '+
+            'si el equipo sigue parado, registra un evento nuevo.</div>';
+          console.warn('Evento fantasma detectado:', fid);
+          try{ renderEventos(); renderBachadasCards(); }catch(e){}
+          setTimeout(()=>{ try{ closeModal('modal-evento'); }catch(e){} editingEventoId=null; editingEventoFid=null; }, 4000);
+          return;
+        }
+        throw eUp;
+      }
       console.log('✅ Evento actualizado:', fid, '(id', existing.id, ')');
     } else {
       // ----------------- MODO NUEVO (INSERT) -----------------
@@ -4165,6 +4273,24 @@ async function saveEvento(){
         document.getElementById('e-alert').innerHTML = '<div class="alert alert-error">Ya existe un evento con los mismos datos (equipo, tipo, fecha, hora). No se duplicó.</div>';
         console.warn('Duplicado detectado y bloqueado:', duplicado);
         return;
+      }
+      // GUARDA OPERATIVA: un equipo no puede tener dos eventos abiertos del mismo
+      // tipo a la vez. Esta era la vía principal de duplicación: el técnico no veía
+      // el evento ya abierto (caché congelada) y lo volvía a registrar.
+      if(docData.estado === 'abierto'){
+        const yaAbierto = DB.get('eventos',[]).find(e =>
+          e.equipo === docData.equipo &&
+          e.tipo   === docData.tipo &&
+          e.estado === 'abierto' && !e.fin
+        );
+        if(yaAbierto){
+          document.getElementById('e-alert').innerHTML =
+            '<div class="alert alert-error"><b>'+docData.equipo+' ya tiene un evento abierto de tipo &laquo;'+
+            (docData.tipoLabel||docData.tipo)+'&raquo;</b> (desde '+(yaAbierto.fechaIni||'?')+' '+(yaAbierto.inicio||'')+
+            ').<br>No se creó un duplicado. Cierra el evento existente desde la pestaña Eventos / Paradas.</div>';
+          console.warn('Evento abierto duplicado bloqueado:', yaAbierto);
+          return;
+        }
       }
       docData.id = Date.now();
       docData.ts = new Date().toISOString();
@@ -4253,8 +4379,8 @@ function filtrarEventos(resetPage){
       <td><span class="status-pill ${e.estado==='cerrado'?'status-activo':'status-pendiente'}">${e.estado==='cerrado'?'✅ Cerrado':'🔴 Abierto'}</span></td>
       <td class="no-print acciones-td" onclick="event.stopPropagation()">
         <div style="display:flex;gap:6px;">
-          <button class="btn-sm btn-ghost" style="padding:6px 11px;font-size:13px;" onclick="event.stopPropagation();openEventoModal(${e.id})" title="Editar">✏️</button>
-          <button class="btn-sm btn-ghost" style="padding:6px 11px;font-size:13px;" onclick="event.stopPropagation();delEvento(${e.id})" title="Eliminar">🗑</button>
+          <button class="btn-sm btn-ghost" style="padding:6px 11px;font-size:13px;" onclick="event.stopPropagation();openEventoModal('${e._fid || e.id}')" title="Editar">✏️</button>
+          <button class="btn-sm btn-ghost" style="padding:6px 11px;font-size:13px;" onclick="event.stopPropagation();delEvento('${e._fid || e.id}')" title="Eliminar">🗑</button>
         </div>
       </td>
     </tr>`).join('');
@@ -4299,10 +4425,20 @@ async function delEvento(id){
   if(!canAdmin()){ showToast('Solo administradores pueden eliminar.','warn'); return; }
   if(!confirm('¿Eliminar este evento? Esta acción no se puede deshacer.')) return;
   try{
-    const item=DB.get('eventos',[]).find(e=>e.id===id||e._fid===id||String(e.id)===String(id));
-    if(!item){ showToast('No se encontró el evento.','warn'); return; }
-    const fid=item._fid||String(id);
-    await COL.eventos().doc(fid).delete();
+    const item=resolverEvento(id);
+    if(!item){
+      showToast('Ese evento ya no existe. Pantalla actualizada.','warn');
+      try{ renderEventos(); renderBachadasCards(); }catch(e){}
+      return;
+    }
+    // Sin _fid no hay documento que borrar. Antes se usaba String(id) como ruta,
+    // lo que apuntaba a un documento inexistente y el borrado nunca surtía efecto.
+    if(!item._fid){
+      showToast('Registro sin identificador de Firestore. Recarga la página (Ctrl+F5) e intenta de nuevo.','error');
+      console.error('delEvento: evento sin _fid', item);
+      return;
+    }
+    await COL.eventos().doc(item._fid).delete();
     showToast('Evento eliminado.','success');
   }catch(err){ console.error('delEvento:',err); showToast('Error al eliminar: '+err.message,'error'); }
 }
@@ -4378,13 +4514,62 @@ function renderDashboard(){
   const elOper = document.getElementById('kpi-operativos');
   if(elOper) elOper.innerHTML = nOperativos + '<span class="dash-mini-unit">/' + equiposTotales.length + '</span>';
 
-  // Producción acumulada del MES actual (independiente del filtro de fecha, usa mes en curso)
-  const hoy = new Date();
-  const mesActual = hoy.toISOString().slice(0,7); // YYYY-MM
-  const prodMesKg = DB.get('bachadas',[]).filter(b => (b.fecha||'').slice(0,7)===mesActual)
-    .reduce((s,b)=>s+(b.peso||0),0);
-  const elAcum = document.getElementById('kpi-acum-mes');
-  if(elAcum) elAcum.innerHTML = (prodMesKg/1000).toLocaleString('es-PE',{maximumFractionDigits:1,minimumFractionDigits:1}) + '<span class="dash-mini-unit">t</span>';
+  // ============================================================
+  // TARJETAS 1 y 2 — ambas ligadas al RANGO DE FECHAS FILTRADO
+  // ------------------------------------------------------------
+  // Antes: la tarjeta 1 decía "Producción día" pero sumaba todo el período
+  // filtrado (solo era correcta con el filtro por defecto = hoy), y la
+  // tarjeta 2 ignoraba el filtro y mostraba siempre el mes calendario en
+  // curso leyendo la lista completa de bachadas. De ahí la incoherencia.
+  // Ahora: la tarjeta 1 rotula según el rango; la tarjeta 2 muestra el
+  // promedio diario del período (t/día), o el acumulado del mes cuando el
+  // rango es de un solo día (donde el promedio sería redundante).
+  // ============================================================
+
+  // Nº de días del rango seleccionado (ambos extremos inclusive)
+  let nDiasRango = 1;
+  if(from && to){
+    const d1 = new Date(from + 'T00:00:00'), d2 = new Date(to + 'T00:00:00');
+    nDiasRango = Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+  } else if(!from && !to){
+    // Todo el histórico: días cubiertos por las bachadas presentes
+    const fechas = bachs.map(b=>b.fecha).filter(Boolean);
+    if(fechas.length){
+      const d1 = new Date(fechas.reduce((a,b)=>a<b?a:b) + 'T00:00:00');
+      const d2 = new Date(fechas.reduce((a,b)=>a>b?a:b) + 'T00:00:00');
+      nDiasRango = Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+    }
+  } else {
+    // Solo un extremo definido: cubrir desde/hasta los datos filtrados
+    const fechas = bachs.map(b=>b.fecha).filter(Boolean);
+    if(fechas.length){
+      const d1 = new Date(fechas.reduce((a,b)=>a<b?a:b) + 'T00:00:00');
+      const d2 = new Date(fechas.reduce((a,b)=>a>b?a:b) + 'T00:00:00');
+      nDiasRango = Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+    }
+  }
+
+  // Tarjeta 1: etiqueta honesta según el rango
+  const elProdLbl = document.getElementById('kpi-prod-label');
+  if(elProdLbl) elProdLbl.textContent = (nDiasRango === 1) ? 'Producción día' : 'Producción período';
+
+  // Tarjeta 2: promedio diario del período, o acumulado del mes si es 1 día
+  const elAcum  = document.getElementById('kpi-acum-mes');
+  const elAcumL = document.getElementById('kpi-acum-label');
+  if(nDiasRango > 1){
+    const promDia = prodToneladas / nDiasRango;
+    if(elAcumL) elAcumL.textContent = 'Promedio diario (' + nDiasRango + ' d)';
+    if(elAcum)  elAcum.innerHTML = promDia.toLocaleString('es-PE',{maximumFractionDigits:1,minimumFractionDigits:1}) + '<span class="dash-mini-unit">t/día</span>';
+  } else {
+    // Mes del día filtrado (no el de "hoy"), con fecha LOCAL para no saltar
+    // de mes por la conversión a UTC después de las 19:00 (Perú UTC-5).
+    const refMes = (to || from || fechaLocal(new Date())).slice(0,7); // YYYY-MM
+    const prodMesKg = DB.get('bachadas',[])
+      .filter(b => (b.fecha||'').slice(0,7) === refMes)
+      .reduce((s,b)=>s+(b.peso||0),0);
+    if(elAcumL) elAcumL.textContent = 'Acumulado mes';
+    if(elAcum)  elAcum.innerHTML = (prodMesKg/1000).toLocaleString('es-PE',{maximumFractionDigits:1,minimumFractionDigits:1}) + '<span class="dash-mini-unit">t</span>';
+  }
 
   // Producción por turno (Día / Noche) en toneladas
   const prodDiaKg = bachs.filter(b=>b.turno==='Día').reduce((s,b)=>s+(b.peso||0),0);
@@ -4570,6 +4755,10 @@ function renderDashboard(){
   // Producción diaria (tendencia): se renderiza con su PROPIO filtro de fecha,
   // independiente del filtro global del dashboard. Ver renderTendenciaProduccion().
   renderTendenciaProduccion();
+
+  // Producción mensual · histórico: filtro de AÑO propio, también independiente
+  // del rango global. Ver renderProdMensual().
+  try{ renderProdMensual(); }catch(e){ console.warn('renderProdMensual:', e); }
 
   // ===== NUEVO: Comparativo Bachadas vs Tiempo (barras apiladas Opción B) =====
   const equiposCD = ['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','TE'];
@@ -5023,6 +5212,182 @@ function renderTendenciaProduccion() {
   const prodDiariaTon = fechasOrd.map(f => parseFloat((fechasMap[f] / 1000).toFixed(1)));
 
   renderLineConMeta('chart-prod-dia', fechasOrd.map(f => f.slice(5)), prodDiariaTon, 'Producción (t)', '#00c8ff', 120);
+}
+
+// ============================================================
+// PRODUCCIÓN MENSUAL · HISTÓRICO
+// ------------------------------------------------------------
+// Gráfica estrictamente mensual con filtro de AÑO propio. No depende del
+// rango de fechas general del dashboard. El selector se llena únicamente
+// con los años que existen en las bachadas registradas; si el año anterior
+// no tiene datos, la barra de comparación no se dibuja.
+// ============================================================
+const PM_MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const PM_META_DIA = 120;                       // t/día (misma meta del dashboard)
+const pmDiasMes = (anio, m) => new Date(anio, m + 1, 0).getDate();   // respeta bisiestos
+
+function renderProdMensual(){
+  const sel    = document.getElementById('pm-anio');
+  const canvas = document.getElementById('chart-prod-mensual');
+  const strip  = document.getElementById('pm-strip');
+  const leyEl  = document.getElementById('pm-leyenda');
+  if(!sel || !canvas) return;
+
+  const bachsAll = DB.get('bachadas', []);
+
+  // --- Años con registros reales (solo esos aparecen en el selector) ---
+  const aniosSet = new Set();
+  bachsAll.forEach(b => {
+    const f = b.fecha || '';
+    if(/^\d{4}-\d{2}-\d{2}$/.test(f)) aniosSet.add(f.slice(0,4));
+  });
+  const anios = [...aniosSet].sort((a,b) => b.localeCompare(a));   // más reciente primero
+
+  if(!anios.length){
+    sel.innerHTML = '';
+    sel.style.display = 'none';
+    if(leyEl) leyEl.innerHTML = '';
+    if(charts['chart-prod-mensual']){ charts['chart-prod-mensual'].destroy(); delete charts['chart-prod-mensual']; }
+    canvas.parentElement.innerHTML = '<div class="pm-vacio">Sin bachadas registradas todavía.</div>';
+    if(strip) strip.innerHTML = '';
+    return;
+  }
+  sel.style.display = '';
+
+  // Repoblar solo si cambió la lista, para no perder la selección del usuario
+  const firmaActual = anios.join(',');
+  if(sel.dataset.firma !== firmaActual){
+    const previo = sel.value;
+    sel.innerHTML = anios.map(a => '<option value="'+a+'">'+a+'</option>').join('');
+    sel.dataset.firma = firmaActual;
+    sel.value = anios.includes(previo) ? previo : anios[0];
+  }
+  const anio = parseInt(sel.value || anios[0], 10);
+  const prev = anio - 1;
+  const hayPrev = aniosSet.has(String(prev));
+
+  // --- Sumar peso por mes (kg → t) ---
+  const acum = (yr) => {
+    const out = Array(12).fill(null);
+    bachsAll.forEach(b => {
+      const f = b.fecha || '';
+      if(f.slice(0,4) !== String(yr)) return;
+      const m = parseInt(f.slice(5,7), 10) - 1;
+      if(m < 0 || m > 11) return;
+      out[m] = (out[m] || 0) + (b.peso || 0) / 1000;
+    });
+    return out.map(v => v === null ? null : parseFloat(v.toFixed(1)));
+  };
+  const act = acum(anio);
+  const ant = hayPrev ? acum(prev) : Array(12).fill(null);
+  const META = PM_MESES.map((_, m) => pmDiasMes(anio, m) * PM_META_DIA);
+
+  // --- Leyenda (la de comparación solo si hay año anterior) ---
+  if(leyEl){
+    leyEl.innerHTML =
+      '<span><span class="dash-leg-line" style="background:#00c8ff;"></span>'+anio+'</span>' +
+      (hayPrev ? '<span><span class="dash-leg-line" style="background:#2a4a6e;"></span>'+prev+'</span>' : '') +
+      '<span><span class="dash-leg-line" style="background:#ff3b5c;border-top:1px dashed #ff3b5c;"></span>Meta mensual</span>';
+  }
+
+  // --- Datasets ---
+  const datasets = [
+    {label:String(anio), data:act, backgroundColor:'#00c8ff',
+     borderRadius:{topLeft:5,topRight:5}, order:2,
+     barPercentage: hayPrev ? .82 : .62, categoryPercentage: hayPrev ? .76 : .9}
+  ];
+  if(hayPrev){
+    datasets.push({label:String(prev), data:ant, backgroundColor:'#2a4a6e',
+      borderRadius:{topLeft:5,topRight:5}, order:3, barPercentage:.82, categoryPercentage:.76});
+  }
+  datasets.push({type:'line', label:'Meta', data:META, borderColor:'#ff3b5c', borderWidth:1.6,
+    borderDash:[6,4], pointRadius:0, fill:false, tension:0, order:1});
+
+  if(charts['chart-prod-mensual']) charts['chart-prod-mensual'].destroy();
+  charts['chart-prod-mensual'] = new Chart(canvas, {
+    type:'bar',
+    data:{labels:PM_MESES, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      layout:{padding:{top:20}},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#0d1c2e', borderColor:'#2a4a6e', borderWidth:1,
+          titleColor:'#e8f4ff', bodyColor:'#8aaac8', padding:10, cornerRadius:7,
+          titleFont:{size:12,weight:'700'}, bodyFont:{size:11.5},
+          callbacks:{
+            label:(ct)=>{
+              if(ct.parsed.y === null || ct.parsed.y === undefined) return ct.dataset.label+': sin datos';
+              const t = ct.parsed.y.toLocaleString('es-PE',{maximumFractionDigits:0});
+              if(ct.dataset.type === 'line') return 'Meta: '+t+' t';
+              const pct = (ct.parsed.y / META[ct.dataIndex] * 100).toFixed(0);
+              return ct.dataset.label+': '+t+' t  ('+pct+'% de meta)';
+            }
+          }
+        }
+      },
+      scales:{
+        x:{grid:{display:false}, border:{color:'#1e3352'},
+           ticks:{color:'#8aaac8', font:{size:11, weight:'600'}}},
+        y:{beginAtZero:true, grid:{color:'rgba(30,51,82,.55)'}, border:{display:false},
+           ticks:{color:'#4a6a8a', font:{size:10}, callback:v => v >= 1000 ? (v/1000)+'k' : v},
+           title:{display:true, text:'toneladas', color:'#4a6a8a', font:{size:10, weight:'600'}}}
+      }
+    },
+    plugins:[{
+      // Etiqueta de valor sobre cada barra del año seleccionado
+      id:'pmTopLabel',
+      afterDatasetsDraw(c){
+        const meta0 = c.getDatasetMeta(0);
+        if(!meta0 || meta0.hidden) return;
+        const ds = c.data.datasets[0], x = c.ctx;
+        x.save();
+        x.font = '600 10px Inter, sans-serif';
+        x.textAlign = 'center'; x.textBaseline = 'bottom';
+        meta0.data.forEach((bar, i) => {
+          const v = ds.data[i];
+          if(v === null || v === undefined || v === 0) return;
+          x.fillStyle = v >= META[i] ? '#00e87a' : '#8aaac8';
+          x.fillText(v >= 1000 ? (v/1000).toFixed(2).replace('.',',')+'k' : Math.round(v), bar.x, bar.y - 5);
+        });
+        x.restore();
+      }
+    }]
+  });
+
+  // --- Tira resumen ---
+  if(strip){
+    const con = act.filter(v => v !== null && v > 0);
+    const tot = con.reduce((s,v) => s+v, 0);
+    // Comparativo justo: solo los meses que tienen dato en el año seleccionado
+    const totAnt = ant.reduce((s,v,i) => (act[i] !== null && v !== null) ? s+v : s, 0);
+    // Meta prorrateada: el mes en curso solo cuenta los días transcurridos
+    const HOY = new Date(), yAct = HOY.getFullYear(), mAct = HOY.getMonth();
+    const metaAcum = act.reduce((s,v,i) => {
+      if(v === null) return s;
+      if(anio === yAct && i === mAct) return s + PM_META_DIA * HOY.getDate();
+      return s + META[i];
+    }, 0);
+    const f = n => n.toLocaleString('es-PE',{maximumFractionDigits:0});
+
+    let sub = '<div class="pm-sc-s">sin comparativo</div>';
+    if(totAnt > 0){
+      const d = (tot - totAnt) / totAnt * 100;
+      sub = '<div class="pm-sc-s '+(d>=0?'up':'dn')+'">'+(d>=0?'▲ +':'▼ ')+d.toFixed(1)+'% vs '+prev+' (mismos meses)</div>';
+    }
+    let best = '—', bestS = '';
+    if(con.length){
+      const iBest = act.indexOf(Math.max(...con));
+      best = PM_MESES[iBest]; bestS = f(act[iBest])+' t';
+    }
+    strip.innerHTML =
+      '<div class="pm-sc"><div class="pm-sc-l">Total '+anio+'</div><div class="pm-sc-v">'+f(tot)+'<small>t</small></div>'+sub+'</div>'+
+      '<div class="pm-sc g"><div class="pm-sc-l">Mejor mes</div><div class="pm-sc-v">'+best+'</div><div class="pm-sc-s">'+bestS+'</div></div>'+
+      '<div class="pm-sc w"><div class="pm-sc-l">Promedio mensual</div><div class="pm-sc-v">'+f(con.length?tot/con.length:0)+'<small>t</small></div><div class="pm-sc-s">meses con producción</div></div>'+
+      '<div class="pm-sc p"><div class="pm-sc-l">Cumplim. meta</div><div class="pm-sc-v">'+(metaAcum?tot/metaAcum*100:0).toFixed(1)+'<small>%</small></div><div class="pm-sc-s">'+PM_META_DIA+' t/día · mes en curso prorrateado</div></div>';
+  }
 }
 
 function renderLineConMeta(id,labels,data,label,color,meta){
@@ -5736,9 +6101,9 @@ function renderHomeCards() {
         </div>
         ${evAct.desc ? `<div style="font-size:11px;color:var(--text3);margin-bottom:10px;">${evAct.desc}</div>` : ''}
         <div class="hc-btns">
-          <button class="hc-btn" onclick="event.stopPropagation();openEventoModal('${evAct.id}')">✏️ Editar evento</button>
-          <button class="hc-btn" onclick="event.stopPropagation();openEventoModal('${evAct.id}');setTimeout(()=>{const f=document.getElementById('e-fin');if(f){f.scrollIntoView({behavior:'smooth'});}},300)">✅ Cerrar evento</button>
-          <button class="hc-btn hc-btn-del" onclick="event.stopPropagation();delEvento('${evAct.id}')" title="Eliminar">🗑</button>
+          <button class="hc-btn" onclick="event.stopPropagation();openEventoModal('${evAct._fid || evAct.id}')">✏️ Editar evento</button>
+          <button class="hc-btn" onclick="event.stopPropagation();openEventoModal('${evAct._fid || evAct.id}');setTimeout(()=>{const f=document.getElementById('e-fin');if(f){f.scrollIntoView({behavior:'smooth'});}},300)">✅ Cerrar evento</button>
+          <button class="hc-btn hc-btn-del" onclick="event.stopPropagation();delEvento('${evAct._fid || evAct.id}')" title="Eliminar">🗑</button>
         </div>
       </div>`;
     }
@@ -5869,9 +6234,9 @@ function renderBachadasCards() {
   </div>
   ${ev.desc?`<div style="font-size:11px;color:var(--text3);margin-bottom:10px;padding:6px 8px;background:var(--surface2);border-radius:6px;">${ev.desc}</div>`:''}
   <div class="bc-btns">
-    <button class="bc-btn" onclick="event.stopPropagation();openEventoModal('${ev.id}')">✏️ Editar</button>
-    <button class="bc-btn" onclick="event.stopPropagation();openEventoModal('${ev.id}')">✅ Cerrar</button>
-    <button class="bc-btn bc-btn-del" onclick="event.stopPropagation();delEvento('${ev.id}')" title="Eliminar">🗑</button>
+    <button class="bc-btn" onclick="event.stopPropagation();openEventoModal('${ev._fid || ev.id}')">✏️ Editar</button>
+    <button class="bc-btn" onclick="event.stopPropagation();openEventoModal('${ev._fid || ev.id}')">✅ Cerrar</button>
+    <button class="bc-btn bc-btn-del" onclick="event.stopPropagation();delEvento('${ev._fid || ev.id}')" title="Eliminar">🗑</button>
   </div>
 </div>`;
   });
@@ -7407,6 +7772,18 @@ async function guardarPostBachada() {
     createdAt: new Date().toISOString(),
     createdBy: (currentUser && currentUser.email) || 'unknown'
   };
+
+  // GUARDA ANTI-DUPLICADO: no crear un segundo evento abierto del mismo tipo
+  // para el mismo equipo (doble clic, o el técnico que no veía el ya abierto).
+  const _yaAbierto = DB.get('eventos',[]).find(e =>
+    e.equipo === reg.equipo && e.tipo === reg.tipo && e.estado === 'abierto' && !e.fin
+  );
+  if(_yaAbierto){
+    closeModal('modal-post-bachada');
+    showToast(reg.equipo+' ya tiene un evento abierto de ese tipo (desde '+(_yaAbierto.inicio||'?')+'). No se duplicó.','warn');
+    console.warn('postBachada: evento abierto duplicado bloqueado', _yaAbierto);
+    return;
+  }
 
   try {
     await COL.eventos().add(reg);

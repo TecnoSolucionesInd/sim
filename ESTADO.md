@@ -83,8 +83,10 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Módulos → pestañas: proceso→En Proceso, registros, eventos, dashboard, pantalla→Pantalla Sala, config→Configuración.
 - Si se modifica el aplicativo original: `python3 tools/integrar_congelamiento.py <congelamiento.html>` regenera `apps/cong/index.html`.
   Desde ahora conviene editar directamente `apps/cong/index.html`.
-- Cambio definitivo (día acordado): ejecutar la copia de datos una última vez, pasar al personal al enlace del SIM
-  y dejar el sistema anterior solo como respaldo unas semanas.
+- Cambio definitivo (día acordado): en `apps/cong/migrar.html` marcar **las dos casillas** (volver a copiar todo + dejar el SIM
+  idéntico al sistema actual), pulsar "Copiar datos", verificar que las cinco colecciones queden en "Coincide", pasar al personal
+  al enlace del SIM y dejar el sistema anterior solo como respaldo unas semanas.
+  La segunda casilla retira del SIM los registros eliminados en el origen; sin ella los totales nunca coinciden.
 
 ## Costos de mantenimiento (F2)
 - Repositorio público: las órdenes (DATA) NO van en el código. Se guardan en `datos/cost/fuente/{meta, p0..pN}` (JSON por partes de ~700 KB).
@@ -267,6 +269,16 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - 2026-10-25: Formatos — visualización por área (áreas por usuario en Administración; filtra Llenar y Registros).
 - 2026-10-25: Formatos — campos calculados (diferencia, porcentaje), rangos por columna, emisión con revisión del manual y R-301 ósmosis.
 - 2026-10-25: Equipos — ubicaciones como lista controlada (módulo Ubicaciones, aviso de tipeo, unificar).
+- 2026-11-05: Congelamiento (F1) — correcciones críticas de eventos y mejoras del dashboard, aplicadas con
+  `tools/parche_cong_2026_11_05.py`. (a) La caché pasa a memoria: `localStorage` superaba su cuota (~5 MB) y el
+  `QuotaExceededError` cortaba el `onSnapshot`, dejando los datos congelados — de ahí los `_fid` fantasma
+  ("No document to update"), los borrados sin efecto, los eventos duplicados y los eventos abiertos con 400+ horas.
+  (b) Al abrir bachada se cierran todos los eventos abiertos del equipo, no solo el más reciente. (c) Los botones de
+  editar/cerrar/eliminar usan el `_fid` de Firestore en vez del campo `id` (un `Date.now()` que puede repetirse).
+  (d) Aviso claro ante registro fantasma. (e) No se permiten dos eventos abiertos del mismo tipo por equipo.
+  (f) Indicadores clave ligados al rango de fechas filtrado ("Producción período" y "Promedio diario").
+  (g) Nueva gráfica "Producción mensual · histórico" con filtro de año propio (solo años con registros).
+  Copia de datos: `migrar.html` ahora puede dejar el SIM idéntico al origen (retira lo eliminado allá).
 - 2026-10-25: Sistema Servicios (SRV) y datos de placa del motor en Equipos.
 - 2026-10-25: Equipos — código automático SISTEMA-TIPO-N° (catálogo de tipos y siglas, contador por prefijo, recodificación de provisionales).
 - 2026-10-02 — Repositorio creado. Portal, núcleo, Administración, plantilla y reglas (F0).
