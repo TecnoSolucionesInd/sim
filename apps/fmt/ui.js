@@ -45,6 +45,7 @@ export function imprimir(html, horizontal, titulo = 'Formato') {
 const AJUSTE = `function ajustarHojas(){document.querySelectorAll('.hoja').forEach(function(h){
   var hz=h.classList.contains('h'),mm=96/25.4,alto=(hz?210:297)*mm,ancho=hz?297:210;
   h.style.zoom='';h.style.width='';
+  if(h.querySelector('.hj-sec[style*="break-before"]'))return;
   var k=alto/h.scrollHeight;
   if(k<1){k=Math.max(0.72,k*0.995);h.style.zoom=k;h.style.width=(ancho/k)+'mm';}
 });}

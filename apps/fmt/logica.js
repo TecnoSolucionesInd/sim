@@ -209,9 +209,11 @@ export function evaluar(def, reg, cfg) {
     if (s.tipo === 'tabla') {
       const t = v[s.id] || {};
       const cols = t.cols || [];
-      if (!cols.length) F(paso, `${s.titulo}: no hay equipos para registrar`, s.id);
+      if (!cols.length && !s.sinEquiposOk) F(paso, `${s.titulo}: no hay equipos para registrar`, s.id);
       cols.forEach(col => {
-        if (estadoColumna(reg, s, col) !== 'operando') return;
+        const est = estadoColumna(reg, s, col);
+        if (est === 'fuera') A(paso, `${etiquetaCol(col)}: fuera de servicio`, `${s.id}:${col.id}`);
+        if (est !== 'operando') return;
         s.filas.forEach(fl => {
           if (fl.tipo === 'diferencia') {
             const y = valorFila(t, fl, col);

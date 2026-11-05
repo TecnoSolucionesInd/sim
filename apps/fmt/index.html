@@ -613,6 +613,7 @@ function seccionEd(s, i, n, ro) {
           : `<label class="pf p-uni"><span>unidad</span><input data-fl="${s.id}:${j}:unidad" value="${esc(f.unidad)}" placeholder="—" ${dis}></label>
              ${f.rangos ? `<span class="pf" title="Rangos por columna" style="font-size:12px;color:var(--tx-3);white-space:normal">${Object.entries(f.rangos).filter(([, x]) => rangoTxt(x)).map(([k, x]) => `${esc(k)} ${esc(rangoTxt(x))}`).join(' · ')}</span>` : ''}<label class="pf p-min" ${f.rangos ? 'hidden' : ''}><span>mín</span><input data-fl="${s.id}:${j}:min" value="${esc(f.min)}" inputmode="decimal" placeholder="—" ${f.tipo !== 'numero' && f.tipo !== 'diferencia' ? 'disabled' : dis}></label>
              <label class="pf p-max" ${f.rangos ? 'hidden' : ''}><span>máx</span><input data-fl="${s.id}:${j}:max" value="${esc(f.max)}" inputmode="decimal" placeholder="—" ${f.tipo !== 'numero' && f.tipo !== 'diferencia' ? 'disabled' : dis}></label>`}
+        ${f.tipo === 'numero' ? `<label class="check" style="grid-column:1/-1;font-size:12.5px;margin:2px 0 0"><input type="checkbox" data-flturno="${s.id}:${j}" ${f.porTurno ? 'checked' : ''} ${dis}>Solo una vez por turno (en las demás rondas es opcional)</label>` : ''}
         ${ro ? '' : `<span class="acts"><button type="button" class="ib" data-mvf="${s.id}:${j}:-1" aria-label="Subir" ${j === 0 ? 'disabled' : ''}>${IC.up}</button><button type="button" class="ib" data-mvf="${s.id}:${j}:1" aria-label="Bajar" ${j === s.filas.length - 1 ? 'disabled' : ''}>${IC.down}</button><button type="button" class="ib del" data-delf="${s.id}:${j}" aria-label="Quitar parámetro">${IC.del}</button></span>`}
       </div>`).join('')}
       ${ro ? '' : `<div class="addrow"><button type="button" class="btn sm" data-addf="${s.id}">${IC.mas}Parámetro</button></div>`}`;
@@ -716,6 +717,7 @@ function enlazarDiseno(cont) {
     if (!s.columnas) s.columnas = [];
     cambio();
   });
+  on('[data-flturno]', 'change', (e) => { const [sid, j] = e.target.dataset.flturno.split(':'); const f = secPor(sid).filas[Number(j)]; if (e.target.checked) f.porTurno = true; else delete f.porTurno; f.requerido = true; cambio(false); });
   on('[data-eqsel]', 'change', (e) => {
     const s = secPor(e.target.dataset.eqsel);
     const marc = [...document.querySelectorAll(`[data-eqsel="${s.id}"]:checked`)].map(x => x.value);

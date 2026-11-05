@@ -33,9 +33,13 @@ export const MODOS_FIRMA = [
 export const ESTADOS_COLUMNA = [
   { id: 'operando', label: 'Operando', corto: 'OP' },
   { id: 'parado', label: 'Parado', corto: 'PAR' },
+  { id: 'reserva', label: 'En reserva', corto: 'RES' },
   { id: 'mantenimiento', label: 'En mantenimiento', corto: 'MANT' },
   { id: 'fuera', label: 'Fuera de servicio', corto: 'F/S' }
 ];
+
+// estados que ofrece una tabla: "En reserva" solo en tablas con equipos de respaldo (bombas, ventiladores)
+export const estadosDe = (s) => ESTADOS_COLUMNA.filter(e => e.id !== 'reserva' || s.conReserva);
 
 export const TIPOS_FILA = [
   { id: 'numero',    nombre: 'Número' },
@@ -292,9 +296,20 @@ export function pilotos() {
   const bar = { unidad: 'bar' }, gc = { unidad: '°C' }, opc = { requerido: false };
   const comunesFin = () => [
     f('Corriente del motor', 'numero', { unidad: 'A' }),
-    f('Horómetro', 'numero', { unidad: 'h' }),
+    f('Horómetro', 'numero', { unidad: 'h', porTurno: true }),
     f('Ruido o vibración anormal', 'seleccion', { opciones: ['No', 'Sí'] })
   ];
+  // Equipos auxiliares (bombas, ventiladores, motores): si fallan, dejan fuera de servicio a los compresores.
+  // Estado en cada ronda; corriente y horómetro una vez por turno. Admiten "En reserva" para el equipo de respaldo.
+  const amp = () => f('Corriente', 'numero', { unidad: 'A', porTurno: true });
+  const aux = (titulo, ubicacion, incluye, filas) => ({ id: uid(), tipo: 'tabla', titulo, fuente: 'equipos',
+    filtro: { sistema: 1, ubicacion, incluye }, estadoEquipo: true, conReserva: true, sinEquiposOk: true, columnas: [], filas });
+  const nuevaPagina = (sec) => ({ ...sec, nuevaPagina: true });   // al imprimir empieza en una hoja nueva
+  const AUX = {
+    bombaRef: (u, t, inc) => aux(t, u, inc, [f('Presión de descarga', 'numero', { unidad: 'bar' }), amp(), f('Horómetro', 'numero', { unidad: 'h', porTurno: true })]),
+    bombaAgua: (u, t) => aux(t, u, 'bomba de agua', [f('Presión de descarga', 'numero', { unidad: 'bar' }), amp()]),
+    soloAmp: (u, t, inc) => aux(t, u, inc, [amp()])
+  };
   const filasPiston = ({ culatas = 0, culataMax = false, carter = false } = {}) => {
     const pS = f('Presión de succión', 'numero', bar), pA = f('Presión de aceite', 'numero', bar);
     return [
@@ -337,7 +352,9 @@ export function pilotos() {
       c('Condensadores en servicio', 'numero', { requerido: true, unidad: 'und' }),
       c('Temperatura de Cámara 1', 'numero', { requerido: true, unidad: '°C' }),
       c('Temperatura de Cámara 2', 'numero', { requerido: true, unidad: '°C' })
-    ])
+    ]),
+    nuevaPagina(AUX.bombaRef(SM(1), 'Auxiliares · Bombas de refrigerante (estación KVA)', 'bomba de refrigerante / bomba de r-22 / bomba de r22')),
+    AUX.soloAmp(SM(1), 'Auxiliares · Ventiladores de condensadores Copeland', 'ventilador'),
   ]);
   const r102 = sala('R-102', 'Parámetros de compresores — Sala de Máquinas 2', [
     tabla('Compresor de pistón · productor de hielo', { ubicacion: SM(2), incluye: 'pistón / piston / hielo' }, filasPiston({ culataMax: true, carter: true })),
@@ -346,7 +363,11 @@ export function pilotos() {
       c('Nivel del recibidor de líquido', 'numero', { requerido: true, unidad: '%' }),
       c('Presión de condensación', 'numero', { requerido: true, unidad: 'bar' }),
       c('Temperatura de Cámara 3', 'numero', { requerido: true, unidad: '°C' })
-    ])
+    ]),
+    nuevaPagina(AUX.bombaAgua(SM(2), 'Auxiliares · Bombas de agua (torre Cámara 3)')),
+    AUX.soloAmp(SM(2), 'Auxiliares · Bombas de aceite', 'bomba de aceite'),
+    AUX.soloAmp(SM(2), 'Auxiliares · Ventiladores de torre de enfriamiento', 'ventilador'),
+    AUX.soloAmp(SM(2), 'Auxiliares · Motor del tambor (productor de hielo)', 'tambor'),
   ]);
   const r103 = sala('R-103', 'Parámetros de compresores — Sala de Máquinas 3', [
     tabla('Compresores de tornillo Yantai · R-22', { ubicacion: SM(3), incluye: 'yantai' }, filasTornillo()),
@@ -357,7 +378,11 @@ export function pilotos() {
       c('Nivel del recibidor R-22', 'numero', { requerido: true, unidad: '%' }),
       c('Nivel del recibidor amoniaco', 'numero', { requerido: true, unidad: '%' }),
       c('Amoniaco en el ambiente (detector)', 'numero', { unidad: 'ppm' })
-    ])
+    ]),
+    nuevaPagina(AUX.bombaRef(SM(3), 'Auxiliares · Bombas de amoniaco (estaciones Bingshan)', 'bomba de amoniaco / bomba de nh3')),
+    AUX.bombaAgua(SM(3), 'Auxiliares · Bombas de agua (torres y condensadores)'),
+    AUX.soloAmp(SM(3), 'Auxiliares · Bombas de aceite (Yantai)', 'bomba de aceite'),
+    AUX.soloAmp(SM(3), 'Auxiliares · Ventiladores (torres y condensadores evaporativos)', 'ventilador'),
   ]);
 
   // R-301: viene del manual de mantenimiento (revisión 3, vigente desde junio 2026)

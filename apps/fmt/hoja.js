@@ -1,7 +1,7 @@
 // Renderizador de la hoja del formato (vista previa e impresión).
 // renderHoja(datos) devuelve el HTML de una hoja A4 con el encabezado de control documental.
 
-import { esc, rangoTxt, revTxt, mesAbrev, codigoCompleto, turnosDe, firmasDe, tablaDeEquipos, pideUbicacion, ESTADOS_COLUMNA, celdasGuia } from './modelo.js';
+import { esc, rangoTxt, revTxt, mesAbrev, codigoCompleto, turnosDe, firmasDe, tablaDeEquipos, pideUbicacion, ESTADOS_COLUMNA, estadosDe, celdasGuia } from './modelo.js';
 import { columnasTabla, etiquetaCol, estadoColumna, fueraDeRango, valorFila, calculado, calcTxt, rangoCol, minutosEntre, duracionTxt, fechaTxt, fechaHoraTxt } from './logica.js';
 
 // logo de la empresa por defecto (si no se sube otro en Configuración)
@@ -162,16 +162,20 @@ function seccionHtml(s, def, cols, R, equipos) {
     }
     const t = R ? (R.v[s.id] || {}) : {};
     const filas = s.filas;
+    // tablas anchas: se parten en bloques de hasta 8 equipos (se repite la columna de parámetros)
+    const MAXC = 8, bloques = [];
+    for (let i = 0; i < Math.max(1, columnas.length); i += MAXC) bloques.push(columnas.slice(i, i + MAXC));
+    const tablaDe = (columnas) => {
     const head = columnas.map(c => `<th>${esc(c.codigo || c.descripcion)}${c.codigo && c.descripcion ? `<small>${esc(c.descripcion)}</small>` : ''}</th>`).join('');
     const filaEstado = s.estadoEquipo ? `<tr><td class="l">Estado del equipo</td><td class="c"></td><td class="r"></td>${columnas.map(c => {
-      if (!R) return `<td class="c" style="font-size:6.6pt">${ESTADOS_COLUMNA.map(e => e.corto).join(' / ')}</td>`;
+      if (!R) return `<td class="c" style="font-size:6.6pt">${estadosDe(s).map(e => e.corto).join(' / ')}</td>`;
       const e = estadoColumna(R, s, c);
       return `<td class="est ${e !== 'operando' ? 'no' : ''}">${esc((ESTADOS_COLUMNA.find(x => x.id === e) || {}).label || '')}</td>`;
     }).join('')}</tr>` : '';
-    return `<div class="hj-sec">${tit}<table class="hj-t ${filas.length >= 12 ? 'cmp' : ''}">
+    return `<table class="hj-t ${filas.length >= 12 ? 'cmp' : ''}" style="${bloques.length > 1 ? 'margin-bottom:1.6mm' : ''}">
       <thead><tr><th class="l" style="width:${columnas.length > 4 ? 24 : 28}%">Parámetro</th><th style="width:7%">Unidad</th><th style="width:10%">Rango</th>${head}</tr></thead>
       <tbody>${filaEstado}${filas.length ? filas.map(fl => `<tr>
-        <td class="l">${esc(fl.etiqueta || 'Parámetro')}${fl.tipo === 'seleccion' && fl.opciones.length && !R ? `<small>${fl.opciones.map(esc).join(' / ')}</small>` : ''}${fl.tipo === 'diferencia' ? `<small>${esc((() => { const a = filas.find(k => k.id === fl.desde), b = filas.find(k => k.id === fl.hasta); return a && b ? `= ${a.etiqueta} − ${b.etiqueta}` : 'Calculado'; })())}</small>` : ''}</td>
+        <td class="l">${esc(fl.etiqueta || 'Parámetro')}${fl.porTurno ? '<small>1 vez por turno</small>' : ''}${fl.tipo === 'seleccion' && fl.opciones.length && !R ? `<small>${fl.opciones.map(esc).join(' / ')}</small>` : ''}${fl.tipo === 'diferencia' ? `<small>${esc((() => { const a = filas.find(k => k.id === fl.desde), b = filas.find(k => k.id === fl.hasta); return a && b ? `= ${a.etiqueta} − ${b.etiqueta}` : 'Calculado'; })())}</small>` : ''}</td>
         <td class="c">${esc(fl.unidad || '')}</td><td class="r">${fl.tipo !== 'numero' && fl.tipo !== 'diferencia' ? '' : fl.rangos ? Object.entries(fl.rangos).filter(([, x]) => rangoTxt(x)).map(([k, x]) => `<small style="font-size:6.6pt;color:#4A5866;font-family:'IBM Plex Sans',Arial,sans-serif">${esc(k)}</small>${esc(rangoTxt(x))}`).join('<br>') : esc(rangoTxt(fl))}</td>
         ${columnas.map(c => {
           if (!R) return '<td></td>';
@@ -181,7 +185,9 @@ function seccionHtml(s, def, cols, R, equipos) {
           const al = (fl.tipo === 'numero' || fl.tipo === 'diferencia') && fueraDeRango(rangoCol(fl, c), x);
           return `<td class="vv ${al ? 'al' : ''}">${esc(fl.tipo === 'numero' || fl.tipo === 'diferencia' ? String(x).replace('.', ',') : x)}</td>`;
         }).join('')}</tr>`).join('')
-        : `<tr><td colspan="${3 + columnas.length}" class="c">Sin parámetros</td></tr>`}</tbody></table></div>`;
+        : `<tr><td colspan="${3 + columnas.length}" class="c">Sin parámetros</td></tr>`}</tbody></table>`;
+    };
+    return `<div class="hj-sec" ${s.nuevaPagina ? 'style="break-before:page"' : ''}>${tit}${bloques.map(tablaDe).join('')}</div>`;
   }
   if (s.tipo === 'checklist') {
     const t = R ? (R.v[s.id] || {}) : {};

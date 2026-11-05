@@ -4,7 +4,7 @@ import { toast } from '../../core/core.js';
 import { norm } from '../../core/maestros.js';
 import * as D from './datos.js';
 import { IC, modal, confirmar, reducirFoto } from './ui.js';
-import { esc, clonar, celdasGuia, firmasDe, tablaDeEquipos, pideUbicacion, rangoTxt, ESTADOS_COLUMNA, turnosDe, SISTEMAS } from './modelo.js';
+import { esc, clonar, celdasGuia, firmasDe, tablaDeEquipos, pideUbicacion, rangoTxt, ESTADOS_COLUMNA, estadosDe, turnosDe, SISTEMAS } from './modelo.js';
 import {
   turnoActual, periodoClave, periodoTxt, inicioConsulta, FREC_PERIODICAS, columnasTabla, ubicacionesDe, etiquetaCol,
   numero, fueraDeRango, calculado, calcTxt, esCalculado, rangoCol, minutosEntre, duracionTxt, evaluar, calcularDuraciones, equiposDelRegistro, estadoColumna,
@@ -308,7 +308,8 @@ function iniciar(p, { pendiente = null, ubicacion = '' } = {}) {
     }));
   }
   armarTablas(def, reg);
-  F = { key: reg.id, reg, def, paso: 0, modo: 'nuevo', pendienteId: pendiente?.id || null, intento: false, col: {} };
+  F = { key: reg.id, reg, def: clonar(def), paso: 0, modo: 'nuevo', pendienteId: pendiente?.id || null, intento: false, col: {} };
+  aplicarTurno();
   guardarBorrador(true);
   pintarFormulario();
 }
@@ -413,7 +414,21 @@ function irPaso(i) {
   window.scrollTo({ top: 0 });
 }
 
-function cambio() { guardarBorrador(); actualizarProgreso(); }
+function cambio() { aplicarTurno(); guardarBorrador(); actualizarProgreso(); }
+
+// Parámetros "una vez por turno": se exigen solo en el primer registro del turno de este formato
+function turnoHecho() {
+  const r0 = F.reg;
+  if (!r0.turno) return false;
+  return (DATA?.registros || []).some(r => r.id !== r0.id && r.plantillaId === r0.plantillaId && r.fechaOp === r0.fechaOp
+    && norm(r.turno || '') === norm(r0.turno) && !['anulado', 'borrador'].includes(r.estado));
+}
+function aplicarTurno() {
+  const hecho = turnoHecho();
+  let usa = false;
+  F.def.secciones.forEach(s => (s.filas || []).forEach(fl => { if (fl.porTurno) { usa = true; fl.requerido = !hecho; } }));
+  F.turnoHecho = usa && hecho;
+}
 function actualizarProgreso() {
   const ev = evaluar(F.def, F.reg, A.cfg);
   const fal = new Set(ev.faltantes.map(x => x.paso));
@@ -613,7 +628,7 @@ function pasoTabla(box, s) {
       <div class="tcols" role="tablist">${cols.map((c, j) => `<button type="button" role="tab" data-col="${j}" class="${j === i ? 'on' : ''}" aria-selected="${j === i}"><b><i class="dot ${estadoCol(s, c)}"></i>${esc(etiquetaCol(c))}</b><small>${esc(estadoColumna(F.reg, s, c) === 'operando' ? (estadoCol(s, c) === 'ok' ? 'Completo' : estadoCol(s, c) === 'al' ? 'Con alerta' : 'Pendiente') : ESTADOS_COLUMNA.find(x => x.id === estadoColumna(F.reg, s, c)).label)}</small></button>`).join('')}</div>
       <div class="tpanel">
         <div class="eqn">${esc(col.codigo || col.descripcion)}${col.codigo ? `<small>${esc(col.descripcion)}</small>` : ''}</div>
-        ${s.estadoEquipo ? `<div class="lf-f"><div class="lb">Estado del equipo</div><div class="chs" id="tEst">${ESTADOS_COLUMNA.map(x => `<button type="button" data-v="${x.id}" class="${x.id === e ? 'on' : ''}${x.id !== 'operando' && x.id === e ? ' na' : ''}">${x.label}</button>`).join('')}</div></div>` : ''}
+        ${s.estadoEquipo ? `<div class="lf-f"><div class="lb">Estado del equipo</div><div class="chs" id="tEst">${estadosDe(s).map(x => `<button type="button" data-v="${x.id}" class="${x.id === e ? 'on' : ''}${x.id !== 'operando' && x.id === e ? ' na' : ''}">${x.label}</button>`).join('')}</div></div>` : ''}
         ${e === 'operando' ? s.filas.map(fl => {
           const x = t.c?.[fl.id]?.[col.id];
           const ref = `${s.id}:${col.id}:${fl.id}`;
@@ -625,7 +640,7 @@ function pasoTabla(box, s) {
               <div class="rg"><span>${rangoTxt(rangoCol(fl, col)) ? 'Rango ' + esc(rangoTxt(rangoCol(fl, col))) : ''}</span><span class="alx">${IC.alert} Fuera de rango</span></div></div>`;
           }
           if (fl.tipo === 'texto') return `<div class="lf-f" data-ref="${ref}"><label for="tf_${fl.id}">${esc(fl.etiqueta)}${fl.requerido !== false ? ' <sup>*</sup>' : ''}</label><input class="field" id="tf_${fl.id}" data-tf="${fl.id}" value="${esc(x || '')}"><span class="falta">Dato obligatorio</span></div>`;
-          return `<div class="lf-f" data-ref="${ref}"><label for="tf_${fl.id}">${esc(fl.etiqueta)}${fl.requerido !== false ? ' <sup>*</sup>' : ''}</label>
+          return `<div class="lf-f" data-ref="${ref}"><label for="tf_${fl.id}">${esc(fl.etiqueta)}${fl.requerido !== false ? ' <sup>*</sup>' : ''}${fl.porTurno ? ` <span class="muted" style="font-weight:400;font-size:12.5px">· ${F.turnoHecho ? 'ya registrado en este turno (opcional)' : '1 vez por turno'}</span>` : ''}</label>
             <div class="num ${fueraDeRango(rangoCol(fl, col), x) ? 'al' : ''}"><input id="tf_${fl.id}" data-tf="${fl.id}" inputmode="decimal" autocomplete="off" value="${esc(x ?? '')}" placeholder="—">${fl.unidad ? `<span class="u">${esc(fl.unidad)}</span>` : ''}</div>
             <div class="rg"><span>${rangoTxt(rangoCol(fl, col)) ? 'Rango ' + esc(rangoTxt(rangoCol(fl, col))) : ''}</span><span class="alx">${IC.alert} Fuera de rango</span></div><span class="falta">Dato obligatorio</span></div>`;
         }).join('') : `<div class="muted" style="font-size:14px;padding:4px 0 8px">Sin lecturas: el equipo no está operando.</div>`}
