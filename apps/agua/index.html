@@ -77,18 +77,19 @@ input[type=number],input[type=text]{font:inherit;font-size:13px;border:1px solid
 .scene{position:relative;height:560px;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh);
   background:radial-gradient(120% 90% at 50% 0%,#FFFFFF 0%,#E9EEF3 55%,#D3DCE5 100%)}
 .scene .guias{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
-.scene .guias line{stroke:#1D2E40;stroke-width:1.3;opacity:.75}
-.scene .guias circle{fill:#1D2E40}
+.scene .guias line{stroke:#1D3A5F;stroke-width:1.6}
+.scene .guias circle{fill:#fff;stroke:#1D3A5F;stroke-width:1.6}
 .scene canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
 .scene canvas:active{cursor:grabbing}
-.scene .tag{position:absolute;left:0;top:0;transform:translate(-50%,-100%);z-index:2;pointer-events:none;white-space:nowrap;
-  background:#FFFFFF;border:1px solid #B9C5D1;border-radius:10px;padding:6px 10px;box-shadow:0 6px 16px rgba(20,32,46,.18);font-size:12px;color:var(--ink2);text-align:center}
-.scene .tag b{display:block;font-size:13px;color:var(--ink)}
-.scene .tag .big{font-size:18px;font-weight:700;color:var(--ink)}
+.scene .tag{position:absolute;left:0;top:0;transform:translate(-50%,-100%);z-index:2;pointer-events:none;white-space:nowrap;overflow:hidden;
+  background:#FFFFFF;border:1.5px solid #1D3A5F;border-radius:9px;padding:0;box-shadow:0 6px 16px rgba(20,32,46,.22);font-size:12px;font-weight:600;color:#2B3A4A;text-align:center}
+.scene .tag b{display:block;font-size:12.5px;color:#fff;background:#1D3A5F;padding:4px 12px}
+.scene .tag .cu{padding:3px 12px 7px}
+.scene .tag .big{font-size:19px;font-weight:800;color:#13263D}
+.scene .tag .led{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:6px;vertical-align:-1px;box-shadow:0 0 6px currentColor}
 .scene .tag .bar{height:5px;border-radius:3px;background:#E3E9EF;margin-top:5px;overflow:hidden}
 .scene .tag .bar i{display:block;height:100%;border-radius:3px;background:var(--water)}
-.scene .tag.mod b{color:#fff}.scene .tag.mod{background:var(--nav);border-color:var(--nav);color:#C9D4DF}
-.scene .tag.cons{background:#fff;border-left:4px solid var(--cons)}
+.scene .tag.mod{background:#1D3A5F;color:#DFE7EF}
 .scene .hud{position:absolute;left:14px;top:12px;font-size:11.5px;color:var(--muted);background:rgba(255,255,255,.75);padding:5px 9px;border-radius:8px}
 .scene .vw{position:absolute;right:12px;top:12px;display:flex;gap:6px}
 .scene .vw button{border:1px solid var(--line);background:rgba(255,255,255,.92);border-radius:8px;padding:5px 9px;font-size:12px;color:var(--ink2)}
@@ -118,15 +119,14 @@ input[type=number],input[type=text]{font:inherit;font-size:13px;border:1px solid
 .toast.err{background:var(--bad)}
 @media (max-width:1100px){.hmi{grid-template-columns:1fr}.scene{height:440px}}
 @media (max-width:600px){.scene .tag.mod,.scene .tag.cons{display:none!important}.scene{height:420px!important}}
-@media (max-width:900px){.play{flex-wrap:wrap}.play .when{width:100%;text-align:left}.scene .hud{display:none}.scene .tag{padding:4px 7px;font-size:11px}.scene .tag .big{font-size:15px}.grid>*{grid-column:span 12!important}#view{padding:14px 16px 90px}#hd{padding:12px 16px 0}#hd .meta{display:none}.scene{height:380px}.play .when{min-width:0}}
+@media (max-width:900px){.play{flex-wrap:wrap}.play .when{width:100%;text-align:left}.scene .hud{display:none}.scene .tag{font-size:11px}.scene .tag b{padding:3px 8px;font-size:11.5px}.scene .tag .cu{padding:2px 8px 5px}.scene .tag .big{font-size:15px}.grid>*{grid-column:span 12!important}#view{padding:14px 16px 90px}#hd{padding:12px 16px 0}#hd .meta{display:none}.scene{height:380px}.play .when{min-width:0}}
 </style>
 <style>
 .hmi-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .hmi-top h2{margin:0;font-size:16px;font-weight:650}
 .hmi-top .when{font-size:12.5px;color:var(--muted)}
 .hmi-top .sp{flex:1}
-.scene .tag.med{background:#fff;border-left:4px solid var(--accent)}
-.scene .tag.med.co{border-left-color:var(--cons)}
+
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .chip{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--card2);color:var(--ink2)}
 .chip.ok{background:rgba(47,143,78,.1);color:var(--ok)}.chip.warn{background:rgba(201,133,0,.12);color:#9a6600}.chip.bad{background:rgba(204,61,61,.1);color:var(--bad)}
@@ -398,7 +398,16 @@ function cascada(items, sep = 6, tope = 4) {
       if (!choque) break;
       base = choque.y0 - sep;
     }
-    if (base - it.h < tope) base = tope + it.h;
+    if (base - it.h < tope) {
+      // sin espacio arriba: se coloca debajo de su punto
+      base = it.y + 8 + it.h;
+      for (let k = 0; k < 40; k++) {
+        const r = { x0: it.x - it.w / 2, x1: it.x + it.w / 2, y0: base - it.h, y1: base };
+        const choque = puestos.find(o => r.x0 < o.x1 + sep && r.x1 > o.x0 - sep && r.y0 < o.y1 + sep && r.y1 > o.y0 - sep);
+        if (!choque) break;
+        base = choque.y1 + sep + it.h;
+      }
+    }
     it.base = base; puestos.push({ x0: it.x - it.w / 2, x1: it.x + it.w / 2, y0: base - it.h, y1: base });
   });
   return items;
@@ -406,8 +415,9 @@ function cascada(items, sep = 6, tope = 4) {
 
 // ---------- escena 3D (Three.js) según la distribución de planta ----------
 // Planta (vista desde arriba, el frente es +z): Pozo 3 a la izquierda; Pozo 1 (atrás) y Pozo 2 (adelante) juntos a su derecha;
-// módulos 1 y 2 a la derecha. Ósmosis → caudalímetro → tubería por el frente que entra al Pozo 2 y al Pozo 3.
-// Salida a producción congelado desde el Pozo 1 hacia la derecha, con su caudalímetro.
+// módulos 1 y 2 a la derecha. Ósmosis → caudalímetro de ósmosis → reparto por el frente al Pozo 2 (1 y 2) o al Pozo 3.
+// Salida a producción congelado desde el Pozo 1, por el fondo, con su caudalímetro y directo a la nave.
+const COLOR_EST = { Produciendo: '#3DDC6A', Retrolavado: '#F2B234', Parado: '#E5484D' };
 function escena3D(box, P) {
   const T = window.THREE;
   if (!T) { box.insertAdjacentHTML('beforeend', '<div class="vacio" style="padding-top:200px">No se pudo cargar el visor 3D.</div>'); return { estado() {}, camara() {}, parar() {}, foto: () => null }; }
@@ -417,21 +427,56 @@ function escena3D(box, P) {
   ren.shadowMap.enabled = true; ren.shadowMap.type = T.PCFSoftShadowMap; ren.outputEncoding = T.sRGBEncoding;
   box.prepend(ren.domElement);
   const sc = new T.Scene(), cam = new T.PerspectiveCamera(36, W() / H(), 0.5, 600);
-  sc.add(new T.HemisphereLight(0xffffff, 0x9fb0c2, 0.7));
-  const sol = new T.DirectionalLight(0xffffff, 1.05); sol.position.set(-25, 50, 35); sol.castShadow = true;
+  sc.add(new T.HemisphereLight(0xffffff, 0xa8b4c0, 0.8));
+  const sol = new T.DirectionalLight(0xffffff, 0.95); sol.position.set(-25, 50, 35); sol.castShadow = true;
   sol.shadow.mapSize.set(2048, 2048); Object.assign(sol.shadow.camera, { left: -50, right: 50, top: 40, bottom: -40, near: 1, far: 160 }); sc.add(sol);
-  const piso = new T.Mesh(new T.PlaneGeometry(160, 110), new T.MeshStandardMaterial({ color: 0xd2dae2, roughness: 0.95 }));
-  piso.rotation.x = -Math.PI / 2; piso.receiveShadow = true; sc.add(piso);
-  const grid = new T.GridHelper(140, 70, 0xaab6c2, 0xbfcad5); grid.position.y = 0.01; sc.add(grid);
+  // texturas dibujadas (sin archivos externos)
+  const lienzo = (w, h, f) => { const c = document.createElement('canvas'); c.width = w; c.height = h; f(c.getContext('2d'), w, h); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; };
+  const rep = (t, x, y) => { t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(x, y); return t; };
+  let semilla = 7; const azar = () => (semilla = (semilla * 16807) % 2147483647) / 2147483647;
+  const texPiso = rep(lienzo(512, 512, (g, w, h) => {
+    g.fillStyle = '#E4E7EB'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2500; i++) { const v = 205 + azar() * 40 | 0; g.fillStyle = `rgba(${v},${v + 2},${v + 5},.5)`; g.fillRect(azar() * w, azar() * h, 2, 2); }
+    g.strokeStyle = '#C3C9D0'; g.lineWidth = 3; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * 128, 0); g.lineTo(i * 128, h); g.stroke(); g.beginPath(); g.moveTo(0, i * 128); g.lineTo(w, i * 128); g.stroke(); }
+  }), 20, 14);
+  const texConc = lienzo(256, 256, (g, w, h) => {
+    g.fillStyle = '#BFC3C7'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 6000; i++) { const v = 140 + azar() * 100 | 0; g.fillStyle = `rgba(${v},${v},${v + 3},${azar() * .45})`; g.fillRect(azar() * w, azar() * h, 1 + azar() * 2, 1 + azar() * 2); }
+  });
+  rep(texConc, 2, 1);
+  // agua: patrón de destellos que se repite sin cortes
+  const texAgua = lienzo(256, 256, (g, w, h) => {
+    const im = g.createImageData(w, h), d = im.data, k = Math.PI * 2 / w;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const a = Math.sin(x * k * 3 + Math.sin(y * k * 2) * 2.2) + Math.sin(y * k * 4 + Math.sin(x * k * 3) * 1.6);
+      const b = Math.sin(x * k * 5 + y * k * 2 + Math.cos(y * k * 3) * 1.3);
+      const f = Math.pow(Math.max(0, 1 - Math.abs(a) * 1.6), 2) * 0.8 + Math.pow(Math.max(0, 1 - Math.abs(b) * 2.5), 3) * 0.5;
+      const i = (y * w + x) * 4; d[i] = 22 + f * 70; d[i + 1] = 128 + f * 60; d[i + 2] = 218 + f * 30; d[i + 3] = 255;
+    }
+    g.putImageData(im, 0, 0);
+  });
+  rep(texAgua, 1, 1);
+  // regla de nivel (franja amarilla con marcas cada 0.10 m y cifras cada 0.40 m)
+  const texRegla = (alto) => lienzo(160, 640, (g, w, h) => {
+    g.clearRect(0, 0, w, h); g.fillStyle = '#F2C200'; g.fillRect(0, 0, 34, h);
+    g.fillStyle = '#1B2733'; g.font = '700 22px "Segoe UI", system-ui, sans-serif'; g.textBaseline = 'middle';
+    for (let v = 0; v <= alto + 1e-6; v += 0.1) {
+      const y = h - 6 - (v / alto) * (h - 12), mayor = Math.abs(v / 0.4 - Math.round(v / 0.4)) < 1e-6;
+      g.fillRect(0, y - 1.5, mayor ? 34 : 20, 3);
+      if (mayor) { g.fillStyle = '#FFFFFF'; g.fillRect(40, y - 14, 112, 28); g.fillStyle = '#1B2733'; g.fillText(`${v.toFixed(2)} m`, 46, y + 1); }
+    }
+  });
 
-  const concreto = new T.MeshStandardMaterial({ color: 0xa9b5c1, roughness: 0.8, metalness: 0.02 });
-  const vidrio = new T.MeshStandardMaterial({ color: 0xd6e6f2, transparent: true, opacity: 0.1, roughness: 0.1, depthWrite: false });
-  const borde = new T.LineBasicMaterial({ color: 0x1d2e40, transparent: true, opacity: 0.85 });
-  const aguaMat = new T.MeshStandardMaterial({ color: 0x1668b0, transparent: true, opacity: 0.9, roughness: 0.4, metalness: 0.05 });
-  const supMat = new T.MeshStandardMaterial({ color: 0x2f8ad6, transparent: true, opacity: 0.95, roughness: 0.38, metalness: 0.05 });
-  const azul = new T.MeshStandardMaterial({ color: 0x1d2e40, roughness: 0.5, metalness: 0.2 });
-  const metal = new T.MeshStandardMaterial({ color: 0x8da0b3, roughness: 0.4, metalness: 0.6 });
-  const e = 0.25;
+  const piso = new T.Mesh(new T.PlaneGeometry(160, 110), new T.MeshStandardMaterial({ map: texPiso, color: 0xe2e6ea, roughness: 0.6, metalness: 0.05 }));
+  piso.rotation.x = -Math.PI / 2; piso.receiveShadow = true; sc.add(piso);
+
+  const concreto = new T.MeshStandardMaterial({ map: texConc, color: 0xd6d9dc, roughness: 0.92 });
+  const borde = new T.LineBasicMaterial({ color: 0x5b6670, transparent: true, opacity: 0.6 });
+  const amarillo = new T.MeshStandardMaterial({ color: 0xf2c200, roughness: 0.45, metalness: 0.3 });
+  const azul = new T.MeshStandardMaterial({ color: 0x3a4652, roughness: 0.55, metalness: 0.3 });
+  const acero = new T.MeshStandardMaterial({ color: 0xc3cad2, roughness: 0.28, metalness: 0.75 });
+  const metal = new T.MeshStandardMaterial({ color: 0x8a96a3, roughness: 0.4, metalness: 0.6 });
+  const e = 0.35;
 
   // medidas en planta: dx (eje x) y dz (eje z) de cada pozo
   const pz = Object.fromEntries(P.pozos.map(p => [p.id, p]));
@@ -444,75 +489,129 @@ function escena3D(box, P) {
     p1: [sep / 2 + p1.largo / 2, -bloque / 2 + p1.ancho / 2],
     p2: [sep / 2 + p2.largo / 2, bloque / 2 - p2.ancho / 2]
   };
+  const cil = (r, l, mat, seg = 16) => new T.Mesh(new T.CylinderGeometry(r, r, l, seg), mat);
   const POZ = {};
   P.pozos.forEach(p => {
     const [dx, dz] = dimP[p.id] || [p.largo, p.ancho], [x0, z0] = pos[p.id] || [0, 0], Hh = p.alto;
     const g = new T.Group(); g.position.set(x0, 0, z0); sc.add(g);
-    const muro = (w, h, d, x, y, z, mat = concreto) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = mat === concreto; m.receiveShadow = true; g.add(m); };
-    muro(dx + 2 * e, e, dz + 2 * e, 0, -e / 2 + 0.001, 0);
+    const muro = (w, h, d, x, y, z) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), concreto); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); };
+    muro(dx + 2 * e, 0.12, dz + 2 * e, 0, 0.06, 0);
     muro(dx + 2 * e, Hh, e, 0, Hh / 2, -dz / 2 - e / 2);
+    muro(dx + 2 * e, Hh, e, 0, Hh / 2, dz / 2 + e / 2);
     muro(e, Hh, dz, -dx / 2 - e / 2, Hh / 2, 0);
-    muro(e, Hh, dz, dx / 2 + e / 2, Hh / 2, 0, p.id === 'p3' ? concreto : vidrio);
-    muro(dx + 2 * e, Hh, e, 0, Hh / 2, dz / 2 + e / 2, vidrio);
+    muro(e, Hh, dz, dx / 2 + e / 2, Hh / 2, 0);
     const ed = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(dx + 2 * e, Hh, dz + 2 * e)), borde); ed.position.y = Hh / 2; g.add(ed);
-    for (let y = 0.5; y < Hh; y += 0.5) { const t = new T.Mesh(new T.BoxGeometry(0.9, 0.03, 0.06), new T.MeshBasicMaterial({ color: 0x1d2e40 })); t.position.set(-dx / 2 + 0.5, y, -dz / 2 + 0.03); g.add(t); }
-    const max = new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(-dx / 2, Hh, dz / 2 + e + 0.02), new T.Vector3(dx / 2, Hh, dz / 2 + e + 0.02)]), new T.LineDashedMaterial({ color: 0xcc3d3d, dashSize: 0.4, gapSize: 0.25 }));
-    max.computeLineDistances(); g.add(max);
-    const agua = new T.Mesh(new T.BoxGeometry(dx - 0.02, 1, dz - 0.02), aguaMat); agua.scale.y = 0.001; g.add(agua);
-    const sg = new T.PlaneGeometry(dx - 0.04, dz - 0.04, 48, 48); sg.rotateX(-Math.PI / 2);
-    const sup = new T.Mesh(sg, supMat); g.add(sup);
-    POZ[p.id] = { p, g, agua, sup, base: sg.attributes.position.array.slice(), nivel: 0, meta: 0, tag: null, dx, dz };
+    const ei = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(dx, Hh, dz)), borde); ei.position.y = Hh / 2 + 0.001; g.add(ei);
+    // regla de nivel en la pared del fondo
+    const rg = new T.Mesh(new T.PlaneGeometry(1.0, Hh * 640 / 640), new T.MeshBasicMaterial({ map: texRegla(Hh), transparent: true }));
+    rg.position.set(-dx / 2 + 0.75, Hh / 2, -dz / 2 + 0.012); g.add(rg);
+    // baranda amarilla sobre los muros
+    const bx = dx / 2 + e / 2, bz = dz / 2 + e / 2, postes = [];
+    const lado = (ax, az, bx2, bz2) => {
+      const L = Math.hypot(bx2 - ax, bz2 - az), n = Math.max(2, Math.ceil(L / 1.6));
+      for (let i = 0; i < n; i++) postes.push([ax + (bx2 - ax) * i / n, az + (bz2 - az) * i / n]);
+      [0.5, 1.0].forEach(yy => { const r = cil(0.035, L, amarillo, 8); r.position.set((ax + bx2) / 2, Hh + yy, (az + bz2) / 2); if (ax === bx2) r.rotation.set(Math.PI / 2, 0, 0); else r.rotation.set(0, 0, Math.PI / 2); g.add(r); });
+    };
+    lado(-bx, -bz, bx, -bz); lado(bx, -bz, bx, bz); lado(bx, bz, -bx, bz); lado(-bx, bz, -bx, -bz);
+    const ip = new T.InstancedMesh(new T.CylinderGeometry(0.04, 0.04, 1.0, 8), amarillo, postes.length);
+    postes.forEach(([px, pz2], i) => ip.setMatrixAt(i, new T.Matrix4().makeTranslation(px, Hh + 0.5, pz2))); ip.castShadow = true; g.add(ip);
+    // agua
+    const agua = new T.Mesh(new T.BoxGeometry(dx - 0.02, 1, dz - 0.02), new T.MeshStandardMaterial({ color: 0x1272c4, roughness: 0.4 })); agua.scale.y = 0.001; g.add(agua);
+    const sg = new T.PlaneGeometry(dx - 0.04, dz - 0.04, 40, 40); sg.rotateX(-Math.PI / 2);
+    const tx = texAgua.clone(); tx.needsUpdate = true; tx.repeat.set(dx / 9, dz / 9);
+    const sup = new T.Mesh(sg, new T.MeshStandardMaterial({ map: tx, transparent: true, opacity: 0.93, roughness: 0.42, metalness: 0.05 })); g.add(sup);
+    POZ[p.id] = { p, g, agua, sup, tx, base: sg.attributes.position.array.slice(), nivel: 0, meta: 0, tag: null, dx, dz };
   });
-  const xDer = sep / 2 + p1.largo;          // borde derecho del bloque pozo 1 / pozo 2
-  const zFrente = Math.max(p3.largo / 2, bloque / 2) + e;
+  const xDer = sep / 2 + p1.largo + e;      // cara exterior derecha del bloque pozo 1 / pozo 2
+  const zF2 = bloque / 2 + e, zF3 = p3.largo / 2 + e;
+  const zFrente = Math.max(zF2, zF3);
 
-  // módulos (a la derecha, módulo 1 arriba y módulo 2 abajo en el bosquejo)
+  // módulos de ósmosis en su bastidor (OI-01 atrás, OI-02 adelante)
+  const texMemb = (col) => rep(lienzo(256, 32, (g, w, h) => { g.fillStyle = col; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(0, 5, w, 5); g.fillStyle = 'rgba(0,0,0,.22)'; for (let i = 0; i < 4; i++) g.fillRect(i * 64, 0, 5, h); }), 1, 1);
   const MOD = {};
   P.modulos.forEach((m, k) => {
     const g = new T.Group(); g.position.set(xDer + 9.5, 0, k ? 3.4 : -3.0); sc.add(g);
-    const b = new T.Mesh(new T.BoxGeometry(6.2, 0.25, 2.6), azul); b.position.y = 0.12; b.castShadow = true; g.add(b);
-    for (let i = 0; i < 5; i++) {
-      const c = new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 5.4, 20), new T.MeshStandardMaterial({ color: k ? 0xeb6834 : 0x2a78d6, roughness: 0.35, metalness: 0.15 }));
-      c.rotation.z = Math.PI / 2; c.position.set(0, 0.55 + (i % 3) * 0.5, i < 3 ? -0.55 : 0.55); c.castShadow = true; g.add(c);
-    }
-    [-2.75, 2.75].forEach(xx => { const s = new T.Mesh(new T.BoxGeometry(0.12, 1.9, 2.4), metal); s.position.set(xx, 1.05, 0); g.add(s); });
-    MOD[m.id] = { m, g };
+    const skid = new T.Mesh(new T.BoxGeometry(6.4, 0.2, 2.6), azul); skid.position.y = 0.1; skid.castShadow = true; g.add(skid);
+    // bastidor
+    [[-3, -1.15], [3, -1.15], [-3, 1.15], [3, 1.15]].forEach(([x, z]) => { const c = new T.Mesh(new T.BoxGeometry(0.12, 2.2, 0.12), metal); c.position.set(x, 1.2, z); c.castShadow = true; g.add(c); });
+    [0.35, 2.25].forEach(y => [-1.15, 1.15].forEach(z => { const v = new T.Mesh(new T.BoxGeometry(6.1, 0.1, 0.1), metal); v.position.set(0, y, z); g.add(v); }));
+    const mm = new T.MeshStandardMaterial({ map: texMemb(k ? '#EB6834' : '#2A78D6'), roughness: 0.35, metalness: 0.1 });
+    const tapa = new T.MeshStandardMaterial({ color: 0x5b6672, roughness: 0.4, metalness: 0.5 });
+    [0.7, 1.2, 1.7].forEach(y => [-0.5, 0.5].forEach(z => {
+      const c = cil(0.22, 5.4, mm, 20); c.rotation.z = Math.PI / 2; c.position.set(0, y, z); c.castShadow = true; g.add(c);
+      [-2.75, 2.75].forEach(x => { const t = cil(0.25, 0.14, tapa, 20); t.rotation.z = Math.PI / 2; t.position.set(x, y, z); g.add(t); });
+    }));
+    [-2.95, 2.95].forEach(x => { const c = cil(0.1, 1.7, acero, 12); c.position.set(x, 1.2, 0); g.add(c); });
+    const led = new T.Mesh(new T.SphereGeometry(0.17, 16, 12), new T.MeshStandardMaterial({ color: 0x3ddc6a, emissive: 0x3ddc6a, emissiveIntensity: 0.8 }));
+    led.position.set(2.6, 2.5, -1.15); g.add(led);
+    MOD[m.id] = { m, g, led };
   });
 
-  const tubo = (pts, color, r = 0.16) => {
-    const curva = new T.CatmullRomCurve3(pts.map(p => new T.Vector3(...p)), false, 'catmullrom', 0.02);
-    const mat = new T.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.4 });
-    const mesh = new T.Mesh(new T.TubeGeometry(curva, 160, r, 12, false), mat); mesh.castShadow = true; sc.add(mesh);
-    const n = Math.max(10, Math.round(curva.getLength() * 1.2));
-    const gotas = new T.InstancedMesh(new T.SphereGeometry(r * 0.75, 10, 8), new T.MeshBasicMaterial({ color: 0xffffff }), n); sc.add(gotas);
+  // tuberías con bridas; flechas que avanzan sobre el tubo cuando hay flujo
+  const flecha = new T.ConeGeometry(1, 2.2, 10); flecha.rotateX(Math.PI / 2);
+  const tubo = (pts, color, r = 0.17, mat0) => {
+    const V = pts.map(p => new T.Vector3(...p));
+    const curva = new T.CatmullRomCurve3(V, false, 'catmullrom', 0.03);
+    const mat = mat0 || new T.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.45 });
+    const mesh = new T.Mesh(new T.TubeGeometry(curva, 200, r, 14, false), mat); mesh.castShadow = true; sc.add(mesh);
+    const brida = new T.MeshStandardMaterial({ color: 0x6b7784, roughness: 0.35, metalness: 0.7 });
+    for (let i = 1; i < V.length; i++) {
+      const a = V[i - 1], b = V[i], L = a.distanceTo(b); if (L < 1.4) continue;
+      const dir = b.clone().sub(a).normalize(), q = new T.Quaternion().setFromUnitVectors(new T.Vector3(0, 1, 0), dir);
+      [0.45, L - 0.45].forEach(s => { const f = cil(r * 1.75, 0.1, brida, 18); f.quaternion.copy(q); f.position.copy(a.clone().addScaledVector(dir, s)); sc.add(f); });
+    }
+    const n = Math.max(4, Math.round(curva.getLength() / 2.2));
+    const gotas = new T.InstancedMesh(flecha, new T.MeshBasicMaterial({ color: 0xffffff }), n); gotas.userData.r = r; sc.add(gotas);
     return { curva, mat, gotas, n, fase: 0, vel: 0 };
   };
-  const yT = 0.9, zH = zFrente + 2.6, xCol = xDer + 5.2, xMed = xDer + 2.6;
-  const xM = MOD.m1.g.position.x - 3.1;
+  const yT = 1.25, zH = zFrente + 1.8;
+  const xM = MOD.m1.g.position.x - 3.15, xCol = xDer + 5.2, xMed = xDer + 2.2;
+  const xR2 = pos.p2[0] + 2.4, xR3 = pos.p3[0] + 1.8;
+  const sube = (x, zf, Hh) => [[x, yT, zf + 0.7], [x, Hh + 0.25, zf + 0.7], [x, Hh + 0.25, zf - e - 0.9], [x, Hh - 0.25, zf - e - 0.9]];
+  // salida a producción congelado: desde el Pozo 1 por el fondo, directo a la nave (no toca la ósmosis)
+  const zC = pos.p1[1] - p1.ancho / 2 + 0.9, yC = p1.alto + 0.65, xNave = xDer + 26;
   const TUB = {
-    m1: tubo([[xM, 0.9, MOD.m1.g.position.z], [xCol, yT, MOD.m1.g.position.z], [xCol, yT, MOD.m2.g.position.z]], 0x2a78d6),
-    m2: tubo([[xM, 0.9, MOD.m2.g.position.z], [xCol, yT, MOD.m2.g.position.z]], 0xeb6834),
-    col: tubo([[xCol, yT, MOD.m2.g.position.z], [xCol, yT, zH], [pos.p2[0], yT, zH]], 0x2ba6a0),
-    a12: tubo([[pos.p2[0], yT, zH], [pos.p2[0], yT, zFrente + 0.6], [pos.p2[0], p2.alto + 0.5, zFrente + 0.6], [pos.p2[0], p2.alto + 0.5, zFrente - 0.8]], 0x2ba6a0),
-    a3: tubo([[pos.p2[0], yT, zH], [pos.p3[0], yT, zH], [pos.p3[0], yT, zFrente + 0.6], [pos.p3[0], p3.alto + 0.5, zFrente + 0.6], [pos.p3[0], p3.alto + 0.5, zFrente - 0.8]], 0x9aa8b6),
-    cons: tubo([[xDer - 0.6, p1.alto - 0.3, pos.p1[1] - p1.ancho / 2 + 0.6], [xDer + 1.2, p1.alto - 0.3, pos.p1[1] - p1.ancho / 2 + 0.6], [xDer + 1.6, yT + 0.6, -bloque / 2 - 1.6], [xDer + 21, yT + 0.6, -bloque / 2 - 1.6]], 0x1d2e40, 0.2)
+    m1: tubo([[xM, 1.2, MOD.m1.g.position.z], [xCol, yT, MOD.m1.g.position.z], [xCol, yT, MOD.m2.g.position.z]], 0x2a78d6),
+    m2: tubo([[xM, 1.2, MOD.m2.g.position.z], [xCol, yT, MOD.m2.g.position.z]], 0xeb6834),
+    col: tubo([[xCol, yT, MOD.m2.g.position.z], [xCol, yT, zH], [xMed, yT, zH]], 0x1fa38a, 0.19),
+    dist: tubo([[xMed, yT, zH], [xR2, yT, zH]], 0x1fa38a, 0.19),
+    a12: tubo([[xR2, yT, zH], ...sube(xR2, zF2, p2.alto)], 0x1fa38a),
+    a3: tubo([[xR2, yT, zH], [xR3, yT, zH], ...sube(xR3, zF3, p3.alto)], 0x9aa8b6),
+    cons: tubo([[xDer - e - 0.9, p1.alto - 0.35, zC], [xDer - e - 0.9, yC, zC], [xDer + 1.4, yC, zC], [xNave - 3.1, yC, zC]], 0, 0.2, acero)
   };
-  // caudalímetros (dial)
-  const medidor = (x, y, z, color) => {
-    const g = new T.Group(); g.position.set(x, y, z); sc.add(g);
-    const cuerpo = new T.Mesh(new T.CylinderGeometry(0.55, 0.55, 0.5, 28), new T.MeshStandardMaterial({ color: 0xf3f5f7, roughness: 0.4, metalness: 0.3 }));
-    cuerpo.rotation.x = Math.PI / 2; g.add(cuerpo);
-    const aro = new T.Mesh(new T.TorusGeometry(0.55, 0.07, 10, 28), new T.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.3 })); aro.position.z = 0.26; g.add(aro);
-    const ag = new T.Mesh(new T.BoxGeometry(0.05, 0.42, 0.02), new T.MeshBasicMaterial({ color: 0xcc3d3d })); ag.position.set(0, 0.12, 0.27); g.add(ag);
-    return { g, ag };
-  };
-  const MED = { o: medidor(xMed, yT + 0.75, zH, 0x2ba6a0), c: medidor(xDer + 11, yT + 1.35, -bloque / 2 - 1.6, 0x1d2e40) };
+  // caudalímetro de ósmosis (mecánico, con dial al frente)
+  const MED = {};
+  {
+    const g = new T.Group(); g.position.set(xMed, yT, zH); sc.add(g);
+    const cuerpo = cil(0.3, 0.8, acero, 20); cuerpo.rotation.z = Math.PI / 2; g.add(cuerpo);
+    const cuello = cil(0.07, 0.55, acero, 10); cuello.position.y = 0.5; g.add(cuello);
+    const caja = cil(0.48, 0.2, acero, 32); caja.rotation.x = Math.PI / 2; caja.position.y = 1.05; g.add(caja);
+    const cara = new T.Mesh(new T.CircleGeometry(0.42, 40), new T.MeshBasicMaterial({ map: lienzo(128, 128, (c, w) => {
+      c.fillStyle = '#fff'; c.fillRect(0, 0, w, w); c.strokeStyle = '#1B2733'; c.lineWidth = 3;
+      for (let i = 0; i <= 10; i++) { const a = Math.PI * (0.75 + 1.5 * i / 10); c.beginPath(); c.moveTo(64 + Math.cos(a) * 48, 64 + Math.sin(a) * 48); c.lineTo(64 + Math.cos(a) * 58, 64 + Math.sin(a) * 58); c.stroke(); }
+    }) }));
+    cara.position.set(0, 1.05, 0.105); g.add(cara);
+    const ag = new T.Mesh(new T.BoxGeometry(0.04, 0.36, 0.02), new T.MeshBasicMaterial({ color: 0xcc3d3d })); ag.geometry.translate(0, 0.15, 0); ag.position.set(0, 1.05, 0.12); g.add(ag);
+    MED.o = { g, ag, ancla: new T.Vector3(xMed, yT + 1.75, zH) };
+  }
+  // caudalímetro de producción (electromagnético, con transmisor)
+  {
+    const xE = xDer + 7;
+    const g = new T.Group(); g.position.set(xE, yC, zC); sc.add(g);
+    const azulMed = new T.MeshStandardMaterial({ color: 0x1f63c6, roughness: 0.35, metalness: 0.3 });
+    const cuerpo = cil(0.38, 0.9, azulMed, 24); cuerpo.rotation.z = Math.PI / 2; g.add(cuerpo);
+    [-0.5, 0.5].forEach(x => { const f = cil(0.4, 0.1, acero, 24); f.rotation.z = Math.PI / 2; f.position.x = x; g.add(f); });
+    const cuello = cil(0.1, 0.35, azulMed, 12); cuello.position.y = 0.5; g.add(cuello);
+    const tx = new T.Mesh(new T.CylinderGeometry(0.34, 0.34, 0.3, 24), azulMed); tx.rotation.x = Math.PI / 2; tx.position.y = 0.92; g.add(tx);
+    const pant = new T.Mesh(new T.PlaneGeometry(0.34, 0.22), new T.MeshStandardMaterial({ color: 0x67d88a, emissive: 0x3fbf66, emissiveIntensity: 0.6 })); pant.position.set(0, 0.92, 0.16); g.add(pant);
+    MED.c = { g, ag: null, pant, ancla: new T.Vector3(xE, yC + 1.6, zC) };
+  }
   // producción congelado
-  const nave = new T.Group(); nave.position.set(xDer + 24, 0, -bloque / 2 - 1.6); sc.add(nave);
-  const cuerpo = new T.Mesh(new T.BoxGeometry(6, 3.6, 5.4), new T.MeshStandardMaterial({ color: 0xe8edf2, roughness: 0.7 })); cuerpo.position.y = 1.8; cuerpo.castShadow = true; nave.add(cuerpo);
+  const nave = new T.Group(); nave.position.set(xNave, 0, zC); sc.add(nave);
+  const cuerpo = new T.Mesh(new T.BoxGeometry(6, 3.6, 5.4), new T.MeshStandardMaterial({ color: 0xf3f5f7, roughness: 0.7 })); cuerpo.position.y = 1.8; cuerpo.castShadow = true; cuerpo.receiveShadow = true; nave.add(cuerpo);
   const bn = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(6, 3.6, 5.4)), borde); bn.position.y = 1.8; nave.add(bn);
-  const techo = new T.Mesh(new T.BoxGeometry(6.4, 0.25, 5.8), azul); techo.position.y = 3.7; nave.add(techo);
-  const franja = new T.Mesh(new T.BoxGeometry(6.02, 0.35, 5.42), new T.MeshStandardMaterial({ color: 0x2ba6a0 })); franja.position.y = 3.05; nave.add(franja);
+  const techo = new T.Mesh(new T.BoxGeometry(6.4, 0.3, 5.8), azul); techo.position.y = 3.75; techo.castShadow = true; nave.add(techo);
+  const franja = new T.Mesh(new T.BoxGeometry(6.02, 0.35, 5.42), new T.MeshStandardMaterial({ color: 0x2ba6a0 })); franja.position.y = 3.0; nave.add(franja);
 
   // etiquetas
   const tag = (cls) => { const d = document.createElement('div'); d.className = 'tag ' + cls; box.appendChild(d); return d; };
@@ -522,14 +621,14 @@ function escena3D(box, P) {
   const tMedO = tag('med'), tMedC = tag('med co'), tCons = tag('cons');
   const anclas = () => [
     ...Object.values(POZ).map(z => [z.tag, new T.Vector3(z.g.position.x, z.p.alto + 0.6, z.g.position.z + (z.p.id === 'p1' ? -1.2 : z.p.id === 'p2' ? 1.5 : 0))]),
-    ...Object.values(MOD).map(z => [z.tag, new T.Vector3(z.g.position.x + 2.6, 2.2, z.g.position.z)]),
-    [tMedO, new T.Vector3(xMed, yT + 1.6, zH)], [tMedC, new T.Vector3(xDer + 11, yT + 2.2, -bloque / 2 - 1.6)], [tCons, new T.Vector3(nave.position.x, 4.6, nave.position.z)]
+    ...Object.values(MOD).map(z => [z.tag, new T.Vector3(z.g.position.x + 1.2, 2.3, z.g.position.z)]),
+    [tMedO, MED.o.ancla], [tMedC, MED.c.ancla], [tCons, new T.Vector3(nave.position.x, 4.4, nave.position.z)]
   ];
 
   // cámara
   let th = -0.32, ph = 1.0, rad = 56;
   const tgt = new T.Vector3(xDer + 1.5, 1, -1.5);
-  const VISTA = { iso: [-0.32, 1.0, 56], frente: [0, 1.25, 54], planta: [0, 0.04, 62] };
+  const VISTA = { iso: [-0.32, 1.0, 56], frente: [0, 1.15, 56], planta: [0, 0.04, 62] };
   let anim = null;
   const camara = (k) => { const [a, b, c] = VISTA[k] || VISTA.iso; anim = { th0: th, ph0: ph, r0: rad, th1: a, ph1: b, r1: c, t: 0 }; };
   const poner = () => { const r = rad * Math.max(1, 1.55 / cam.aspect); cam.position.set(tgt.x + r * Math.sin(ph) * Math.sin(th), tgt.y + r * Math.cos(ph), tgt.z + r * Math.sin(ph) * Math.cos(th)); cam.lookAt(tgt); };
@@ -542,7 +641,7 @@ function escena3D(box, P) {
   cv.addEventListener('touchend', () => pinch = null);
   const ro = new ResizeObserver(() => { ren.setSize(W(), H()); cam.aspect = W() / H(); cam.updateProjectionMatrix(); }); ro.observe(box);
 
-  const m4 = new T.Matrix4(), cero = new T.Vector3(0, 0, 0);
+  const m4 = new T.Matrix4(), qa = new T.Quaternion(), pa = new T.Vector3(), sa = new T.Vector3(), adelante = new T.Vector3(0, 0, 1);
   let vivo = true, t0 = performance.now(), tAhora = 0;
   const paso = (t) => {
     if (anim) { anim.t = Math.min(1, anim.t + 0.035); const s = anim.t * anim.t * (3 - 2 * anim.t); th = anim.th0 + (anim.th1 - anim.th0) * s; ph = anim.ph0 + (anim.ph1 - anim.ph0) * s; rad = anim.r0 + (anim.r1 - anim.r0) * s; if (anim.t >= 1) anim = null; }
@@ -554,16 +653,19 @@ function escena3D(box, P) {
       const a = z.sup.geometry.attributes.position.array;
       for (let i = 0; i < a.length; i += 3) a[i + 1] = Math.sin(z.base[i] * 0.9 + t * 1.6) * 0.012 + Math.cos(z.base[i + 2] * 1.3 + t * 1.2) * 0.01;
       z.sup.geometry.attributes.position.needsUpdate = true; z.sup.geometry.computeVertexNormals();
+      z.tx.offset.set(t * 0.012, t * 0.007);
     });
     Object.values(TUB).forEach(u => {
       u.fase = (u.fase + u.vel * 0.016) % 1;
+      const r = u.gotas.userData.r;
       for (let i = 0; i < u.n; i++) {
-        const p = u.curva.getPointAt((i / u.n + u.fase) % 1);
-        m4.makeTranslation(p.x, p.y, p.z); if (u.vel <= 0) m4.scale(cero); u.gotas.setMatrixAt(i, m4);
+        const s = (i / u.n + u.fase) % 1, p = u.curva.getPointAt(s), d = u.curva.getTangentAt(s);
+        qa.setFromUnitVectors(adelante, d); pa.set(p.x, p.y + r + 0.16, p.z);
+        sa.setScalar(u.vel > 0 ? r * 0.55 : 0); m4.compose(pa, qa, sa); u.gotas.setMatrixAt(i, m4);
       }
       u.gotas.instanceMatrix.needsUpdate = true;
     });
-    MED.o.ag.rotation.z = -t * (TUB.col.vel * 6); MED.c.ag.rotation.z = -t * (TUB.cons.vel * 6);
+    MED.o.ag.rotation.z = -t * (TUB.col.vel * 6); MED.c.pant.material.emissiveIntensity = TUB.cons.vel > 0 ? 0.5 + 0.25 * Math.sin(t * 4) : 0.1;
   };
   const loop = (now) => {
     if (!vivo) return;
@@ -573,7 +675,8 @@ function escena3D(box, P) {
     cascada(its);
     let lin = '';
     its.forEach(i => { i.el.style.left = i.x + 'px'; i.el.style.top = i.base + 'px';
-      if (i.y - i.base > 12) lin += `<line x1="${i.x}" y1="${i.base}" x2="${i.x}" y2="${i.y}"/><circle cx="${i.x}" cy="${i.y}" r="3"/>`; });
+      const borde = i.base > i.y ? i.base - i.h : i.base;
+      if (Math.abs(i.y - borde) > 6) lin += `<line x1="${i.x}" y1="${borde}" x2="${i.x}" y2="${i.y}"/><circle cx="${i.x}" cy="${i.y}" r="4.5"/>`; });
     guias.innerHTML = lin;
     requestAnimationFrame(loop);
   };
@@ -585,17 +688,20 @@ function escena3D(box, P) {
       ULT = E; const x = E.x;
       P.pozos.forEach(p => { const z = POZ[p.id], d = x.pozos[p.id];
         z.meta = d ? Math.min(d.h, p.alto) : 0;
-        z.tag.innerHTML = `<b>${esc(p.nombre)}</b><div class="big num">${d ? nf(d.vol, 0) : '—'} <span style="font-size:12px;font-weight:500">m³</span></div>${d ? `${nf(d.h, 2)} m · ${nf(d.pct * 100, 0)} %` : 'sin lectura'}<div class="bar"><i style="width:${d ? d.pct * 100 : 0}%"></i></div>`;
+        z.tag.innerHTML = `<b>${esc(p.nombre)}</b><div class="cu"><div class="big num">${d ? nf(d.vol, 0) : '—'} m³</div>${d ? `${nf(d.h, 2)} m · ${nf(d.pct * 100, 0)} %` : 'sin lectura'}<div class="bar"><i style="width:${d ? d.pct * 100 : 0}%"></i></div></div>`;
       });
-      P.modulos.forEach(m => { const z = MOD[m.id], s = x.est[m.id]; z.tag.innerHTML = `<b>${esc(m.nombre)}</b>${esc(s || '—')}`; });
+      P.modulos.forEach(m => { const z = MOD[m.id], s = x.est[m.id], c = COLOR_EST[s] || '#9AA8B6';
+        z.tag.innerHTML = `<b>${esc(m.nombre)} <i class="led" style="background:${c}"></i></b><div class="cu">${esc(s || '—')}</div>`;
+        z.led.material.color.set(c); z.led.material.emissive.set(c); });
       const a3 = x.destino === 'Pozo 3', vel = (q) => q > 0 ? 0.05 + Math.min(1, q / 25) * 0.25 : 0;
+      TUB.dist.vel = vel(E.prod);
       TUB.m1.vel = x.est.m1 === 'Produciendo' ? vel(E.prod / 2) : 0; TUB.m2.vel = x.est.m2 === 'Produciendo' ? vel(E.prod / 2) : 0;
       TUB.col.vel = vel(E.prod); TUB.a12.vel = a3 ? 0 : vel(E.prod); TUB.a3.vel = a3 ? vel(E.prod) : 0;
-      TUB.a12.mat.color.set(a3 ? 0x9aa8b6 : 0x2ba6a0); TUB.a3.mat.color.set(a3 ? 0x2ba6a0 : 0x9aa8b6);
+      TUB.a12.mat.color.set(a3 ? 0x9aa8b6 : 0x1fa38a); TUB.a3.mat.color.set(a3 ? 0x1fa38a : 0x9aa8b6);
       TUB.cons.vel = E.cons > 0 ? 0.05 + Math.min(1, E.cons / 40) * 0.3 : 0;
-      tMedO.innerHTML = `<b>Caudalímetro ósmosis</b>${nf(E.prod, 1)} m³/h · ${nf(x.o.lf, 1)} m³`;
-      tMedC.innerHTML = `<b>Caudalímetro producción</b>${nf(E.cons, 1)} m³/h · ${nf(x.c.lf, 1)} m³`;
-      tCons.innerHTML = `<b>Producción congelado</b>${nf(E.cons, 1)} m³/h`;
+      tMedO.innerHTML = `<b>Caudalímetro ósmosis</b><div class="cu"><div class="big num">${nf(E.prod, 1)} m³/h</div>${nf(x.o.lf, 1)} m³</div>`;
+      tMedC.innerHTML = `<b>Caudalímetro producción</b><div class="cu"><div class="big num">${nf(E.cons, 1)} m³/h</div>${nf(x.c.lf, 1)} m³</div>`;
+      tCons.innerHTML = `<b>Producción congelado</b><div class="cu"><div class="big num">${nf(E.cons, 1)} m³/h</div></div>`;
     },
     camara,
     // imagen de la escena con sus etiquetas dibujadas, para el reporte
@@ -606,31 +712,40 @@ function escena3D(box, P) {
       const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d');
       g.drawImage(ren.domElement, 0, 0, w, h);
       const s = w / 1040;
-      const fuente = (i, oscuro) => { const grande = i === 1 && !oscuro; return `${i === 0 || grande ? 700 : 400} ${(grande ? 20 : 14) * s}px "Segoe UI", system-ui, sans-serif`; };
-      const cajas = [];
-      const caja = (p, lineas, oscuro) => {
+      const F = (k) => ({ t: `700 ${14 * s}px`, g: `800 ${21 * s}px`, n: `600 ${13 * s}px` })[k] + ' "Segoe UI", system-ui, sans-serif';
+      const NAVY = '#1D3A5F', cajas = [];
+      // lineas: [texto, 'g' (cifra grande) | 'n' (normal)]
+      const caja = (p, titulo, lineas, led) => {
         const q = p.clone().project(cam);
-        const anchos = lineas.map((l, i) => { g.font = fuente(i, oscuro); return g.measureText(l).width; });
-        cajas.push({ x: (q.x + 1) / 2 * w, y: (1 - q.y) / 2 * h, w: Math.max(...anchos) + 22 * s, h: (lineas.length * 20 + (oscuro ? 10 : 22)) * s, lineas, oscuro });
+        g.font = F('t'); let an = g.measureText(titulo).width + (led ? 22 * s : 0);
+        lineas.forEach(([l, k]) => { g.font = F(k); an = Math.max(an, g.measureText(l).width); });
+        const alto = 26 * s + lineas.reduce((a, [, k]) => a + (k === 'g' ? 26 : 19) * s, 0) + (lineas.length ? 9 * s : 0);
+        cajas.push({ x: (q.x + 1) / 2 * w, y: (1 - q.y) / 2 * h, w: an + 28 * s, h: alto, titulo, lineas, led });
       };
       if (ULT) {
         const x = ULT.x;
         P.pozos.forEach(p => { const z = POZ[p.id], d = x.pozos[p.id];
-          caja(new T.Vector3(z.g.position.x, p.alto + 0.6, z.g.position.z + (p.id === 'p1' ? -1.2 : p.id === 'p2' ? 1.5 : 0)), [p.nombre, d ? `${nf(d.vol, 0)} m³` : '—', d ? `${nf(d.h, 2)} m · ${nf(d.pct * 100, 0)} %` : ''], false); });
-        P.modulos.forEach(m => caja(new T.Vector3(MOD[m.id].g.position.x + 2.6, 2.2, MOD[m.id].g.position.z), [m.nombre, x.est[m.id] || '—'], true));
-        caja(new T.Vector3(xMed, yT + 1.6, zH), ['Caudalímetro ósmosis', `${nf(ULT.prod, 1)} m³/h`], false);
-        caja(new T.Vector3(xDer + 11, yT + 2.2, -bloque / 2 - 1.6), ['Caudalímetro producción', `${nf(ULT.cons, 1)} m³/h`], false);
-        caja(new T.Vector3(nave.position.x, 4.6, nave.position.z), ['Producción congelado', `${nf(ULT.cons, 1)} m³/h`], false);
+          caja(new T.Vector3(z.g.position.x, p.alto + 0.6, z.g.position.z + (p.id === 'p1' ? -1.2 : p.id === 'p2' ? 1.5 : 0)), p.nombre, d ? [[`${nf(d.vol, 0)} m³`, 'g'], [`${nf(d.h, 2)} m · ${nf(d.pct * 100, 0)} %`, 'n']] : [['sin lectura', 'n']]); });
+        P.modulos.forEach(m => caja(new T.Vector3(MOD[m.id].g.position.x + 1.2, 2.3, MOD[m.id].g.position.z), m.nombre, [[x.est[m.id] || '—', 'n']], COLOR_EST[x.est[m.id]] || '#9AA8B6'));
+        caja(MED.o.ancla, 'Caudalímetro ósmosis', [[`${nf(ULT.prod, 1)} m³/h`, 'g']]);
+        caja(MED.c.ancla, 'Caudalímetro producción', [[`${nf(ULT.cons, 1)} m³/h`, 'g']]);
+        caja(new T.Vector3(nave.position.x, 4.4, nave.position.z), 'Producción congelado', [[`${nf(ULT.cons, 1)} m³/h`, 'g']]);
       }
       cascada(cajas, 8 * s, 6 * s).forEach(c => {
-        if (c.y - c.base > 12 * s) { g.strokeStyle = '#1D2E40'; g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(c.x, c.base); g.lineTo(c.x, c.y); g.stroke(); g.fillStyle = '#1D2E40'; g.beginPath(); g.arc(c.x, c.y, 3.5 * s, 0, Math.PI * 2); g.fill(); }
-        g.save(); g.shadowColor = 'rgba(20,32,46,.18)'; g.shadowBlur = 10 * s; g.shadowOffsetY = 3 * s;
-        g.beginPath(); g.roundRect(c.x - c.w / 2, c.base - c.h, c.w, c.h, 9 * s); g.fillStyle = c.oscuro ? '#1D2E40' : '#FFFFFF'; g.fill(); g.restore();
-        g.strokeStyle = c.oscuro ? '#1D2E40' : '#B9C5D1'; g.lineWidth = 1; g.stroke();
-        let yy = c.base - c.h + 21 * s;
-        c.lineas.forEach((l, i) => { const grande = i === 1 && !c.oscuro; g.font = fuente(i, c.oscuro);
-          g.fillStyle = c.oscuro ? (i === 0 ? '#FFFFFF' : '#C9D4DF') : i === 0 || grande ? '#1B2733' : '#46535F'; g.textAlign = 'center'; g.fillText(l, c.x, yy); yy += (grande || (i === 0 && c.lineas.length > 2) ? 24 : 19) * s; });
-        g.textAlign = 'left';
+        const x0 = c.x - c.w / 2, y0 = c.base - c.h, rr = 9 * s;
+        const bd = c.base > c.y ? c.base - c.h : c.base;
+        if (Math.abs(c.y - bd) > 6 * s) { g.strokeStyle = NAVY; g.lineWidth = 1.6 * s; g.beginPath(); g.moveTo(c.x, bd); g.lineTo(c.x, c.y); g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.arc(c.x, c.y, 4.5 * s, 0, Math.PI * 2); g.fill(); g.stroke(); }
+        g.save(); g.shadowColor = 'rgba(20,32,46,.25)'; g.shadowBlur = 12 * s; g.shadowOffsetY = 3 * s;
+        g.beginPath(); g.roundRect(x0, y0, c.w, c.h, rr); g.fillStyle = c.led ? NAVY : '#fff'; g.fill(); g.restore();
+        g.save(); g.beginPath(); g.roundRect(x0, y0, c.w, c.h, rr); g.clip(); g.fillStyle = NAVY; g.fillRect(x0, y0, c.w, 26 * s); g.restore();
+        g.beginPath(); g.roundRect(x0, y0, c.w, c.h, rr); g.strokeStyle = NAVY; g.lineWidth = 1.6 * s; g.stroke();
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = F('t'); g.fillStyle = '#fff';
+        const tw = g.measureText(c.titulo).width, tx = c.led ? c.x - 11 * s : c.x;
+        g.fillText(c.titulo, tx, y0 + 13.5 * s);
+        if (c.led) { g.fillStyle = c.led; g.beginPath(); g.arc(tx + tw / 2 + 12 * s, y0 + 13 * s, 6 * s, 0, Math.PI * 2); g.fill(); }
+        let yy = y0 + 26 * s + 4 * s;
+        c.lineas.forEach(([l, k]) => { const lh = (k === 'g' ? 26 : 19) * s; g.font = F(k); g.fillStyle = c.led ? '#DFE7EF' : k === 'g' ? '#13263D' : '#2B3A4A'; g.fillText(l, c.x, yy + lh / 2); yy += lh; });
+        g.textAlign = 'left'; g.textBaseline = 'alphabetic';
       });
       ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); ren.setSize(w0, h0); cam.aspect = w0 / h0; cam.updateProjectionMatrix();
       return out;
