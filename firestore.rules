@@ -62,6 +62,11 @@ service cloud.firestore {
       allow read: if coleccion in ['registros', 'plantillas'] && puedeLeer('mat');
     }
 
+    // Agua de planta lee las muestras del R-303 y los turnos de la configuración de formatos
+    match /datos/fmt/{coleccion}/{resto=**} {
+      allow read: if coleccion in ['registros', 'plantillas', 'config'] && puedeLeer('agua');
+    }
+
     // Registro de formatos: plantillas y configuración solo las modifica el rol Admin del aplicativo
     match /datos/fmt/{coleccion}/{resto=**} {
       allow write: if (coleccion in ['plantillas', 'config'] && esAdminDe('fmt'))

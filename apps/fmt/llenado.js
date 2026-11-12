@@ -545,7 +545,7 @@ function campoHtml(c, v) {
     case 'hora': h = lab + `<div style="display:flex;gap:8px"><input class="field" type="time" id="c_${c.id}" value="${esc(x || '')}"><button type="button" class="btn" data-ahora="${c.id}" style="height:48px">Ahora</button></div>`; break;
     case 'fechaHora': h = lab + `<div style="display:flex;gap:8px"><input class="field" type="datetime-local" id="c_${c.id}" value="${esc(x || '')}"><button type="button" class="btn" data-ahora="${c.id}" style="height:48px">Ahora</button></div>`; break;
     case 'duracion': { const m = minutosEntre(v[c.desde], v[c.hasta]); h = lb + `<div class="dur ${m != null && m < 0 ? 'neg' : ''}" id="c_${c.id}">${m == null ? '<span style="color:var(--tx-3);font-family:var(--f-body);font-size:14px">Se calcula al completar las horas</span>' : esc(duracionTxt(m))}</div>`; break; }
-    case 'diferencia': case 'porcentaje': h = lb + calcHtml(c, v); break;
+    case 'diferencia': case 'porcentaje': case 'escala': case 'caudal': h = lb + calcHtml(c, v); break;
     case 'equipo': h = lb + `<button type="button" class="eqsel" id="c_${c.id}">${x && x.codigo ? `<b>${esc(x.codigo)}</b><span>${esc(x.descripcion || '')}</span>` : `<span class="ph">Seleccionar equipo</span>`}${IC.search}</button>`; break;
     case 'referencia': h = lab + `<input class="field mono" id="c_${c.id}" value="${esc(x || '')}" placeholder="R-001-2026-00001" autocomplete="off">`; break;
     case 'foto': h = lb + `<div class="foto">${x ? `<img src="${typeof x === 'string' ? x : ''}" alt="" id="fi_${c.id}">` : `<span class="vacia">${IC.cam}</span>`}

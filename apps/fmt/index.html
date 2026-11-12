@@ -863,6 +863,30 @@ function modalCampo(sid, cid) {
       : `<div class="g2"><div><label class="label" for="cDe">Desde</label><select class="field" id="cDe"><option value="">Seleccione</option>${fechas.map(f => `<option value="${f.id}" ${f.id === c.desde ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select></div>
          <div><label class="label" for="cHa">Hasta</label><select class="field" id="cHa"><option value="">Seleccione</option>${fechas.map(f => `<option value="${f.id}" ${f.id === c.hasta ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select></div></div>
          <div class="muted" style="font-size:12.5px;margin-top:8px">Se calcula automáticamente al llenar el formato.</div>`;
+    else if (t === 'caudal') {
+      const nums = ED.trabajo.secciones.flatMap(x => (x.campos || []).filter(y => y.tipo === 'numero' && y.id !== c.id).map(y => ({ id: y.id, et: `${x.titulo || 'Sección'} › ${y.etiqueta || 'sin nombre'}` })));
+      const fhs = ED.trabajo.secciones.flatMap(x => (x.campos || []).filter(y => y.tipo === 'fechaHora').map(y => ({ id: y.id, et: `${x.titulo || 'Sección'} › ${y.etiqueta || 'sin nombre'}` })));
+      const sel = (id, v, l) => `<select class="field" id="${id}"><option value="">Seleccione</option>${l.map(f => `<option value="${f.id}" ${f.id === v ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select>`;
+      box.innerHTML = nums.length < 2 || fhs.length < 2 ? '<div class="alert warn">Necesita dos lecturas (Número con rango) y dos campos de Fecha y hora (inicio y fin). Agréguelos primero.</div>'
+        : `<div class="g2"><div><label class="label" for="cDe">Lectura final (A)</label>${sel('cDe', c.desde, nums)}</div><div><label class="label" for="cHa">Lectura inicial (B)</label>${sel('cHa', c.hasta, nums)}</div>
+           <div><label class="label" for="cTi">Fecha y hora inicial</label>${sel('cTi', c.tIni, fhs)}</div><div><label class="label" for="cTf">Fecha y hora final</label>${sel('cTf', c.tFin, fhs)}</div></div>
+           <div class="g3" style="margin-top:12px">
+           <div><label class="label" for="cUn">Unidad</label><input class="field" id="cUn" value="${esc(c.unidad || 'm³/h')}"></div>
+           <div><label class="label" for="cMi">Mínimo</label><input class="field" id="cMi" value="${esc(c.min)}" inputmode="decimal" placeholder="—"></div>
+           <div><label class="label" for="cMa">Máximo</label><input class="field" id="cMa" value="${esc(c.max)}" inputmode="decimal" placeholder="—"></div></div>
+           <div class="muted" style="font-size:12.5px;margin-top:8px">Valor = (A − B) ÷ horas entre la lectura inicial y la final. Para caudalímetros mecánicos (totalizador).</div>`;
+    }
+    else if (t === 'escala') {
+      const nums = ED.trabajo.secciones.flatMap(x => (x.campos || []).filter(y => y.tipo === 'numero' && y.id !== c.id).map(y => ({ id: y.id, et: `${x.titulo || 'Sección'} › ${y.etiqueta || 'sin nombre'}` })));
+      box.innerHTML = !nums.length ? '<div class="alert warn">Se calcula a partir de un campo de tipo "Número con rango". Agréguelo primero al formato.</div>'
+        : `<div class="g2"><div><label class="label" for="cDe">A (campo numérico)</label><select class="field" id="cDe"><option value="">Seleccione</option>${nums.map(f => `<option value="${f.id}" ${f.id === c.desde ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select></div>
+           <div><label class="label" for="cFa">Factor</label><input class="field" id="cFa" value="${esc(c.factor ?? '')}" inputmode="decimal" placeholder="62,046"></div></div>
+           <div class="g3" style="margin-top:12px">
+           <div><label class="label" for="cUn">Unidad</label><input class="field" id="cUn" value="${esc(c.unidad || '')}"></div>
+           <div><label class="label" for="cMi">Mínimo</label><input class="field" id="cMi" value="${esc(c.min)}" inputmode="decimal" placeholder="—"></div>
+           <div><label class="label" for="cMa">Máximo</label><input class="field" id="cMa" value="${esc(c.max)}" inputmode="decimal" placeholder="—"></div></div>
+           <div class="muted" style="font-size:12.5px;margin-top:8px">Valor = A × factor (p. ej. volumen = altura × área del pozo). Se calcula al llenar.</div>`;
+    }
     else if (t === 'diferencia' || t === 'porcentaje') {
       const nums = ED.trabajo.secciones.flatMap(x => (x.campos || []).filter(y => y.tipo === 'numero' && y.id !== c.id).map(y => ({ id: y.id, et: `${x.titulo || 'Sección'} › ${y.etiqueta || 'sin nombre'}` })));
       const sel = (id, v) => `<select class="field" id="${id}"><option value="">Seleccione</option>${nums.map(f => `<option value="${f.id}" ${f.id === v ? 'selected' : ''}>${esc(f.et)}</option>`).join('')}</select>`;
@@ -923,6 +947,21 @@ function modalCampo(sid, cid) {
     if (c.tipo === 'seleccion') {
       c.opciones = m.$('#cOp').value.split('\n').map(x => x.trim()).filter(Boolean);
       if (c.opciones.length < 2) return m.err('Ingrese al menos dos opciones.');
+    }
+    if (c.tipo === 'caudal') {
+      if (!m.$('#cDe')) return m.err('Agregue primero las lecturas y las fechas.');
+      c.desde = m.$('#cDe').value; c.hasta = m.$('#cHa').value; c.tIni = m.$('#cTi').value; c.tFin = m.$('#cTf').value;
+      if (!c.desde || !c.hasta || !c.tIni || !c.tFin) return m.err('Seleccione las dos lecturas y las dos fechas.');
+      c.unidad = m.$('#cUn').value.trim();
+      c.min = m.$('#cMi').value.replace(',', '.').trim(); c.max = m.$('#cMa').value.replace(',', '.').trim();
+    }
+    if (c.tipo === 'escala') {
+      if (!m.$('#cDe')) return m.err('Agregue primero un campo numérico.');
+      c.desde = m.$('#cDe').value; c.factor = Number(m.$('#cFa').value.replace(',', '.'));
+      if (!c.desde) return m.err('Seleccione el campo del cálculo.');
+      if (!Number.isFinite(c.factor) || c.factor === 0) return m.err('Ingrese un factor numérico.');
+      c.unidad = m.$('#cUn').value.trim();
+      c.min = m.$('#cMi').value.replace(',', '.').trim(); c.max = m.$('#cMa').value.replace(',', '.').trim();
     }
     if (c.tipo === 'diferencia' || c.tipo === 'porcentaje') {
       if (!m.$('#cDe')) return m.err('Agregue primero dos campos numéricos.');

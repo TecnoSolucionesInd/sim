@@ -69,6 +69,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 | F1 | Congelamiento (conserva su diseño) | Integrado en pruebas · pendiente copia de datos y cambio de enlace |
 | F2 | Costos de mantenimiento (conserva su diseño) | Integrado en pruebas · pendiente cargar datos y respaldo |
 | F3 | Equipos (maestro) | Construido (pruebas) |
+| F5 | Agua de planta | Panel HMI 3D, análisis y parámetros desde el R-303 en pruebas |
 | F5 | Materiales e inventario (maestro) | Químicos e insumos de ósmosis en pruebas (Análisis, kardex, catálogo) · pendiente: almacén general |
 | F6 | Conformidades · Reporte de mantenimiento | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Programas de trabajo (paradas, auditorías, proyectos) con costos en pruebas · pendiente: plan preventivo, programación quincenal, OT |
@@ -150,10 +151,11 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Impresión del registro lleno: hoja oficial con valores, fotos, firmas y QR al original (`apps/fmt/?r=<id>#registros`), ajustada a una página A4.
 - Campos calculados: `diferencia` (A − B) y `porcentaje` (A ÷ B × 100) entre dos campos numéricos (desde/hasta), con unidad y rango;
   se muestran en vivo al llenar, generan alerta fuera de rango y se guardan en `dur` del registro (junto a las duraciones).
+  `escala` (A × factor, p. ej. altura × área = volumen) y `caudal` ((lectura final − inicial) ÷ horas entre dos campos fecha y hora).
 - Tablas de lista fija: una fila puede tener rangos por columna `rangos: { '<nombre de columna>': {min, max} }` (p. ej. solo Permeado).
   El editor los muestra pero no los edita (se definen en el formato predefinido).
 - Emisión de formatos que ya existen en el manual: opción "conserva su revisión y vigencia" (revisión y mes indicados; `origenManual`).
-- Formatos predefinidos (botón "Cargar formatos predefinidos"): R-001, R-002, R-101/R-102/R-103 (compresores por sala de máquinas), R-302 (químicos e insumos de ósmosis, alimenta Materiales e inventario) y R-301 Control de operación — Planta de ósmosis
+- Formatos predefinidos (botón "Cargar formatos predefinidos"): R-001, R-002, R-101/R-102/R-103 (compresores por sala de máquinas), R-302 (químicos e insumos de ósmosis, alimenta Materiales e inventario), R-303 (control de agua cada 2 horas, alimenta Agua de planta) y R-301 Control de operación — Planta de ósmosis
   inversa (rev. 3, Jun-26, por turno; módulo OSM-UOI-xx; filtros multimedia/cartucho con ΔP; alimentación; permeado con % recuperación;
   calidad de agua; permeado por housing 1–5). Rangos de referencia SWRO: ΔP ≤ 1 bar, alimentación ≤ 69 bar, permeado ≤ 3 bar,
   recuperación 35–45 %, conductividad permeado/housing ≤ 1000 µS/cm, pH permeado 6.5–8.5, pH alimentación 7–8.5, dureza permeado ≤ 50,
@@ -251,12 +253,26 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Comparación g/m³: producción = promedio diario del flujo de permeado del R-301 × horas/día; módulo desde el código del equipo (…-01 → OI-01).
 - Reglas: Materiales e inventario puede leer datos/fmt/registros y plantillas (volver a publicar firestore.rules).
 
+## Agua de planta (F5)
+- apps/agua/ (layout mínimo, tema claro). Módulos: hmi (Panel HMI 3D con Three.js r128, compartir/descargar imagen y PDF),
+  analisis (stock en pozos, caudal por muestra frente a lo esperado, producción frente a consumo, resumen diario, alertas)
+  y parametros (`datos/agua/config/parametros`). Cálculos puros en apps/agua/calculo.js; datos fijos en core/agua.js.
+- Fuente: registros R-303 (`datos/fmt/registros`, ids fijos `R303` en core/agua.js): altura por pozo (volumen = altura × área),
+  estado de OI-01/OI-02, un solo caudalímetro mecánico de ósmosis para ambos módulos y uno de consumo de producción congelado,
+  cada uno con lectura y hora inicial y final por muestra. Caudal = (final − inicial) ÷ horas.
+- Pozos: P1 y P2 10.57 × 5.87 × 2.37 m; P3 12.14 × 10.76 × 2.144 m (574 m³). Módulos 12.5 m³/h; retrolavado 4 × 35 min/día
+  (21.67 h/día, 270.8 m³/día por módulo). Reserva mínima 2 %. Alerta de cisternas con autonomía < 24 h (crítica < 12 h).
+- Producción baja (< 85 % de lo esperado según los módulos que producían): uno de los módulos falla, no se sabe cuál → revisar ambos en campo.
+- HMI: etiquetas en cascada (si se tapan, suben y quedan unidas a su punto por una guía); igual en la imagen y el PDF.
+- Reglas: Agua de planta puede leer datos/fmt/registros, plantillas y config (volver a publicar firestore.rules).
+
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
 2. Authentication → Configuración → Dominios autorizados: agregar `tecnosolucionesind.github.io`.
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-11-12: Agua de planta (nuevo aplicativo) y formato R-303 (nivel de pozos, caudalímetro de ósmosis y de consumo de producción congelado con lecturas inicial/final). Formatos: campos calculados `escala` y `caudal`. Reglas actualizadas (volver a publicar `firestore.rules`).
 - 2026-11-05: Formatos — llenado por circuito (`def.recorrido`): equipos con el mismo campo `circuito` (Equipos) se llenan juntos en un paso, en el orden de las tablas; el impreso mantiene las tablas por tipo. Equipos: nuevo campo Circuito (formulario, carga masiva y Excel). R-101/102/103 vienen con recorrido activado.
 - 2026-11-05: Formatos — auxiliares en R-101/102/103 (bombas de refrigerante/amoniaco, de agua, de aceite, ventiladores, motor del tambor) como tablas con `conReserva` (estado "En reserva") y `sinEquiposOk` (no bloquea si aún no hay equipos). Parámetros `porTurno` (corriente y horómetros: obligatorios solo en el primer registro del turno). Estado "Fuera de servicio" genera alerta. Impreso: tablas de más de 8 equipos se parten; `nuevaPagina` pone los auxiliares en hoja 2.
 - 2026-11-05: Formatos — un formato por sala de máquinas: R-101 Sala 1 (tablas Gram y Copeland), R-102 Sala 2 (pistón productor de hielo y tornillo Cámara 3), R-103 Sala 3 (tornillo Yantai R-22 y Bingshan amoniaco). Cada tipo en su tabla con sus parámetros y límites propios. Tablas de equipos: filtro "Contiene" (incluye) y selección manual de equipos (codigos). Hojas en vertical (caben en una página).

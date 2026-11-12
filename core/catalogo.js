@@ -108,6 +108,16 @@ export const APPS = [
     ]
   },
   {
+    id: 'agua', nombre: 'Agua de planta', sub: 'Pozos, producción de ósmosis y consumo de producción congelado',
+    grupo: 'op', estado: 'dev', fase: 'F5', color: '#5FB6E8', url: 'apps/agua/', porArea: false,
+    icon: 'M12 2.7s-6.5 7.1-6.5 11.6a6.5 6.5 0 0 0 13 0C18.5 9.8 12 2.7 12 2.7z',
+    modulos: [
+      { id: 'hmi', nombre: 'Panel HMI' },
+      { id: 'analisis', nombre: 'Análisis' },
+      { id: 'parametros', nombre: 'Parámetros' }
+    ]
+  },
+  {
     id: 'conf', nombre: 'Conformidades', sub: 'Trabajos realizados por proveedores',
     grupo: 'gest', estado: 'plan', fase: 'F6', color: '#8FE39A', url: null,
     icon: 'M9 3h6v3H9zM9 4.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1h-3M9 14l2 2 4-4',

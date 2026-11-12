@@ -1,6 +1,7 @@
 // Modelo del aplicativo Registro de formatos: catálogos, utilidades y formatos piloto.
 
 import { SISTEMAS } from '../../core/maestros.js';
+import { POZOS, MODULOS, R303, ESTADOS_MODULO, DESTINOS, area, redondear } from '../../core/agua.js';
 import { QUIMICOS_OSMOSIS, CONSUMIBLES_OSMOSIS, unidadesDe, GUIA_DOSIFICACION } from '../../core/insumos.js';
 export { SISTEMAS };
 
@@ -19,6 +20,8 @@ export const TIPOS_CAMPO = [
   { id: 'duracion',  nombre: 'Duración calculada' },
   { id: 'diferencia',nombre: 'Diferencia calculada (A − B)' },
   { id: 'porcentaje',nombre: 'Porcentaje calculado (A ÷ B)' },
+  { id: 'escala',    nombre: 'Valor calculado (A × factor)' },
+  { id: 'caudal',    nombre: 'Caudal calculado ((A − B) ÷ tiempo)' },
   { id: 'equipo',    nombre: 'Equipo' },
   { id: 'referencia',nombre: 'Registro relacionado' },
   { id: 'foto',      nombre: 'Foto' }
@@ -461,5 +464,40 @@ export function pilotos() {
     }
   };
 
-  return [r001, r002, r101, r102, r103, r301, r302];
+  // R-303: niveles de pozos, producción de ósmosis y consumo de producción congelado (alimenta Agua de planta).
+  // Ids fijos (core/agua.js → R303): el aplicativo los lee. Volumen = altura medida con la regla × área del pozo.
+  const cid = (id, etiqueta, tipo, extra) => ({ ...c(etiqueta, tipo, extra), id });
+  // caudalímetro mecánico: lectura y hora inicial / final, con volumen, tiempo y caudal calculados
+  const medidor = (k) => [
+    cid(k.tIni, 'Hora de lectura inicial', 'fechaHora', { requerido: true }),
+    cid(k.lIni, 'Lectura inicial', 'numero', { requerido: true, unidad: 'm³' }),
+    cid(k.tFin, 'Hora de lectura final', 'fechaHora', { requerido: true }),
+    cid(k.lFin, 'Lectura final', 'numero', { requerido: true, unidad: 'm³' }),
+    cid(k.vol, 'Volumen en la muestra', 'diferencia', { desde: k.lFin, hasta: k.lIni, unidad: 'm³', min: '0' }),
+    cid(k.dur, 'Tiempo de la muestra', 'duracion', { desde: k.tIni, hasta: k.tFin }),
+    cid(k.q, 'Caudal', 'caudal', { desde: k.lFin, hasta: k.lIni, tIni: k.tIni, tFin: k.tFin, unidad: 'm³/h' })
+  ];
+  const r303 = {
+    codigo: 'R-303',
+    def: {
+      ...defVacia('Control de agua — Pozos, producción de ósmosis y consumo de producción congelado'),
+      frecuencia: 'Cada 2 horas',
+      datosGenerales: { turno: true, hora: true },
+      secciones: [
+        { id: 'r303n', tipo: 'campos', titulo: 'Nivel de pozos', columnas: 2, campos: POZOS.flatMap(p => [
+          cid(R303.altura(p.id), `Altura de agua · ${p.nombre}`, 'numero', { requerido: true, unidad: 'm', min: '0', max: String(p.alto) }),
+          cid(R303.volumen(p.id), `Volumen · ${p.nombre}`, 'escala', { desde: R303.altura(p.id), factor: redondear(area(p)), unidad: 'm³' })
+        ]) },
+        { id: 'r303p', tipo: 'campos', titulo: 'Producción de ósmosis (caudalímetro de ambos módulos)', columnas: 2, campos: [
+          ...MODULOS.map(m => cid(R303.estado(m.id), `Estado ${m.nombre}`, 'seleccion', { requerido: true, opciones: ESTADOS_MODULO })),
+          ...medidor(R303.medidor.o),
+          cid(R303.destino, 'Ósmosis abastece a', 'seleccion', { requerido: true, opciones: DESTINOS })
+        ] },
+        { id: 'r303c', tipo: 'campos', titulo: 'Consumo de producción congelado', columnas: 2, campos: medidor(R303.medidor.c) }
+      ],
+      firmas: [{ nombre: 'Técnico', modo: 'usuario' }, FA]
+    }
+  };
+
+  return [r001, r002, r101, r102, r103, r301, r302, r303];
 }

@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agua de planta · SIM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#E4E9EF; --card:#FFFFFF; --card2:#F3F5F7; --line:#D5DDE5; --ink:#1B2733; --ink2:#46535F; --muted:#6A7684;
+  --nav:#1D2E40; --nav2:#26405A; --navink:#C9D4DF; --accent:#2BA6A0; --water:#2E8FD0;
+  --ok:#2f8f4e; --warn:#c98500; --bad:#cc3d3d;
+  --m1:#2a78d6; --m2:#eb6834; --cons:#1D2E40;
+  --r:12px; --sh:0 1px 2px rgba(20,32,46,.06),0 4px 14px rgba(20,32,46,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;font-size:14px}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer}
+#hd{background:var(--nav);color:#fff;padding:14px 24px 0;position:sticky;top:0;z-index:20;box-shadow:0 2px 10px rgba(10,20,30,.18)}
+#hd .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#hd .ico{width:38px;height:38px;border-radius:10px;background:rgba(43,166,160,.18);display:grid;place-items:center;flex:0 0 38px}
+#hd h1{font-size:18px;margin:0;font-weight:650}
+#hd .sub{font-size:12px;color:#9FB1C3;margin-top:1px}
+#hd .tt{flex:1;min-width:200px}
+#hd .meta{font-size:12px;color:#9FB1C3;text-align:right}
+#hd .meta b{color:#fff;font-weight:600}
+#tabs{display:flex;gap:2px;margin-top:12px;overflow-x:auto}
+#tabs button{background:transparent;border:0;color:var(--navink);padding:10px 16px;font-size:13.5px;border-bottom:3px solid transparent;white-space:nowrap}
+#tabs button:hover{color:#fff}
+#tabs button.on{color:#fff;border-bottom-color:var(--accent);font-weight:600}
+#view{padding:18px 24px 90px;max-width:1560px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;min-width:0}
+.card h3{margin:0;font-size:14px;font-weight:650}
+.card .hint{font-size:12px;color:var(--muted);margin:2px 0 10px}
+.ch{position:relative;height:280px}
+.tb{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:12px 16px;margin-bottom:14px}
+.tb .blk{display:flex;flex-direction:column;gap:5px}
+.tb .blk>span{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tb .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card2)}
+.seg button{border:0;background:transparent;padding:6px 12px;font-size:12.5px;color:var(--ink2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--nav);color:#fff}
+.btn{font-size:12.5px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:7px 12px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--card2)}
+.btn.pri{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+input[type=number],input[type=text]{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;color:var(--ink);min-height:32px}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st.ok{color:var(--ok);background:rgba(47,143,78,.1)}.st.warn{color:#9a6600;background:rgba(201,133,0,.12)}.st.bad{color:var(--bad);background:rgba(204,61,61,.1)}.st.mut{color:var(--muted);background:var(--card2)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--card2)}
+.tbl td{padding:8px 10px;border-bottom:1px solid #E8EDF2}
+.tbl td.r,.tbl th.r{text-align:right}
+.tbl tr:last-child td{border-bottom:0}
+.scroll{overflow-x:auto}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink2);margin-bottom:8px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.leg i.dash{height:0;border-top:2px dashed;border-radius:0;width:14px;vertical-align:3px}
+.aviso{border-radius:var(--r);padding:12px 16px;margin-bottom:14px;font-size:13.5px;display:flex;gap:12px;align-items:center}
+.aviso.bad{background:#FDECEC;border:1px solid #F1B9B9;color:#7A1F1F}
+.aviso.warn{background:#FFF7E6;border:1px solid #F0D49A;color:#6B4B00}
+.aviso b{font-size:14.5px}
+.vacio{color:var(--muted);font-size:13px;padding:18px 0;text-align:center}
+.al{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #E8EDF2}
+.al:last-child{border-bottom:0}
+.al .dt{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 8px}
+.al.bad .dt{background:var(--bad)}.al.warn .dt{background:var(--warn)}
+.al b{display:block;font-size:13px}.al span{font-size:12px;color:var(--ink2)}.al small{font-size:11px;color:var(--muted)}
+/* HMI */
+.hmi{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px}
+.scene{position:relative;height:560px;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh);
+  background:radial-gradient(120% 90% at 50% 0%,#FFFFFF 0%,#E9EEF3 55%,#D3DCE5 100%)}
+.scene .guias{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.scene .guias line{stroke:#1D2E40;stroke-width:1.3;opacity:.75}
+.scene .guias circle{fill:#1D2E40}
+.scene canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+.scene canvas:active{cursor:grabbing}
+.scene .tag{position:absolute;left:0;top:0;transform:translate(-50%,-100%);z-index:2;pointer-events:none;white-space:nowrap;
+  background:#FFFFFF;border:1px solid #B9C5D1;border-radius:10px;padding:6px 10px;box-shadow:0 6px 16px rgba(20,32,46,.18);font-size:12px;color:var(--ink2);text-align:center}
+.scene .tag b{display:block;font-size:13px;color:var(--ink)}
+.scene .tag .big{font-size:18px;font-weight:700;color:var(--ink)}
+.scene .tag .bar{height:5px;border-radius:3px;background:#E3E9EF;margin-top:5px;overflow:hidden}
+.scene .tag .bar i{display:block;height:100%;border-radius:3px;background:var(--water)}
+.scene .tag.mod b{color:#fff}.scene .tag.mod{background:var(--nav);border-color:var(--nav);color:#C9D4DF}
+.scene .tag.cons{background:#fff;border-left:4px solid var(--cons)}
+.scene .hud{position:absolute;left:14px;top:12px;font-size:11.5px;color:var(--muted);background:rgba(255,255,255,.75);padding:5px 9px;border-radius:8px}
+.scene .vw{position:absolute;right:12px;top:12px;display:flex;gap:6px}
+.scene .vw button{border:1px solid var(--line);background:rgba(255,255,255,.92);border-radius:8px;padding:5px 9px;font-size:12px;color:var(--ink2)}
+.play{display:flex;align-items:center;gap:12px;margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;box-shadow:var(--sh)}
+.play input[type=range]{flex:1;accent-color:var(--accent)}
+.play .when{font-size:12.5px;color:var(--ink2);min-width:200px;text-align:right}
+.side{display:flex;flex-direction:column;gap:12px}
+.k{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:12px 14px;position:relative;overflow:hidden}
+.k::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+.k.bad::before{background:var(--bad)}.k.warn::before{background:var(--warn)}.k.ok::before{background:var(--ok)}
+.k small{display:block;font-size:11.5px;color:var(--muted);font-weight:600}
+.k .v{font-size:24px;font-weight:650;margin:4px 0 2px}.k .v em{font-style:normal;font-size:13px;font-weight:500;color:var(--ink2);margin-left:4px}
+.k .s{font-size:12px;color:var(--ink2)}
+.mrow{display:grid;grid-template-columns:52px 1fr auto;gap:8px;align-items:center;margin-top:8px;font-size:12.5px}
+.mrow .tr{position:relative;height:10px;border-radius:5px;background:#E8EDF2;overflow:visible}
+.mrow .tr i{display:block;height:100%;border-radius:5px}
+.mrow .tr u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);border-radius:1px}
+.lv{height:8px;border-radius:4px;background:#E8EDF2;position:relative;margin-top:8px;overflow:visible}
+.lv i{display:block;height:100%;border-radius:4px;background:var(--water)}
+.lv u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--bad)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
+.form label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink2);font-weight:600}
+.inl{width:90px}
+.calc{background:var(--card2);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.7;color:var(--ink2)}
+.calc b{color:var(--ink)}
+.toast{position:fixed;right:18px;bottom:18px;background:var(--nav);color:#fff;padding:11px 16px;border-radius:10px;z-index:50;font-size:13px}
+.toast.err{background:var(--bad)}
+@media (max-width:1100px){.hmi{grid-template-columns:1fr}.scene{height:440px}}
+@media (max-width:600px){.scene .tag.mod,.scene .tag.cons{display:none!important}.scene{height:420px!important}}
+@media (max-width:900px){.play{flex-wrap:wrap}.play .when{width:100%;text-align:left}.scene .hud{display:none}.scene .tag{padding:4px 7px;font-size:11px}.scene .tag .big{font-size:15px}.grid>*{grid-column:span 12!important}#view{padding:14px 16px 90px}#hd{padding:12px 16px 0}#hd .meta{display:none}.scene{height:380px}.play .when{min-width:0}}
+</style>
+<style>
+.hmi-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.hmi-top h2{margin:0;font-size:16px;font-weight:650}
+.hmi-top .when{font-size:12.5px;color:var(--muted)}
+.hmi-top .sp{flex:1}
+.scene .tag.med{background:#fff;border-left:4px solid var(--accent)}
+.scene .tag.med.co{border-left-color:var(--cons)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--card2);color:var(--ink2)}
+.chip.ok{background:rgba(47,143,78,.1);color:var(--ok)}.chip.warn{background:rgba(201,133,0,.12);color:#9a6600}.chip.bad{background:rgba(204,61,61,.1);color:var(--bad)}
+.gauge{position:relative;height:12px;border-radius:6px;background:#E8EDF2;margin-top:10px;overflow:visible}
+.gauge i{display:block;height:100%;border-radius:6px}
+.gauge u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.gauge-l{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+@media (max-width:600px){.scene .tag.med{display:none!important}}
+</style>
+</head>
+<body>
+<header id="hd">
+  <div class="row">
+    <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5FD3CC" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7s-6.5 7.1-6.5 11.6a6.5 6.5 0 0 0 13 0C18.5 9.8 12 2.7 12 2.7z"/><path d="M8.6 14.6a3.4 3.4 0 0 0 3.4 3.4"/></svg></div>
+    <div class="tt"><h1>Agua de planta</h1><div class="sub">Pozos · producción de ósmosis · consumo de producción congelado</div></div>
+    <div class="meta" id="meta"></div>
+  </div>
+  <nav id="tabs"></nav>
+</header>
+<main id="view"><div class="vacio">Cargando…</div></main>
+
+<script type="module">
+import { iniciarApp } from '../../core/core.js';
+import { doc, getDoc, getDocs, setDoc, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { PARAM_BASE, area, capacidad, disponibilidad, teoricoDia } from '../../core/agua.js';
+import * as K from './calculo.js';
+
+const ctx = await iniciarApp({ appId: 'agua', layout: 'minimo' });
+const db = ctx.db;
+const esAdm = ctx.esAdmin || ctx.rol === 'admin';
+const LOGO = window.SIM_LOGO || new URL('../plan/logo.png', import.meta.url).href;
+const ST = { P: null, regs: [], turnos: [], err: '', vista: 'hmi', periodo: 7, idx: null };
+let CH = [], ESC = null;
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = (x, d = 1) => (x == null || !Number.isFinite(x) ? '—' : Number(x).toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d }));
+const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+const DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+const hh = (t) => { const d = new Date(t); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const fh = (t) => { const d = new Date(t); return `${DIA[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} · ${hh(t)}`; };
+const fdia = (iso) => `${iso.slice(8, 10)}-${MES[Number(iso.slice(5, 7)) - 1]}`;
+const horasTxt = (h) => !Number.isFinite(h) ? 'sin riesgo' : h < 1 ? 'menos de 1 h' : h < 48 ? `${nf(h, 0)} h` : `${nf(h / 24, 1)} días`;
+const $ = (s) => document.querySelector(s);
+function toast(t, k = '') { const d = document.createElement('div'); d.className = 'toast ' + k; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 3200); }
+const nivelEf = (ef, P) => !Number.isFinite(ef) ? 'mut' : ef < (P.umbral || 85) / 100 - 0.2 ? 'bad' : ef < (P.umbral || 85) / 100 ? 'warn' : 'ok';
+
+// ---------- datos ----------
+async function cargar() {
+  const c = await getDoc(doc(db, 'datos', 'agua', 'config', 'parametros'));
+  ST.P = { ...PARAM_BASE, ...(c.exists() ? c.data() : {}) };
+  ST.err = '';
+  try {
+    const R = collection(db, 'datos', 'fmt', 'registros');
+    ST.regs = (await getDocs(query(R, where('codigo', '==', 'R-303')))).docs.map(d => ({ id: d.id, ...d.data() }));
+    const g = await getDoc(doc(db, 'datos', 'fmt', 'config', 'general')).catch(() => null);
+    const t = g && g.exists() ? g.data().turnos : null;
+    ST.turnos = (t && t.length ? t : ['Día', 'Noche']).map((x, i) => typeof x === 'string' ? { nombre: x, inicio: ['07:00', '19:00', '23:00'][i] } : x);
+  } catch (e) {
+    ST.regs = [];
+    ST.err = e.code === 'permission-denied' ? 'No se pudieron leer los registros del R-303: publique las reglas de Firestore actualizadas.' : 'No se pudieron leer los registros: ' + (e.code || e.message);
+  }
+}
+function calcular() {
+  const P = ST.P, L = K.lecturas(ST.regs, P, ST.turnos), A = K.analisis(L, P);
+  const ult = [...L].reverse().find(x => Number.isFinite(x.stock)) || L.at(-1) || null;
+  const R24 = K.ritmos(A, 24), aut = K.autonomia(ult?.stock, R24, P);
+  return { P, L, A, ult, R24, aut, AL: K.alarmas(L, A, aut, P) };
+}
+
+// ---------- estructura ----------
+const VISTAS = [{ id: 'hmi', nombre: 'Panel HMI' }, { id: 'analisis', nombre: 'Análisis' }, { id: 'parametros', nombre: 'Parámetros' }].filter(v => ctx.puedeModulo(v.id));
+function render() {
+  CH.forEach(c => c.destroy()); CH = [];
+  if (ESC) { ESC.parar(); ESC = null; }
+  if (!VISTAS.some(v => v.id === ST.vista)) ST.vista = VISTAS[0]?.id;
+  $('#tabs').innerHTML = VISTAS.map(v => `<button class="${v.id === ST.vista ? 'on' : ''}" data-v="${v.id}">${v.nombre}</button>`).join('');
+  $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { ST.vista = b.dataset.v; location.hash = ST.vista; render(); });
+  const C = calcular();
+  $('#meta').innerHTML = C.ult ? `Última muestra<br><b>${fh(C.ult.t)}</b>` : '';
+  const v = $('#view');
+  if (!VISTAS.length) return v.innerHTML = '<div class="vacio">Su usuario no tiene módulos habilitados en este aplicativo.</div>';
+  if (ST.vista === 'parametros') return vistaParametros(v, C);
+  if (!C.L.length) return v.innerHTML = `${ST.err ? `<div class="aviso bad">${esc(ST.err)}</div>` : ''}<div class="card" style="max-width:640px;margin:30px auto"><h3>Sin muestras todavía</h3><p class="hint" style="font-size:13px;line-height:1.6">El panel se arma con el formato <b>R-303 Control de agua</b>: altura de cada pozo y lecturas inicial y final de los caudalímetros de ósmosis y de producción congelado. Emita el R-303 en Registro de formatos y registre la primera muestra.</p></div>`;
+  if (ST.vista === 'analisis') return vistaAnalisis(v, C);
+  return vistaHMI(v, C);
+}
+
+function banner(C) {
+  const h = C.aut.horas, P = C.P;
+  if (!Number.isFinite(h) || h >= (Number(P.alertaHoras) || 24)) return '';
+  const nivel = h < (Number(P.criticoHoras) || 12) ? 'bad' : 'warn';
+  return `<div class="aviso ${nivel}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 22px"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <div><b>${nivel === 'bad' ? 'Programar cisternas' : 'Atención al nivel de agua'}</b><div>En las últimas 24 h el consumo de producción congelado superó a la producción de ósmosis en ${nf(-C.R24.neto, 1)} m³/h. A ese ritmo los pozos llegan a la reserva mínima en <b>${horasTxt(h)}</b> (aprox. ${fh(C.ult.t + h * 36e5)}).</div></div></div>`;
+}
+
+// ---------- estado en una muestra ----------
+function estadoEn(C, i) {
+  const x = C.L[i], P = C.P;
+  const prod = Number.isFinite(x.o.q) ? x.o.q : 0, cons = Number.isFinite(x.c.q) ? x.c.q : 0;
+  return { x, prod, cons, esp: x.esp, ef: x.ef, teo: K.caudalEsperado(Object.fromEntries(P.modulos.map(m => [m.id, 'Produciendo'])), P) };
+}
+
+// ---------- PANEL HMI ----------
+function vistaHMI(v, C) {
+  const P = C.P, L = C.L;
+  if (ST.idx == null || ST.idx >= L.length) ST.idx = L.length - 1;
+  const cap = P.pozos.reduce((s, p) => s + capacidad(p), 0);
+  const compartir = !!(navigator.canShare && window.File && navigator.canShare({ files: [new File([''], 'x.png', { type: 'image/png' })] }));
+  v.innerHTML = `${ST.err ? `<div class="aviso bad">${esc(ST.err)}</div>` : ''}${banner(C)}
+  <div class="hmi-top"><h2>Estado del agua</h2><span class="when" id="hWhen"></span><span class="sp"></span>
+    ${compartir ? '<button class="btn" id="bShare"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>Compartir</button>' : ''}
+    <button class="btn" id="bPng"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.5"/></svg>Descargar imagen</button>
+    <button class="btn pri" id="bPdf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>Descargar PDF</button></div>
+  <div class="hmi">
+    <div>
+      <div class="scene" id="scene"><div class="hud">Arrastre para girar · rueda o pellizco para acercar</div>
+        <div class="vw"><button data-cam="iso">3D</button><button data-cam="frente">Frente</button><button data-cam="planta">Planta</button></div></div>
+      <div class="play">
+        <button class="btn" id="pPlay"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg><span>Reproducir</span></button>
+        <input type="range" id="pRng" min="0" max="${L.length - 1}" value="${ST.idx}" aria-label="Muestra">
+        <div class="when" id="pWhen"></div>
+      </div>
+    </div>
+    <div class="side" id="side"></div>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="card c12"><h3>Pozos</h3><div class="hint">Volumen = altura medida con la regla × área del pozo (largo × ancho).</div>
+      <div class="scroll"><table class="tbl"><thead><tr><th>Pozo</th><th>Medidas (L × A × H)</th><th class="r">Área</th><th class="r">Capacidad</th><th class="r">Altura</th><th class="r">Volumen</th><th style="width:30%">Nivel</th></tr></thead><tbody id="tPoz"></tbody></table></div></div>
+  </div>`;
+
+  const pintarLado = (i) => {
+    const E = estadoEn(C, i), x = E.x, ultimo = i === L.length - 1;
+    const pct = x.stock / cap, h = C.aut.horas, res = cap * (P.reservaPct || 0) / 100;
+    const nEf = nivelEf(E.ef, P);
+    $('#side').innerHTML = `
+      <div class="k"><small>Agua disponible en pozos</small><div class="v num">${nf(x.stock, 0)}<em>m³ de ${nf(cap, 0)}</em></div>
+        <div class="s">${nf(pct * 100, 0)} % de la capacidad total</div><div class="lv"><i style="width:${Math.min(100, pct * 100)}%"></i><u style="left:${P.reservaPct || 0}%" title="Reserva mínima"></u></div></div>
+      ${ultimo ? `<div class="k ${!Number.isFinite(h) ? 'ok' : h < (P.criticoHoras || 12) ? 'bad' : h < (P.alertaHoras || 24) ? 'warn' : 'ok'}"><small>Autonomía de los pozos</small>
+        <div class="v num">${Number.isFinite(h) ? horasTxt(h) : 'Pozos en llenado'}</div><div class="s">${Number.isFinite(h) ? `Hasta la reserva mínima (${nf(res, 0)} m³), al ritmo de las últimas 24 h` : `La producción cubre el consumo${Number.isFinite(C.aut.llenado) ? ` · llenos en ${horasTxt(C.aut.llenado)}` : ''}`}</div></div>` : ''}
+      <div class="k ${nEf === 'mut' ? '' : nEf}"><small>Producción de ósmosis · caudalímetro de ambos módulos</small>
+        <div class="v num">${nf(E.prod, 1)}<em>m³/h medidos</em></div>
+        <div class="s">Esperado ${nf(E.esp, 1)} m³/h según módulos produciendo · <b style="color:${nEf === 'ok' ? 'var(--ok)' : nEf === 'mut' ? 'var(--muted)' : 'var(--bad)'}">${Number.isFinite(E.ef) ? nf(E.ef * 100, 0) + ' %' : '—'}</b></div>
+        <div class="gauge"><i style="width:${Math.min(100, E.prod / (E.teo * 1.15) * 100)}%;background:${nEf === 'ok' ? 'var(--accent)' : nEf === 'warn' ? 'var(--warn)' : nEf === 'bad' ? 'var(--bad)' : '#AEB8C2'}"></i><u style="left:${E.esp / (E.teo * 1.15) * 100}%" title="Esperado"></u></div>
+        <div class="gauge-l"><span>0</span><span>${nf(E.teo, 0)} m³/h (2 módulos)</span></div>
+        <div class="chips">${P.modulos.map(m => { const e = x.est[m.id]; return `<span class="chip ${e === 'Produciendo' ? 'ok' : e === 'Retrolavado' ? 'warn' : 'bad'}">${esc(m.nombre)} · ${esc(e || '—')}</span>`; }).join('')}</div>
+        <div class="s" style="margin-top:8px">Muestra de ${nf(x.o.dt * 60, 0)} min: ${nf(x.o.li, 1)} → ${nf(x.o.lf, 1)} m³ (${nf(x.o.vol, 1)} m³)</div></div>
+      <div class="k"><small>Consumo de producción congelado</small><div class="v num">${nf(E.cons, 1)}<em>m³/h</em></div>
+        <div class="s">Balance: <b style="color:${E.prod - E.cons >= 0 ? 'var(--ok)' : 'var(--bad)'}">${E.prod - E.cons >= 0 ? '+' : ''}${nf(E.prod - E.cons, 1)} m³/h</b> ${E.prod - E.cons >= 0 ? '(los pozos suben)' : '(los pozos bajan)'}</div>
+        <div class="s" style="margin-top:4px">Muestra de ${nf(x.c.dt * 60, 0)} min: ${nf(x.c.vol, 1)} m³</div></div>`;
+    $('#tPoz').innerHTML = P.pozos.map(p => { const z = x.pozos[p.id];
+      return `<tr><td><b>${esc(p.nombre)}</b></td><td class="num">${nf(p.largo, 2)} × ${nf(p.ancho, 2)} × ${nf(p.alto, 3)} m</td><td class="r num">${nf(area(p), 2)} m²</td><td class="r num">${nf(capacidad(p), 1)} m³</td>
+        <td class="r num">${z ? nf(z.h, 2) + ' m' : '—'}</td><td class="r num"><b>${z ? nf(z.vol, 1) + ' m³' : '—'}</b></td>
+        <td><div class="lv" style="margin:0"><i style="width:${z ? z.pct * 100 : 0}%"></i></div><span style="font-size:11.5px;color:var(--muted)">${z ? nf(z.pct * 100, 0) + ' %' : ''}</span></td></tr>`; }).join('');
+    $('#pWhen').innerHTML = `<b>${fh(x.t)}</b> · ${esc(x.turno)}${x.numero ? ` · ${esc(x.numero)}` : ''}`;
+    $('#hWhen').textContent = `${fh(x.t)}${ultimo ? ' · última muestra' : ''}`;
+    return E;
+  };
+
+  ESC = escena3D($('#scene'), P);
+  const aplicar = (i) => { ST.idx = i; const E = pintarLado(i); ESC.estado(E); };
+  aplicar(ST.idx);
+  const rng = $('#pRng'); let tim = null;
+  const lbl = () => $('#pPlay span');
+  rng.oninput = () => aplicar(Number(rng.value));
+  $('#pPlay').onclick = () => {
+    if (tim) { clearInterval(tim); tim = null; lbl().textContent = 'Reproducir'; return; }
+    if (Number(rng.value) >= L.length - 1) rng.value = Math.max(0, L.length - 1 - 24);
+    lbl().textContent = 'Pausar';
+    tim = setInterval(() => { const n = Number(rng.value) + 1; if (n > L.length - 1) { clearInterval(tim); tim = null; lbl().textContent = 'Reproducir'; return; } rng.value = n; aplicar(n); }, 700);
+  };
+  v.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => ESC.camara(b.dataset.cam));
+  ESC.alParar = () => { if (tim) clearInterval(tim); };
+  $('#bPng').onclick = async () => { const cv = await reporte(C); descargar(cv.toDataURL('image/png'), nombreArchivo('png')); };
+  $('#bPdf').onclick = async () => {
+    const cv = await reporte(C);
+    if (!window.jspdf) return toast('No se pudo cargar el generador de PDF.', 'err');
+    const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const W = 297, H = 210, r = Math.min(W / cv.width, H / cv.height), w = cv.width * r, h = cv.height * r;
+    pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', (W - w) / 2, (H - h) / 2, w, h);
+    pdf.save(nombreArchivo('pdf'));
+  };
+  const bs = $('#bShare');
+  if (bs) bs.onclick = async () => {
+    const cv = await reporte(C);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    try { await navigator.share({ files: [new File([blob], nombreArchivo('png'), { type: 'image/png' })], title: 'Agua de planta' }); } catch (e) { /* cancelado */ }
+  };
+}
+const nombreArchivo = (ext) => { const x = ST.idx != null ? calcular().L[ST.idx] : null, d = new Date(x ? x.t : Date.now());
+  return `Agua_planta_${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}.${ext}`; };
+function descargar(url, nombre) { const a = document.createElement('a'); a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); }
+
+// ---------- imagen de reporte (para compartir en los grupos) ----------
+const cargarImg = (src) => new Promise(r => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
+async function reporte(C) {
+  const P = C.P, E = estadoEn(C, ST.idx), x = E.x, ultimo = ST.idx === C.L.length - 1;
+  const cap = P.pozos.reduce((s, p) => s + capacidad(p), 0);
+  const W = 1600, H = 900, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const F = (w, s) => `${w} ${s}px "Segoe UI", system-ui, Arial, sans-serif`;
+  const rr = (x0, y0, w, h, r, fill, stroke) => { g.beginPath(); g.roundRect(x0, y0, w, h, r); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1; g.stroke(); } };
+  g.fillStyle = '#E4E9EF'; g.fillRect(0, 0, W, H);
+  // encabezado
+  g.fillStyle = '#1D2E40'; g.fillRect(0, 0, W, 96);
+  rr(24, 16, 170, 64, 10, '#FFFFFF');
+  const logo = await cargarImg(LOGO);
+  if (logo) { const r = Math.min(150 / logo.width, 48 / logo.height); g.drawImage(logo, 24 + (170 - logo.width * r) / 2, 16 + (64 - logo.height * r) / 2, logo.width * r, logo.height * r); }
+  g.fillStyle = '#FFFFFF'; g.font = F(700, 30); g.fillText('Agua de planta · Estado de pozos y producción', 220, 50);
+  g.fillStyle = '#9FB1C3'; g.font = F(400, 18); g.fillText('Pozos · producción de ósmosis · consumo de producción congelado', 220, 78);
+  g.textAlign = 'right'; g.fillStyle = '#FFFFFF'; g.font = F(600, 22); g.fillText(fh(x.t), W - 28, 50);
+  g.fillStyle = '#9FB1C3'; g.font = F(400, 16); g.fillText(`${x.turno ? 'Turno ' + x.turno + ' · ' : ''}${x.numero}`, W - 28, 76); g.textAlign = 'left';
+  // aviso
+  let y0 = 112;
+  const h = C.aut.horas;
+  if (ultimo && Number.isFinite(h) && h < (P.alertaHoras || 24)) {
+    const bad = h < (P.criticoHoras || 12);
+    rr(24, y0, W - 48, 50, 10, bad ? '#FDECEC' : '#FFF7E6', bad ? '#F1B9B9' : '#F0D49A');
+    g.fillStyle = bad ? '#7A1F1F' : '#6B4B00'; g.font = F(700, 20);
+    g.fillText(`${bad ? 'Programar cisternas' : 'Atención al nivel de agua'}: reserva mínima en ${horasTxt(h)} (aprox. ${fh(x.t + h * 36e5)})`, 44, y0 + 32);
+    y0 += 64;
+  }
+  // escena 3D
+  const sw = 1040, sh = H - y0 - 54;
+  rr(24, y0, sw, sh, 12, '#F4F7F9', '#D5DDE5');
+  const foto = ESC ? ESC.foto(sw * 2, sh * 2) : null;
+  if (foto) { g.save(); g.beginPath(); g.roundRect(24, y0, sw, sh, 12); g.clip(); g.drawImage(foto, 24, y0, sw, sh); g.restore(); }
+  // tarjetas
+  const cx = 24 + sw + 20, cw = W - cx - 24; let cy = y0;
+  const tarjeta = (alto, color, titulo, valor, unidad, linea, extra) => {
+    rr(cx, cy, cw, alto, 12, '#FFFFFF', '#D5DDE5'); g.fillStyle = color; g.fillRect(cx, cy + 10, 5, alto - 20);
+    g.fillStyle = '#6A7684'; g.font = F(600, 16); g.fillText(titulo, cx + 22, cy + 30);
+    g.fillStyle = '#1B2733'; g.font = F(700, 38); g.fillText(valor, cx + 22, cy + 74);
+    const vw = g.measureText(valor).width; g.fillStyle = '#46535F'; g.font = F(500, 18); g.fillText(unidad, cx + 30 + vw, cy + 74);
+    g.fillStyle = '#46535F'; g.font = F(400, 16); if (linea) g.fillText(linea, cx + 22, cy + 100);
+    if (extra) extra(cy); cy += alto + 14;
+  };
+  const colN = (n) => ({ ok: '#2f8f4e', warn: '#c98500', bad: '#cc3d3d' })[n] || '#2BA6A0';
+  tarjeta(132, '#2BA6A0', 'Agua disponible en pozos', nf(x.stock, 0), `m³ de ${nf(cap, 0)}`, `${nf(x.stock / cap * 100, 0)} % de la capacidad total`, (y) => {
+    rr(cx + 22, y + 112, cw - 44, 10, 5, '#E8EDF2'); rr(cx + 22, y + 112, Math.max(10, (cw - 44) * Math.min(1, x.stock / cap)), 10, 5, '#2E8FD0'); });
+  if (ultimo) tarjeta(112, colN(!Number.isFinite(h) ? 'ok' : h < (P.criticoHoras || 12) ? 'bad' : h < (P.alertaHoras || 24) ? 'warn' : 'ok'), 'Autonomía de los pozos',
+    Number.isFinite(h) ? horasTxt(h) : 'En llenado', '', Number.isFinite(h) ? 'Hasta la reserva mínima, ritmo de las últimas 24 h' : 'La producción cubre el consumo');
+  const nEf = nivelEf(E.ef, P);
+  tarjeta(132, colN(nEf), 'Producción de ósmosis (ambos módulos)', nf(E.prod, 1), 'm³/h', `Esperado ${nf(E.esp, 1)} m³/h · ${Number.isFinite(E.ef) ? nf(E.ef * 100, 0) + ' %' : '—'}`, (y) => {
+    g.font = F(600, 15); let xx = cx + 22;
+    P.modulos.forEach(m => { const e = x.est[m.id] || '—', t = `${m.nombre} · ${e}`, w = g.measureText(t).width + 22;
+      rr(xx, y + 108, w, 26, 13, e === 'Produciendo' ? '#E5F2E9' : e === 'Retrolavado' ? '#FBF0D9' : '#F9E2E2'); g.fillStyle = e === 'Produciendo' ? '#2f8f4e' : e === 'Retrolavado' ? '#9a6600' : '#cc3d3d'; g.fillText(t, xx + 11, y + 126); xx += w + 8; }); });
+  const bal = E.prod - E.cons;
+  tarjeta(112, '#1D2E40', 'Consumo de producción congelado', nf(E.cons, 1), 'm³/h', `Balance ${bal >= 0 ? '+' : ''}${nf(bal, 1)} m³/h · ${bal >= 0 ? 'los pozos suben' : 'los pozos bajan'}`);
+  // últimas 24 h hasta la muestra
+  const v24 = (T) => T.filter(z => z.tb <= x.t && z.tb > x.t - 864e5).reduce((s, z) => s + z.vol, 0);
+  const pr24 = v24(C.A.To), co24 = v24(C.A.Tc);
+  if (cy + 112 < H - 50) tarjeta(112, pr24 - co24 >= 0 ? '#2f8f4e' : '#c98500', 'Últimas 24 horas', `${pr24 - co24 >= 0 ? '+' : ''}${nf(pr24 - co24, 0)}`, 'm³ de balance', `Producido ${nf(pr24, 0)} m³ · consumido ${nf(co24, 0)} m³`);
+  // pie
+  g.fillStyle = '#6A7684'; g.font = F(400, 14);
+  g.fillText(`SIM · Agua de planta · ${P.pozos.map(p => `${p.nombre} ${x.pozos[p.id] ? nf(x.pozos[p.id].h, 2) + ' m' : '—'}`).join(' · ')}`, 24, H - 20);
+  g.textAlign = 'right'; g.fillText(`Generado ${fh(Date.now())}`, W - 24, H - 20); g.textAlign = 'left';
+  return cv;
+}
+
+// Etiquetas en cascada: cada etiqueta parte sobre su punto; si choca con otra ya ubicada, sube hasta quedar libre.
+// Se ubican primero las más cercanas al frente (más abajo en pantalla). Devuelve la base (y) de cada etiqueta.
+function cascada(items, sep = 6, tope = 4) {
+  const puestos = [];
+  [...items].sort((a, b) => b.y - a.y).forEach(it => {
+    let base = it.y - 8;
+    for (let k = 0; k < 40; k++) {
+      const r = { x0: it.x - it.w / 2, x1: it.x + it.w / 2, y0: base - it.h, y1: base };
+      const choque = puestos.find(o => r.x0 < o.x1 + sep && r.x1 > o.x0 - sep && r.y0 < o.y1 + sep && r.y1 > o.y0 - sep);
+      if (!choque) break;
+      base = choque.y0 - sep;
+    }
+    if (base - it.h < tope) base = tope + it.h;
+    it.base = base; puestos.push({ x0: it.x - it.w / 2, x1: it.x + it.w / 2, y0: base - it.h, y1: base });
+  });
+  return items;
+}
+
+// ---------- escena 3D (Three.js) según la distribución de planta ----------
+// Planta (vista desde arriba, el frente es +z): Pozo 3 a la izquierda; Pozo 1 (atrás) y Pozo 2 (adelante) juntos a su derecha;
+// módulos 1 y 2 a la derecha. Ósmosis → caudalímetro → tubería por el frente que entra al Pozo 2 y al Pozo 3.
+// Salida a producción congelado desde el Pozo 1 hacia la derecha, con su caudalímetro.
+function escena3D(box, P) {
+  const T = window.THREE;
+  if (!T) { box.insertAdjacentHTML('beforeend', '<div class="vacio" style="padding-top:200px">No se pudo cargar el visor 3D.</div>'); return { estado() {}, camara() {}, parar() {}, foto: () => null }; }
+  const W = () => box.clientWidth, H = () => box.clientHeight;
+  const ren = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); ren.setSize(W(), H());
+  ren.shadowMap.enabled = true; ren.shadowMap.type = T.PCFSoftShadowMap; ren.outputEncoding = T.sRGBEncoding;
+  box.prepend(ren.domElement);
+  const sc = new T.Scene(), cam = new T.PerspectiveCamera(36, W() / H(), 0.5, 600);
+  sc.add(new T.HemisphereLight(0xffffff, 0x9fb0c2, 0.7));
+  const sol = new T.DirectionalLight(0xffffff, 1.05); sol.position.set(-25, 50, 35); sol.castShadow = true;
+  sol.shadow.mapSize.set(2048, 2048); Object.assign(sol.shadow.camera, { left: -50, right: 50, top: 40, bottom: -40, near: 1, far: 160 }); sc.add(sol);
+  const piso = new T.Mesh(new T.PlaneGeometry(160, 110), new T.MeshStandardMaterial({ color: 0xd2dae2, roughness: 0.95 }));
+  piso.rotation.x = -Math.PI / 2; piso.receiveShadow = true; sc.add(piso);
+  const grid = new T.GridHelper(140, 70, 0xaab6c2, 0xbfcad5); grid.position.y = 0.01; sc.add(grid);
+
+  const concreto = new T.MeshStandardMaterial({ color: 0xa9b5c1, roughness: 0.8, metalness: 0.02 });
+  const vidrio = new T.MeshStandardMaterial({ color: 0xd6e6f2, transparent: true, opacity: 0.1, roughness: 0.1, depthWrite: false });
+  const borde = new T.LineBasicMaterial({ color: 0x1d2e40, transparent: true, opacity: 0.85 });
+  const aguaMat = new T.MeshStandardMaterial({ color: 0x1668b0, transparent: true, opacity: 0.9, roughness: 0.4, metalness: 0.05 });
+  const supMat = new T.MeshStandardMaterial({ color: 0x2f8ad6, transparent: true, opacity: 0.95, roughness: 0.38, metalness: 0.05 });
+  const azul = new T.MeshStandardMaterial({ color: 0x1d2e40, roughness: 0.5, metalness: 0.2 });
+  const metal = new T.MeshStandardMaterial({ color: 0x8da0b3, roughness: 0.4, metalness: 0.6 });
+  const e = 0.25;
+
+  // medidas en planta: dx (eje x) y dz (eje z) de cada pozo
+  const pz = Object.fromEntries(P.pozos.map(p => [p.id, p]));
+  const p1 = pz.p1, p2 = pz.p2, p3 = pz.p3;
+  const sep = 0.3;
+  const dimP = { p3: [p3.ancho, p3.largo], p1: [p1.largo, p1.ancho], p2: [p2.largo, p2.ancho] };
+  const bloque = p1.ancho + p2.ancho + sep;
+  const pos = {
+    p3: [-sep / 2 - p3.ancho / 2, 0],
+    p1: [sep / 2 + p1.largo / 2, -bloque / 2 + p1.ancho / 2],
+    p2: [sep / 2 + p2.largo / 2, bloque / 2 - p2.ancho / 2]
+  };
+  const POZ = {};
+  P.pozos.forEach(p => {
+    const [dx, dz] = dimP[p.id] || [p.largo, p.ancho], [x0, z0] = pos[p.id] || [0, 0], Hh = p.alto;
+    const g = new T.Group(); g.position.set(x0, 0, z0); sc.add(g);
+    const muro = (w, h, d, x, y, z, mat = concreto) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = mat === concreto; m.receiveShadow = true; g.add(m); };
+    muro(dx + 2 * e, e, dz + 2 * e, 0, -e / 2 + 0.001, 0);
+    muro(dx + 2 * e, Hh, e, 0, Hh / 2, -dz / 2 - e / 2);
+    muro(e, Hh, dz, -dx / 2 - e / 2, Hh / 2, 0);
+    muro(e, Hh, dz, dx / 2 + e / 2, Hh / 2, 0, p.id === 'p3' ? concreto : vidrio);
+    muro(dx + 2 * e, Hh, e, 0, Hh / 2, dz / 2 + e / 2, vidrio);
+    const ed = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(dx + 2 * e, Hh, dz + 2 * e)), borde); ed.position.y = Hh / 2; g.add(ed);
+    for (let y = 0.5; y < Hh; y += 0.5) { const t = new T.Mesh(new T.BoxGeometry(0.9, 0.03, 0.06), new T.MeshBasicMaterial({ color: 0x1d2e40 })); t.position.set(-dx / 2 + 0.5, y, -dz / 2 + 0.03); g.add(t); }
+    const max = new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(-dx / 2, Hh, dz / 2 + e + 0.02), new T.Vector3(dx / 2, Hh, dz / 2 + e + 0.02)]), new T.LineDashedMaterial({ color: 0xcc3d3d, dashSize: 0.4, gapSize: 0.25 }));
+    max.computeLineDistances(); g.add(max);
+    const agua = new T.Mesh(new T.BoxGeometry(dx - 0.02, 1, dz - 0.02), aguaMat); agua.scale.y = 0.001; g.add(agua);
+    const sg = new T.PlaneGeometry(dx - 0.04, dz - 0.04, 48, 48); sg.rotateX(-Math.PI / 2);
+    const sup = new T.Mesh(sg, supMat); g.add(sup);
+    POZ[p.id] = { p, g, agua, sup, base: sg.attributes.position.array.slice(), nivel: 0, meta: 0, tag: null, dx, dz };
+  });
+  const xDer = sep / 2 + p1.largo;          // borde derecho del bloque pozo 1 / pozo 2
+  const zFrente = Math.max(p3.largo / 2, bloque / 2) + e;
+
+  // módulos (a la derecha, módulo 1 arriba y módulo 2 abajo en el bosquejo)
+  const MOD = {};
+  P.modulos.forEach((m, k) => {
+    const g = new T.Group(); g.position.set(xDer + 9.5, 0, k ? 3.4 : -3.0); sc.add(g);
+    const b = new T.Mesh(new T.BoxGeometry(6.2, 0.25, 2.6), azul); b.position.y = 0.12; b.castShadow = true; g.add(b);
+    for (let i = 0; i < 5; i++) {
+      const c = new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 5.4, 20), new T.MeshStandardMaterial({ color: k ? 0xeb6834 : 0x2a78d6, roughness: 0.35, metalness: 0.15 }));
+      c.rotation.z = Math.PI / 2; c.position.set(0, 0.55 + (i % 3) * 0.5, i < 3 ? -0.55 : 0.55); c.castShadow = true; g.add(c);
+    }
+    [-2.75, 2.75].forEach(xx => { const s = new T.Mesh(new T.BoxGeometry(0.12, 1.9, 2.4), metal); s.position.set(xx, 1.05, 0); g.add(s); });
+    MOD[m.id] = { m, g };
+  });
+
+  const tubo = (pts, color, r = 0.16) => {
+    const curva = new T.CatmullRomCurve3(pts.map(p => new T.Vector3(...p)), false, 'catmullrom', 0.02);
+    const mat = new T.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.4 });
+    const mesh = new T.Mesh(new T.TubeGeometry(curva, 160, r, 12, false), mat); mesh.castShadow = true; sc.add(mesh);
+    const n = Math.max(10, Math.round(curva.getLength() * 1.2));
+    const gotas = new T.InstancedMesh(new T.SphereGeometry(r * 0.75, 10, 8), new T.MeshBasicMaterial({ color: 0xffffff }), n); sc.add(gotas);
+    return { curva, mat, gotas, n, fase: 0, vel: 0 };
+  };
+  const yT = 0.9, zH = zFrente + 2.6, xCol = xDer + 5.2, xMed = xDer + 2.6;
+  const xM = MOD.m1.g.position.x - 3.1;
+  const TUB = {
+    m1: tubo([[xM, 0.9, MOD.m1.g.position.z], [xCol, yT, MOD.m1.g.position.z], [xCol, yT, MOD.m2.g.position.z]], 0x2a78d6),
+    m2: tubo([[xM, 0.9, MOD.m2.g.position.z], [xCol, yT, MOD.m2.g.position.z]], 0xeb6834),
+    col: tubo([[xCol, yT, MOD.m2.g.position.z], [xCol, yT, zH], [pos.p2[0], yT, zH]], 0x2ba6a0),
+    a12: tubo([[pos.p2[0], yT, zH], [pos.p2[0], yT, zFrente + 0.6], [pos.p2[0], p2.alto + 0.5, zFrente + 0.6], [pos.p2[0], p2.alto + 0.5, zFrente - 0.8]], 0x2ba6a0),
+    a3: tubo([[pos.p2[0], yT, zH], [pos.p3[0], yT, zH], [pos.p3[0], yT, zFrente + 0.6], [pos.p3[0], p3.alto + 0.5, zFrente + 0.6], [pos.p3[0], p3.alto + 0.5, zFrente - 0.8]], 0x9aa8b6),
+    cons: tubo([[xDer - 0.6, p1.alto - 0.3, pos.p1[1] - p1.ancho / 2 + 0.6], [xDer + 1.2, p1.alto - 0.3, pos.p1[1] - p1.ancho / 2 + 0.6], [xDer + 1.6, yT + 0.6, -bloque / 2 - 1.6], [xDer + 21, yT + 0.6, -bloque / 2 - 1.6]], 0x1d2e40, 0.2)
+  };
+  // caudalímetros (dial)
+  const medidor = (x, y, z, color) => {
+    const g = new T.Group(); g.position.set(x, y, z); sc.add(g);
+    const cuerpo = new T.Mesh(new T.CylinderGeometry(0.55, 0.55, 0.5, 28), new T.MeshStandardMaterial({ color: 0xf3f5f7, roughness: 0.4, metalness: 0.3 }));
+    cuerpo.rotation.x = Math.PI / 2; g.add(cuerpo);
+    const aro = new T.Mesh(new T.TorusGeometry(0.55, 0.07, 10, 28), new T.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.3 })); aro.position.z = 0.26; g.add(aro);
+    const ag = new T.Mesh(new T.BoxGeometry(0.05, 0.42, 0.02), new T.MeshBasicMaterial({ color: 0xcc3d3d })); ag.position.set(0, 0.12, 0.27); g.add(ag);
+    return { g, ag };
+  };
+  const MED = { o: medidor(xMed, yT + 0.75, zH, 0x2ba6a0), c: medidor(xDer + 11, yT + 1.35, -bloque / 2 - 1.6, 0x1d2e40) };
+  // producción congelado
+  const nave = new T.Group(); nave.position.set(xDer + 24, 0, -bloque / 2 - 1.6); sc.add(nave);
+  const cuerpo = new T.Mesh(new T.BoxGeometry(6, 3.6, 5.4), new T.MeshStandardMaterial({ color: 0xe8edf2, roughness: 0.7 })); cuerpo.position.y = 1.8; cuerpo.castShadow = true; nave.add(cuerpo);
+  const bn = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(6, 3.6, 5.4)), borde); bn.position.y = 1.8; nave.add(bn);
+  const techo = new T.Mesh(new T.BoxGeometry(6.4, 0.25, 5.8), azul); techo.position.y = 3.7; nave.add(techo);
+  const franja = new T.Mesh(new T.BoxGeometry(6.02, 0.35, 5.42), new T.MeshStandardMaterial({ color: 0x2ba6a0 })); franja.position.y = 3.05; nave.add(franja);
+
+  // etiquetas
+  const tag = (cls) => { const d = document.createElement('div'); d.className = 'tag ' + cls; box.appendChild(d); return d; };
+  const guias = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); guias.setAttribute('class', 'guias'); box.appendChild(guias);
+  Object.values(POZ).forEach(z => z.tag = tag(''));
+  Object.values(MOD).forEach(z => z.tag = tag('mod'));
+  const tMedO = tag('med'), tMedC = tag('med co'), tCons = tag('cons');
+  const anclas = () => [
+    ...Object.values(POZ).map(z => [z.tag, new T.Vector3(z.g.position.x, z.p.alto + 0.6, z.g.position.z + (z.p.id === 'p1' ? -1.2 : z.p.id === 'p2' ? 1.5 : 0))]),
+    ...Object.values(MOD).map(z => [z.tag, new T.Vector3(z.g.position.x + 2.6, 2.2, z.g.position.z)]),
+    [tMedO, new T.Vector3(xMed, yT + 1.6, zH)], [tMedC, new T.Vector3(xDer + 11, yT + 2.2, -bloque / 2 - 1.6)], [tCons, new T.Vector3(nave.position.x, 4.6, nave.position.z)]
+  ];
+
+  // cámara
+  let th = -0.32, ph = 1.0, rad = 56;
+  const tgt = new T.Vector3(xDer + 1.5, 1, -1.5);
+  const VISTA = { iso: [-0.32, 1.0, 56], frente: [0, 1.25, 54], planta: [0, 0.04, 62] };
+  let anim = null;
+  const camara = (k) => { const [a, b, c] = VISTA[k] || VISTA.iso; anim = { th0: th, ph0: ph, r0: rad, th1: a, ph1: b, r1: c, t: 0 }; };
+  const poner = () => { const r = rad * Math.max(1, 1.55 / cam.aspect); cam.position.set(tgt.x + r * Math.sin(ph) * Math.sin(th), tgt.y + r * Math.cos(ph), tgt.z + r * Math.sin(ph) * Math.cos(th)); cam.lookAt(tgt); };
+  const cv = ren.domElement; let drag = null, pinch = null;
+  cv.addEventListener('pointerdown', (ev) => { drag = { x: ev.clientX, y: ev.clientY }; cv.setPointerCapture(ev.pointerId); });
+  cv.addEventListener('pointermove', (ev) => { if (!drag || pinch) return; th -= (ev.clientX - drag.x) * 0.006; ph = Math.min(1.45, Math.max(0.04, ph - (ev.clientY - drag.y) * 0.005)); drag = { x: ev.clientX, y: ev.clientY }; anim = null; });
+  cv.addEventListener('pointerup', () => drag = null);
+  cv.addEventListener('wheel', (ev) => { ev.preventDefault(); rad = Math.min(140, Math.max(16, rad * (1 + Math.sign(ev.deltaY) * 0.08))); anim = null; }, { passive: false });
+  cv.addEventListener('touchmove', (ev) => { if (ev.touches.length === 2) { const d = Math.hypot(ev.touches[0].clientX - ev.touches[1].clientX, ev.touches[0].clientY - ev.touches[1].clientY); if (pinch) rad = Math.min(140, Math.max(16, rad * pinch / d)); pinch = d; ev.preventDefault(); } }, { passive: false });
+  cv.addEventListener('touchend', () => pinch = null);
+  const ro = new ResizeObserver(() => { ren.setSize(W(), H()); cam.aspect = W() / H(); cam.updateProjectionMatrix(); }); ro.observe(box);
+
+  const m4 = new T.Matrix4(), cero = new T.Vector3(0, 0, 0);
+  let vivo = true, t0 = performance.now(), tAhora = 0;
+  const paso = (t) => {
+    if (anim) { anim.t = Math.min(1, anim.t + 0.035); const s = anim.t * anim.t * (3 - 2 * anim.t); th = anim.th0 + (anim.th1 - anim.th0) * s; ph = anim.ph0 + (anim.ph1 - anim.ph0) * s; rad = anim.r0 + (anim.r1 - anim.r0) * s; if (anim.t >= 1) anim = null; }
+    poner();
+    Object.values(POZ).forEach(z => {
+      z.nivel += (z.meta - z.nivel) * 0.06;
+      const h = Math.max(0.002, z.nivel);
+      z.agua.scale.y = h; z.agua.position.y = h / 2; z.sup.position.y = h + 0.005; z.sup.visible = h > 0.01;
+      const a = z.sup.geometry.attributes.position.array;
+      for (let i = 0; i < a.length; i += 3) a[i + 1] = Math.sin(z.base[i] * 0.9 + t * 1.6) * 0.012 + Math.cos(z.base[i + 2] * 1.3 + t * 1.2) * 0.01;
+      z.sup.geometry.attributes.position.needsUpdate = true; z.sup.geometry.computeVertexNormals();
+    });
+    Object.values(TUB).forEach(u => {
+      u.fase = (u.fase + u.vel * 0.016) % 1;
+      for (let i = 0; i < u.n; i++) {
+        const p = u.curva.getPointAt((i / u.n + u.fase) % 1);
+        m4.makeTranslation(p.x, p.y, p.z); if (u.vel <= 0) m4.scale(cero); u.gotas.setMatrixAt(i, m4);
+      }
+      u.gotas.instanceMatrix.needsUpdate = true;
+    });
+    MED.o.ag.rotation.z = -t * (TUB.col.vel * 6); MED.c.ag.rotation.z = -t * (TUB.cons.vel * 6);
+  };
+  const loop = (now) => {
+    if (!vivo) return;
+    tAhora = (now - t0) / 1000; paso(tAhora); ren.render(sc, cam);
+    const its = anclas().map(([el, p]) => { const q = p.clone().project(cam); el.style.display = q.z < 1 ? '' : 'none';
+      return { el, x: (q.x + 1) / 2 * W(), y: (1 - q.y) / 2 * H(), w: el.offsetWidth, h: el.offsetHeight }; }).filter(i => i.w);
+    cascada(its);
+    let lin = '';
+    its.forEach(i => { i.el.style.left = i.x + 'px'; i.el.style.top = i.base + 'px';
+      if (i.y - i.base > 12) lin += `<line x1="${i.x}" y1="${i.base}" x2="${i.x}" y2="${i.y}"/><circle cx="${i.x}" cy="${i.y}" r="3"/>`; });
+    guias.innerHTML = lin;
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+
+  let ULT = null;
+  const API = {
+    estado(E) {
+      ULT = E; const x = E.x;
+      P.pozos.forEach(p => { const z = POZ[p.id], d = x.pozos[p.id];
+        z.meta = d ? Math.min(d.h, p.alto) : 0;
+        z.tag.innerHTML = `<b>${esc(p.nombre)}</b><div class="big num">${d ? nf(d.vol, 0) : '—'} <span style="font-size:12px;font-weight:500">m³</span></div>${d ? `${nf(d.h, 2)} m · ${nf(d.pct * 100, 0)} %` : 'sin lectura'}<div class="bar"><i style="width:${d ? d.pct * 100 : 0}%"></i></div>`;
+      });
+      P.modulos.forEach(m => { const z = MOD[m.id], s = x.est[m.id]; z.tag.innerHTML = `<b>${esc(m.nombre)}</b>${esc(s || '—')}`; });
+      const a3 = x.destino === 'Pozo 3', vel = (q) => q > 0 ? 0.05 + Math.min(1, q / 25) * 0.25 : 0;
+      TUB.m1.vel = x.est.m1 === 'Produciendo' ? vel(E.prod / 2) : 0; TUB.m2.vel = x.est.m2 === 'Produciendo' ? vel(E.prod / 2) : 0;
+      TUB.col.vel = vel(E.prod); TUB.a12.vel = a3 ? 0 : vel(E.prod); TUB.a3.vel = a3 ? vel(E.prod) : 0;
+      TUB.a12.mat.color.set(a3 ? 0x9aa8b6 : 0x2ba6a0); TUB.a3.mat.color.set(a3 ? 0x2ba6a0 : 0x9aa8b6);
+      TUB.cons.vel = E.cons > 0 ? 0.05 + Math.min(1, E.cons / 40) * 0.3 : 0;
+      tMedO.innerHTML = `<b>Caudalímetro ósmosis</b>${nf(E.prod, 1)} m³/h · ${nf(x.o.lf, 1)} m³`;
+      tMedC.innerHTML = `<b>Caudalímetro producción</b>${nf(E.cons, 1)} m³/h · ${nf(x.c.lf, 1)} m³`;
+      tCons.innerHTML = `<b>Producción congelado</b>${nf(E.cons, 1)} m³/h`;
+    },
+    camara,
+    // imagen de la escena con sus etiquetas dibujadas, para el reporte
+    foto(w, h) {
+      const w0 = W(), h0 = H();
+      ren.setPixelRatio(1); ren.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); poner();
+      Object.values(POZ).forEach(z => z.nivel = z.meta); paso(tAhora); ren.render(sc, cam);
+      const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d');
+      g.drawImage(ren.domElement, 0, 0, w, h);
+      const s = w / 1040;
+      const fuente = (i, oscuro) => { const grande = i === 1 && !oscuro; return `${i === 0 || grande ? 700 : 400} ${(grande ? 20 : 14) * s}px "Segoe UI", system-ui, sans-serif`; };
+      const cajas = [];
+      const caja = (p, lineas, oscuro) => {
+        const q = p.clone().project(cam);
+        const anchos = lineas.map((l, i) => { g.font = fuente(i, oscuro); return g.measureText(l).width; });
+        cajas.push({ x: (q.x + 1) / 2 * w, y: (1 - q.y) / 2 * h, w: Math.max(...anchos) + 22 * s, h: (lineas.length * 20 + (oscuro ? 10 : 22)) * s, lineas, oscuro });
+      };
+      if (ULT) {
+        const x = ULT.x;
+        P.pozos.forEach(p => { const z = POZ[p.id], d = x.pozos[p.id];
+          caja(new T.Vector3(z.g.position.x, p.alto + 0.6, z.g.position.z + (p.id === 'p1' ? -1.2 : p.id === 'p2' ? 1.5 : 0)), [p.nombre, d ? `${nf(d.vol, 0)} m³` : '—', d ? `${nf(d.h, 2)} m · ${nf(d.pct * 100, 0)} %` : ''], false); });
+        P.modulos.forEach(m => caja(new T.Vector3(MOD[m.id].g.position.x + 2.6, 2.2, MOD[m.id].g.position.z), [m.nombre, x.est[m.id] || '—'], true));
+        caja(new T.Vector3(xMed, yT + 1.6, zH), ['Caudalímetro ósmosis', `${nf(ULT.prod, 1)} m³/h`], false);
+        caja(new T.Vector3(xDer + 11, yT + 2.2, -bloque / 2 - 1.6), ['Caudalímetro producción', `${nf(ULT.cons, 1)} m³/h`], false);
+        caja(new T.Vector3(nave.position.x, 4.6, nave.position.z), ['Producción congelado', `${nf(ULT.cons, 1)} m³/h`], false);
+      }
+      cascada(cajas, 8 * s, 6 * s).forEach(c => {
+        if (c.y - c.base > 12 * s) { g.strokeStyle = '#1D2E40'; g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(c.x, c.base); g.lineTo(c.x, c.y); g.stroke(); g.fillStyle = '#1D2E40'; g.beginPath(); g.arc(c.x, c.y, 3.5 * s, 0, Math.PI * 2); g.fill(); }
+        g.save(); g.shadowColor = 'rgba(20,32,46,.18)'; g.shadowBlur = 10 * s; g.shadowOffsetY = 3 * s;
+        g.beginPath(); g.roundRect(c.x - c.w / 2, c.base - c.h, c.w, c.h, 9 * s); g.fillStyle = c.oscuro ? '#1D2E40' : '#FFFFFF'; g.fill(); g.restore();
+        g.strokeStyle = c.oscuro ? '#1D2E40' : '#B9C5D1'; g.lineWidth = 1; g.stroke();
+        let yy = c.base - c.h + 21 * s;
+        c.lineas.forEach((l, i) => { const grande = i === 1 && !c.oscuro; g.font = fuente(i, c.oscuro);
+          g.fillStyle = c.oscuro ? (i === 0 ? '#FFFFFF' : '#C9D4DF') : i === 0 || grande ? '#1B2733' : '#46535F'; g.textAlign = 'center'; g.fillText(l, c.x, yy); yy += (grande || (i === 0 && c.lineas.length > 2) ? 24 : 19) * s; });
+        g.textAlign = 'left';
+      });
+      ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); ren.setSize(w0, h0); cam.aspect = w0 / h0; cam.updateProjectionMatrix();
+      return out;
+    },
+    parar() { vivo = false; ro.disconnect(); ren.dispose(); API.alParar?.(); }
+  };
+  return API;
+}
+
+// ---------- ANÁLISIS ----------
+function vistaAnalisis(v, C) {
+  const P = C.P, fin = C.L.at(-1).t, desde = fin - ST.periodo * 864e5;
+  const L = C.L.filter(x => x.t > desde);
+  const D = K.porDia(C.A, C.L, P).filter(d => new Date(d.dia + 'T23:59').getTime() > desde);
+  const To = C.A.To.filter(x => x.tb > desde), Tc = C.A.Tc.filter(x => x.tb > desde);
+  const sum = (a, f) => a.reduce((s, x) => s + f(x), 0);
+  const prod = sum(To, x => x.vol), dtP = sum(To, x => x.dt), cons = sum(Tc, x => x.vol), dtC = sum(Tc, x => x.dt);
+  const teo = C.A.caudalTotal * C.A.disp * dtP, ef = teo ? prod / teo : NaN;
+  const bajas = L.filter(x => Number.isFinite(x.ef) && x.ef < (P.umbral || 85) / 100).length;
+  v.innerHTML = `${ST.err ? `<div class="aviso bad">${esc(ST.err)}</div>` : ''}${banner(C)}
+  <div class="tb">
+    <div class="blk"><span>Periodo</span><div class="seg" id="sPer">${[[1, '24 h'], [7, '7 días'], [30, '30 días']].map(([n, t]) => `<button data-p="${n}" class="${n === ST.periodo ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+    <div class="sp"></div>
+    <div class="blk"><span>Datos</span><div style="font-size:12.5px;color:var(--ink2)">${L.length} muestras del R-303</div></div>
+  </div>
+  <div class="grid" style="margin-bottom:14px">
+    ${[['Producido por ósmosis', nf(prod, 0), 'm³', `${nf(dtP ? prod / dtP : NaN, 1)} m³/h en promedio`, ''],
+       ['Frente al teórico con retrolavados', nf(ef * 100, 0), '%', `Teórico ${nf(teo, 0)} m³ (${nf(C.A.caudalTotal * C.A.disp, 1)} m³/h)`, nivelEf(ef, P) === 'mut' ? '' : nivelEf(ef, P)],
+       ['Consumo producción congelado', nf(cons, 0), 'm³', `${nf(dtC ? cons / dtC : NaN, 1)} m³/h en promedio`, ''],
+       ['Muestras con producción baja', String(bajas), `de ${L.length}`, `Caudal menor al ${P.umbral} % de lo esperado`, bajas ? 'warn' : 'ok']]
+      .map(([a, b, u, s, k]) => `<div class="k c3 ${k}"><small>${a}</small><div class="v num">${b}<em>${u}</em></div><div class="s">${s}</div></div>`).join('')}
+  </div>
+  <div class="grid">
+    <div class="card c8"><h3>Agua en pozos</h3><div class="hint">Volumen por pozo en cada muestra; línea discontinua: reserva mínima</div>
+      <div class="leg">${P.pozos.map((p, k) => `<span><i style="background:${['#1baf7a', '#7a5bbf', '#2a78d6'][k]}"></i>${esc(p.nombre)}</span>`).join('')}<span><i class="dash" style="border-color:#cc3d3d"></i>Reserva mínima</span></div>
+      <div class="ch"><canvas id="gV"></canvas></div></div>
+    <div class="card c4"><h3>Alertas</h3><div class="hint">Más urgentes primero</div>
+      <div style="max-height:318px;overflow:auto">${C.AL.length ? C.AL.slice(0, 25).map(a => `<div class="al ${a.nivel}"><i class="dt"></i><div><b>${esc(a.tipo)}</b><span>${esc(a.texto)}</span>${a.t ? `<br><small>${fh(a.t)}</small>` : ''}</div></div>`).join('') : '<div class="vacio">Sin alertas</div>'}</div></div>
+    <div class="card c6"><h3>Caudal de ósmosis en cada muestra</h3><div class="hint">Medido por el caudalímetro (ambos módulos) frente a lo esperado según los módulos que producían</div>
+      <div class="leg"><span><i style="background:#2BA6A0"></i>Medido</span><span><i class="dash" style="border-color:#1B2733"></i>Esperado</span><span><i style="background:#cc3d3d"></i>Producción baja</span></div>
+      <div class="ch"><canvas id="gQ"></canvas></div></div>
+    <div class="card c6"><h3>Producción frente a consumo</h3><div class="hint">m³/h según los totalizadores: cuando el consumo pasa a la producción, los pozos bajan</div>
+      <div class="leg"><span><i style="background:#2BA6A0"></i>Producción ósmosis</span><span><i style="background:#1D2E40"></i>Consumo producción congelado</span></div>
+      <div class="ch"><canvas id="gC"></canvas></div></div>
+    <div class="card c12"><h3>Resumen diario</h3><div class="hint">Volúmenes por diferencia de lecturas de los totalizadores. No contabilizada = producción − consumo − cambio de volumen en pozos (reboses, fugas o lecturas a revisar).</div>
+      <div class="scroll"><table class="tbl"><thead><tr><th>Día</th><th class="r">Producido</th><th class="r">Teórico</th><th class="r">Eficiencia</th><th class="r">Consumo</th><th class="r">Balance</th><th class="r">No contabilizada</th><th class="r">Muestras</th></tr></thead>
+      <tbody>${D.slice().reverse().map(d => `<tr><td><b>${fdia(d.dia)}</b>${d.completo ? '' : ' <span style="font-size:11px;color:var(--muted)">(parcial)</span>'}</td>
+        <td class="r num">${nf(d.prod, 1)} m³</td><td class="r num">${nf(d.teo, 1)} m³</td><td class="r">${Number.isFinite(d.ef) ? `<span class="st ${nivelEf(d.ef, P)}">${nf(d.ef * 100, 0)} %</span>` : '—'}</td>
+        <td class="r num">${nf(d.cons, 1)} m³</td><td class="r num" style="color:${d.prod - d.cons >= 0 ? 'var(--ok)' : 'var(--bad)'}">${d.prod - d.cons >= 0 ? '+' : ''}${nf(d.prod - d.cons, 1)} m³</td>
+        <td class="r num">${nf(d.noCont, 1)} m³</td><td class="r num">${d.muestras.length}</td></tr>`).join('')}</tbody></table></div></div>
+    <div class="card c12"><h3>Últimas muestras</h3><div class="hint">Lecturas inicial y final de cada caudalímetro, con el caudal resultante</div>
+      <div class="scroll"><table class="tbl"><thead><tr><th>Muestra</th><th>Módulos</th><th class="r">Ósmosis: lecturas</th><th class="r">Tiempo</th><th class="r">Caudal</th><th class="r">Esperado</th><th class="r">Consumo: lecturas</th><th class="r">Caudal</th><th class="r">Agua en pozos</th></tr></thead>
+      <tbody>${L.slice(-20).reverse().map(x => `<tr><td><b>${fh(x.t)}</b><div style="font-size:11.5px;color:var(--muted)">${esc(x.numero)}</div></td>
+        <td style="font-size:12px">${P.modulos.map(m => `${esc(m.nombre)}: ${esc(x.est[m.id] || '—')}`).join('<br>')}</td>
+        <td class="r num" style="font-size:12.5px">${nf(x.o.li, 1)} → ${nf(x.o.lf, 1)}<br><span style="color:var(--muted)">${hh(x.o.ti)}–${hh(x.o.tf)}</span></td><td class="r num">${nf(x.o.dt * 60, 0)} min</td>
+        <td class="r num"><b>${nf(x.o.q, 1)}</b></td><td class="r">${Number.isFinite(x.ef) ? `<span class="st ${nivelEf(x.ef, P)}">${nf(x.esp, 1)} · ${nf(x.ef * 100, 0)} %</span>` : '—'}</td>
+        <td class="r num" style="font-size:12.5px">${nf(x.c.li, 1)} → ${nf(x.c.lf, 1)}<br><span style="color:var(--muted)">${hh(x.c.ti)}–${hh(x.c.tf)}</span></td><td class="r num"><b>${nf(x.c.q, 1)}</b></td>
+        <td class="r num">${nf(x.stock, 0)} m³</td></tr>`).join('')}</tbody></table></div></div>
+  </div>`;
+  $('#sPer').querySelectorAll('button').forEach(b => b.onclick = () => { ST.periodo = Number(b.dataset.p); render(); });
+  if (!window.Chart) return;
+  Chart.defaults.font.family = '"Segoe UI",system-ui,sans-serif'; Chart.defaults.font.size = 11.5; Chart.defaults.color = '#6A7684';
+  const grid = { color: '#E8EDF2' };
+  const tick = function (v) { const d = new Date(this.getLabelForValue(v)); return `${d.getDate()} ${MES[d.getMonth()]} ${String(d.getHours()).padStart(2, '0')}h`; };
+  const cap = P.pozos.reduce((s, p) => s + capacidad(p), 0), res = cap * (P.reservaPct || 0) / 100;
+  CH.push(new Chart($('#gV'), { type: 'line', data: { labels: L.map(x => x.t), datasets: [
+      ...P.pozos.map((p, k) => ({ label: p.nombre, data: L.map(x => x.pozos[p.id]?.vol ?? null), borderColor: ['#1baf7a', '#7a5bbf', '#2a78d6'][k], backgroundColor: ['#1baf7a', '#7a5bbf', '#2a78d6'][k] + '33', fill: true, stack: 's', pointRadius: 0, borderWidth: 1.6, tension: 0.25 })),
+      { label: 'Reserva mínima', data: L.map(() => res), borderColor: '#cc3d3d', borderDash: [5, 4], borderWidth: 1.4, pointRadius: 0, fill: false, stack: 'r' }] },
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: (t) => fh(t[0].label), label: (t) => ` ${t.dataset.label}: ${nf(t.raw, 0)} m³`, footer: (t) => `Total: ${nf(t.filter(x => x.dataset.stack === 's').reduce((s, x) => s + (x.raw || 0), 0), 0)} m³` } } },
+      scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8, callback: tick } }, y: { stacked: true, beginAtZero: true, max: Math.ceil(cap / 50) * 50, grid, title: { display: true, text: 'm³' } } } } }));
+  const um = (P.umbral || 85) / 100;
+  CH.push(new Chart($('#gQ'), { type: 'line', data: { labels: L.map(x => x.t), datasets: [
+      { label: 'Medido', data: L.map(x => Number.isFinite(x.o.q) ? x.o.q : null), borderColor: '#2BA6A0', borderWidth: 2, tension: 0.2,
+        pointRadius: L.map(x => Number.isFinite(x.ef) && x.ef < um ? 4 : 0), pointBackgroundColor: '#cc3d3d', pointBorderColor: '#cc3d3d' },
+      { label: 'Esperado', data: L.map(x => x.esp), borderColor: '#1B2733', borderDash: [5, 4], borderWidth: 1.4, pointRadius: 0, stepped: true }] },
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: (t) => fh(t[0].label), label: (t) => ` ${t.dataset.label}: ${nf(t.raw, 1)} m³/h` } } },
+      scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8, callback: tick } }, y: { beginAtZero: true, suggestedMax: 30, grid, title: { display: true, text: 'm³/h' } } } } }));
+  const lab = [...new Set([...To.map(x => x.tb), ...Tc.map(x => x.tb)])].sort((a, b) => a - b);
+  const en = (T, t) => { const x = T.find(z => z.ta < t && z.tb >= t); return x ? x.q : null; };
+  CH.push(new Chart($('#gC'), { type: 'line', data: { labels: lab, datasets: [
+      { label: 'Producción', data: lab.map(t => en(To, t)), borderColor: '#2BA6A0', backgroundColor: '#2BA6A022', fill: true, pointRadius: 0, borderWidth: 2, tension: 0.25, spanGaps: true },
+      { label: 'Consumo', data: lab.map(t => en(Tc, t)), borderColor: '#1D2E40', pointRadius: 0, borderWidth: 2, tension: 0.25, spanGaps: true }] },
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: (t) => fh(t[0].label), label: (t) => ` ${t.dataset.label}: ${nf(t.raw, 1)} m³/h` } } },
+      scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8, callback: tick } }, y: { beginAtZero: true, grid, title: { display: true, text: 'm³/h' } } } } }));
+}
+
+// ---------- PARÁMETROS ----------
+function vistaParametros(v) {
+  const P = ST.P, dis = esAdm ? '' : 'disabled', r = P.retrolavado, d = disponibilidad(r), perdH = r.veces * r.minutos / 60;
+  const tot = P.modulos.reduce((s, m) => s + m.caudal, 0);
+  v.innerHTML = `<div class="grid">
+    <div class="card c7"><h3>Producción teórica de ósmosis</h3><div class="hint">Base para comparar con el caudalímetro (un solo medidor para ambos módulos)</div>
+      <div class="calc">
+        Retrolavado: <b>${r.veces} veces × ${r.minutos} min = ${r.veces * r.minutos} min/día</b> por módulo (${nf(perdH, 2)} h); ${r.veces * r.minutos * P.modulos.length} min entre ambos módulos.<br>
+        Horas que produce cada módulo: 24 h − ${nf(perdH, 2)} h = <b>${nf(24 - perdH, 2)} h/día</b> (${nf(d * 100, 1)} % del día).<br>
+        ${P.modulos.map(m => `${esc(m.nombre)}: ${nf(m.caudal, 1)} m³/h × ${nf(24 - perdH, 2)} h = <b>${nf(teoricoDia(m, r), 1)} m³/día</b>`).join('<br>')}<br>
+        Ambos módulos: <b>${nf(P.modulos.reduce((s, m) => s + teoricoDia(m, r), 0), 1)} m³/día</b> (${nf(tot * d, 2)} m³/h en promedio) frente a ${nf(tot * 24, 0)} m³/día sin retrolavados:
+        se dejan de producir <b>${nf(tot * 24 * (1 - d), 1)} m³/día</b>.<br>
+        En una muestra, lo esperado es <b>${nf(tot, 1)} m³/h</b> con los dos módulos produciendo y <b>${nf(P.modulos[0].caudal, 1)} m³/h</b> con uno solo (el otro en retrolavado o parado).
+      </div></div>
+    <div class="card c5"><h3>Alertas</h3><div class="hint">${esAdm ? 'Editables por el administrador del aplicativo' : 'Solo lectura'}</div>
+      <div class="form">
+        <label>Producción baja si es menor al (% de lo esperado)<input type="number" id="pUm" value="${P.umbral}" min="50" max="100" ${dis}></label>
+        <label>Reserva mínima (% del volumen total)<input type="number" id="pRe" value="${P.reservaPct}" min="0" max="50" ${dis}></label>
+        <label>Avisar cisternas si la autonomía es menor a (h)<input type="number" id="pAl" value="${P.alertaHoras}" min="1" ${dis}></label>
+        <label>Crítico por debajo de (h)<input type="number" id="pCr" value="${P.criticoHoras}" min="1" ${dis}></label>
+      </div></div>
+    <div class="card c12"><h3>Pozos y módulos</h3><div class="hint">Si cambian las medidas, actualice también el factor de volumen de cada pozo en el formato R-303.</div>
+      <div class="scroll"><table class="tbl"><thead><tr><th>Pozo</th><th class="r">Largo (m)</th><th class="r">Ancho (m)</th><th class="r">Alto (m)</th><th class="r">Área</th><th class="r">Capacidad</th></tr></thead><tbody>
+      ${P.pozos.map((p, i) => `<tr><td><b>${esc(p.nombre)}</b></td>${['largo', 'ancho', 'alto'].map(k => `<td class="r"><input class="inl num" type="number" step="0.001" data-pz="${i}:${k}" value="${p[k]}" ${dis}></td>`).join('')}<td class="r num">${nf(area(p), 2)} m²</td><td class="r num"><b>${nf(capacidad(p), 1)} m³</b></td></tr>`).join('')}
+      <tr><td colspan="5"><b>Total</b></td><td class="r num"><b>${nf(P.pozos.reduce((s, p) => s + capacidad(p), 0), 1)} m³</b></td></tr></tbody></table></div>
+      <div class="form" style="margin-top:14px">
+        ${P.modulos.map((m, i) => `<label>${esc(m.nombre)} · caudal nominal (m³/h)<input type="number" step="0.1" data-md="${i}" value="${m.caudal}" ${dis}></label>`).join('')}
+        <label>Retrolavados por día<input type="number" id="pRv" value="${r.veces}" min="0" ${dis}></label>
+        <label>Minutos por retrolavado<input type="number" id="pRm" value="${r.minutos}" min="0" ${dis}></label>
+      </div>
+      ${esAdm ? '<div style="margin-top:14px"><button class="btn pri" id="pOk">Guardar parámetros</button></div>' : ''}</div>
+  </div>`;
+  const b = $('#pOk');
+  if (b) b.onclick = async () => {
+    const n = (s) => Number(String(s).replace(',', '.'));
+    const pozos = P.pozos.map(p => ({ ...p })); v.querySelectorAll('[data-pz]').forEach(i => { const [k, c] = i.dataset.pz.split(':'); pozos[+k][c] = n(i.value); });
+    const modulos = P.modulos.map(m => ({ ...m })); v.querySelectorAll('[data-md]').forEach(i => modulos[+i.dataset.md].caudal = n(i.value));
+    const nuevo = { pozos, modulos, retrolavado: { veces: n($('#pRv').value), minutos: n($('#pRm').value) }, umbral: n($('#pUm').value), reservaPct: n($('#pRe').value), alertaHoras: n($('#pAl').value), criticoHoras: n($('#pCr').value), actualizado: new Date().toISOString(), actualizadoPor: ctx.perfil?.nombre || ctx.user.email };
+    b.disabled = true;
+    try { await setDoc(doc(db, 'datos', 'agua', 'config', 'parametros'), nuevo); ST.P = { ...PARAM_BASE, ...nuevo }; toast('Parámetros guardados.'); render(); }
+    catch (e) { b.disabled = false; toast('No se pudo guardar: ' + (e.code || e.message), 'err'); }
+  };
+}
+
+const hs = location.hash.slice(1); if (hs) ST.vista = hs;
+try { await cargar(); } catch (e) { $('#view').innerHTML = `<div class="aviso bad">No se pudo leer: ${esc(e.code || e.message)}</div>`; throw e; }
+render();
+</script>
+</body>
+</html>

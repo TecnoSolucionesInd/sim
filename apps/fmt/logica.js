@@ -139,8 +139,17 @@ export function valorFila(t, fl, col) {
 }
 
 // Campos calculados a partir de dos campos numéricos: diferencia (A − B) y porcentaje (A ÷ B × 100)
-export const esCalculado = (c) => c && (c.tipo === 'diferencia' || c.tipo === 'porcentaje');
+export const esCalculado = (c) => c && (c.tipo === 'diferencia' || c.tipo === 'porcentaje' || c.tipo === 'escala' || c.tipo === 'caudal');
 export function calculado(c, v) {
+  if (c.tipo === 'caudal') {   // (lectura final − lectura inicial) ÷ horas entre ambas lecturas
+    const a = numero(v?.[c.desde]), b = numero(v?.[c.hasta]), m = minutosEntre(v?.[c.tIni], v?.[c.tFin]);
+    if (a == null || b == null || Number.isNaN(a) || Number.isNaN(b) || !m || m <= 0) return null;
+    return Math.round((a - b) / (m / 60) * 10) / 10;
+  }
+  if (c.tipo === 'escala') {
+    const a = numero(v?.[c.desde]), k = Number(c.factor);
+    return a == null || Number.isNaN(a) || !Number.isFinite(k) ? null : Math.round(a * k * 10) / 10;
+  }
   const a = numero(v?.[c.desde]), b = numero(v?.[c.hasta]);
   if (a == null || b == null || Number.isNaN(a) || Number.isNaN(b)) return null;
   if (c.tipo === 'porcentaje') return b === 0 ? null : Math.round(a / b * 1000) / 10;

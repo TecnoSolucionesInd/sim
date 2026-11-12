@@ -126,10 +126,11 @@ function campoHtml(cf, R) {
       cuerpo = `<div class="hj-ln"><span>${m != null ? vv(duracionTxt(m), m < 0 ? 'hj-al' : '') : ''}</span><span>${R ? '' : 'h:mm'}</span></div>`;
       break;
     }
-    case 'diferencia': case 'porcentaje': {
+    case 'diferencia': case 'porcentaje': case 'escala': case 'caudal': {
       const d = R ? calculado(cf, R.v) : null;
       const al = d != null && fueraDeRango(cf, d), r = rangoTxt(cf);
-      cuerpo = `<div class="hj-ln"><span>${d != null ? vv(calcTxt(d), al ? 'hj-al' : '') : ''}</span><span>${esc(cf.unidad || '')}${r ? ` · Rango ${esc(r)}` : ''}${R ? '' : ' · calculado'}</span></div>`;
+      const nota = cf.tipo === 'escala' ? ` · calculado (× ${String(cf.factor).replace('.', ',')})` : cf.tipo === 'caudal' ? ' · (final − inicial) ÷ horas' : ' · calculado';
+      cuerpo = `<div class="hj-ln"><span>${d != null ? vv(calcTxt(d), al ? 'hj-al' : '') : ''}</span><span>${esc(cf.unidad || '')}${r ? ` · Rango ${esc(r)}` : ''}${R ? '' : esc(nota)}</span></div>`;
       break;
     }
     case 'equipo': cuerpo = `<div class="hj-ln"><span>${x && x.codigo ? vv(`${x.codigo} · ${x.descripcion || ''}`) : ''}</span><span>${R ? '' : 'Código · descripción'}</span></div>`; break;
