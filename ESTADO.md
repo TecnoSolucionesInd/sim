@@ -274,6 +274,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-11-12: Agua de planta — HMI: encuadre automático de la planta, tarjetas compactas (la del caudalímetro de ósmosis a su lado), nave con contraste, reglas de nivel legibles y piso de losetas.
 - 2026-11-12: Agua de planta — HMI 3D con el modelo de referencia (concreto, barandas, reglas de nivel, módulos en bastidor, caudalímetros) y recorrido corregido de ósmosis y de producción.
 - 2026-11-12: Agua de planta (nuevo aplicativo) y formato R-303 (nivel de pozos, caudalímetro de ósmosis y de consumo de producción congelado con lecturas inicial/final). Formatos: campos calculados `escala` y `caudal`. Reglas actualizadas (volver a publicar `firestore.rules`).
 - 2026-11-05: Formatos — llenado por circuito (`def.recorrido`): equipos con el mismo campo `circuito` (Equipos) se llenan juntos en un paso, en el orden de las tablas; el impreso mantiene las tablas por tipo. Equipos: nuevo campo Circuito (formulario, carga masiva y Excel). R-101/102/103 vienen con recorrido activado.
