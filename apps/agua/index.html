@@ -23,6 +23,9 @@ button{font:inherit;cursor:pointer}
 #hd .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 #hd .ico{width:38px;height:38px;border-radius:10px;background:rgba(43,166,160,.18);display:grid;place-items:center;flex:0 0 38px}
 #hd h1{font-size:18px;margin:0;font-weight:650}
+#hd .logo{height:46px;padding:6px 12px;border-radius:10px;background:#fff;display:flex;align-items:center;flex:0 0 auto;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+#hd .logo img{height:34px;width:auto;display:block}
+@media (max-width:600px){#hd .logo{height:38px;padding:5px 9px}#hd .logo img{height:28px}}
 #hd .sub{font-size:12px;color:#9FB1C3;margin-top:1px}
 #hd .tt{flex:1;min-width:200px}
 #hd .meta{font-size:12px;color:#9FB1C3;text-align:right}
@@ -970,7 +973,8 @@ function vistaParametros(v) {
 }
 
 const hs = location.hash.slice(1); if (hs) ST.vista = hs;
-if (PUB) { document.title = 'Estado del agua · Planta Paita'; $('#hd .sub').textContent = 'Pozos, producción de ósmosis y consumo de producción congelado · se actualiza con cada muestra'; }
+if (PUB) { document.title = 'Estado del agua · Planta Paita';
+  $('#hd .ico').outerHTML = `<div class="logo"><img src="${LOGO}" alt="Santa Mónica Fishing"></div>`; $('#hd .sub').textContent = 'Pozos, producción de ósmosis y consumo de producción congelado · se actualiza con cada muestra'; }
 try { await cargar(); } catch (e) { $('#view').innerHTML = `<div class="aviso bad">No se pudo leer: ${esc(e.code || e.message)}</div>`; throw e; }
 render();
 if (PUB) {
