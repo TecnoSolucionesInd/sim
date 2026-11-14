@@ -75,6 +75,16 @@ service cloud.firestore {
 
     // Registros llenados: los crea quien los firma; el supervisor aprueba u observa; el autor corrige lo observado.
     // Un registro aprobado ya no se modifica.
+    // Vista pública del estado del agua (sin login): solo lecturas del R-303, sin nombres ni firmas
+    match /publico/agua/{resto=**} {
+      allow read: if true;
+      allow write: if puedeEscribir('fmt') || puedeLeer('agua');
+    }
+    match /publico/agua {
+      allow read: if true;
+      allow write: if puedeEscribir('fmt') || puedeLeer('agua');
+    }
+
     match /datos/fmt/registros/{id} {
       allow create: if puedeEscribir('fmt')
                     && request.resource.data.creadoPor == request.auth.uid

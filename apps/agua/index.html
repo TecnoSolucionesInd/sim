@@ -27,6 +27,7 @@ button{font:inherit;cursor:pointer}
 #hd .tt{flex:1;min-width:200px}
 #hd .meta{font-size:12px;color:#9FB1C3;text-align:right}
 #hd .meta b{color:#fff;font-weight:600}
+#hd .meta .pub{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:rgba(95,211,204,.16);color:#5FD3CC;margin-bottom:4px}
 #tabs{display:flex;gap:2px;margin-top:12px;overflow-x:auto}
 #tabs button{background:transparent;border:0;color:var(--navink);padding:10px 16px;font-size:13.5px;border-bottom:3px solid transparent;white-space:nowrap}
 #tabs button:hover{color:#fff}
@@ -150,11 +151,15 @@ input[type=number],input[type=text]{font:inherit;font-size:13px;border:1px solid
 
 <script type="module">
 import { iniciarApp } from '../../core/core.js';
-import { doc, getDoc, getDocs, setDoc, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { PARAM_BASE, area, capacidad, disponibilidad, teoricoDia } from '../../core/agua.js';
+import { doc, getDoc, getDocs, setDoc, collection, query, where, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { PARAM_BASE, area, capacidad, disponibilidad, teoricoDia, muestraPublica } from '../../core/agua.js';
 import * as K from './calculo.js';
 
-const ctx = await iniciarApp({ appId: 'agua', layout: 'minimo' });
+// ?publico → vista pública del estado del agua: sin login, solo lectura, con los datos de publico/agua
+const PUB = new URLSearchParams(location.search).has('publico');
+const ctx = PUB
+  ? { db: (await import('../../core/firebase.js')).db, esAdmin: false, puedeModulo: (m) => m === 'hmi' || m === 'analisis' }
+  : await iniciarApp({ appId: 'agua', layout: 'minimo' });
 const db = ctx.db;
 const esAdm = ctx.esAdmin || ctx.rol === 'admin';
 const LOGO = window.SIM_LOGO || new URL('../plan/logo.png', import.meta.url).href;
@@ -174,7 +179,42 @@ function toast(t, k = '') { const d = document.createElement('div'); d.className
 const nivelEf = (ef, P) => !Number.isFinite(ef) ? 'mut' : ef < (P.umbral || 85) / 100 - 0.2 ? 'bad' : ef < (P.umbral || 85) / 100 ? 'warn' : 'ok';
 
 // ---------- datos ----------
+const turnosDe = (t) => (t && t.length ? t : ['Día', 'Noche']).map((x, i) => typeof x === 'string' ? { nombre: x, inicio: ['07:00', '19:00', '23:00'][i] } : x);
+const RAIZ_PUB = () => doc(db, 'publico', 'agua'), COL_PUB = () => collection(db, 'publico', 'agua', 'muestras');
+async function cargarPublico() {
+  ST.err = '';
+  try {
+    const r = await getDoc(RAIZ_PUB()), d = r.exists() ? r.data() : {};
+    ST.P = { ...PARAM_BASE, ...(d.parametros || {}) };
+    ST.turnos = turnosDe(d.turnos);
+    ST.version = d.actualizado || '';
+    ST.regs = (await getDocs(COL_PUB())).docs.map(x => ({ id: x.id, ...x.data() }));
+  } catch (e) {
+    ST.P = ST.P || { ...PARAM_BASE }; ST.regs = [];
+    ST.err = e.code === 'permission-denied' ? 'La vista pública todavía no está habilitada.' : 'No se pudo leer el estado del agua: ' + (e.code || e.message);
+  }
+}
+// Copia a la vista pública las muestras de los últimos 30 días, los parámetros y los turnos (solo lo que cambió)
+const canon = (o) => JSON.stringify(o ?? null, (k, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(x => [x, v[x]])) : v);
+async function sincronizarPublico() {
+  const desde = K.isoDia(new Date(Date.now() - 30 * 864e5)), ahora = new Date().toISOString();
+  const ex = new Map((await getDocs(COL_PUB())).docs.map(d => [d.id, d.data()]));
+  const ops = [];
+  ST.regs.filter(r => r.fechaOp >= desde && !['anulado', 'borrador', 'rechazado'].includes(r.estado)).forEach(r => {
+    const m = muestraPublica(r), e = ex.get(r.id); ex.delete(r.id);
+    if (!e || canon({ ...e, publicado: 0 }) !== canon({ ...m, publicado: 0 })) ops.push(b => b.set(doc(COL_PUB(), r.id), { ...m, publicado: ahora }));
+  });
+  ex.forEach((_, id) => ops.push(b => b.delete(doc(COL_PUB(), id))));
+  const { actualizado, actualizadoPor, ...par } = ST.P;
+  const r0 = await getDoc(RAIZ_PUB()), d0 = r0.exists() ? r0.data() : {};
+  if (ops.length || canon(d0.parametros) !== canon(par) || canon(d0.turnos) !== canon(ST.turnos))
+    ops.push(b => b.set(RAIZ_PUB(), { parametros: par, turnos: ST.turnos, actualizado: ahora }, { merge: true }));
+  for (let i = 0; i < ops.length; i += 400) { const b = writeBatch(db); ops.slice(i, i + 400).forEach(f => f(b)); await b.commit(); }
+  return ops.length;
+}
+
 async function cargar() {
+  if (PUB) return cargarPublico();
   const c = await getDoc(doc(db, 'datos', 'agua', 'config', 'parametros'));
   ST.P = { ...PARAM_BASE, ...(c.exists() ? c.data() : {}) };
   ST.err = '';
@@ -183,7 +223,7 @@ async function cargar() {
     ST.regs = (await getDocs(query(R, where('codigo', '==', 'R-303')))).docs.map(d => ({ id: d.id, ...d.data() }));
     const g = await getDoc(doc(db, 'datos', 'fmt', 'config', 'general')).catch(() => null);
     const t = g && g.exists() ? g.data().turnos : null;
-    ST.turnos = (t && t.length ? t : ['Día', 'Noche']).map((x, i) => typeof x === 'string' ? { nombre: x, inicio: ['07:00', '19:00', '23:00'][i] } : x);
+    ST.turnos = turnosDe(t);
   } catch (e) {
     ST.regs = [];
     ST.err = e.code === 'permission-denied' ? 'No se pudieron leer los registros del R-303: publique las reglas de Firestore actualizadas.' : 'No se pudieron leer los registros: ' + (e.code || e.message);
@@ -205,10 +245,11 @@ function render() {
   $('#tabs').innerHTML = VISTAS.map(v => `<button class="${v.id === ST.vista ? 'on' : ''}" data-v="${v.id}">${v.nombre}</button>`).join('');
   $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { ST.vista = b.dataset.v; location.hash = ST.vista; render(); });
   const C = calcular();
-  $('#meta').innerHTML = C.ult ? `Última muestra<br><b>${fh(C.ult.t)}</b>` : '';
+  $('#meta').innerHTML = (PUB ? '<span class="pub">Vista pública · solo lectura</span><br>' : '') + (C.ult ? `Última muestra<br><b>${fh(C.ult.t)}</b>` : '');
   const v = $('#view');
   if (!VISTAS.length) return v.innerHTML = '<div class="vacio">Su usuario no tiene módulos habilitados en este aplicativo.</div>';
   if (ST.vista === 'parametros') return vistaParametros(v, C);
+  if (!C.L.length && PUB) return v.innerHTML = `${ST.err ? `<div class="aviso bad">${esc(ST.err)}</div>` : ''}<div class="card" style="max-width:640px;margin:30px auto"><h3>Sin muestras todavía</h3><p class="hint" style="font-size:13px;line-height:1.6">El estado del agua aparecerá aquí apenas se registre la próxima muestra.</p></div>`;
   if (!C.L.length) return v.innerHTML = `${ST.err ? `<div class="aviso bad">${esc(ST.err)}</div>` : ''}<div class="card" style="max-width:640px;margin:30px auto"><h3>Sin muestras todavía</h3><p class="hint" style="font-size:13px;line-height:1.6">El panel se arma con el formato <b>R-303 Control de agua</b>: altura de cada pozo y lecturas inicial y final de los caudalímetros de ósmosis y de producción congelado. Emita el R-303 en Registro de formatos y registre la primera muestra.</p></div>`;
   if (ST.vista === 'analisis') return vistaAnalisis(v, C);
   return vistaHMI(v, C);
@@ -238,6 +279,7 @@ function vistaHMI(v, C) {
   v.innerHTML = `${ST.err ? `<div class="aviso bad">${esc(ST.err)}</div>` : ''}${banner(C)}
   <div class="hmi-top"><h2>Estado del agua</h2><span class="when" id="hWhen"></span><span class="sp"></span>
     ${compartir ? '<button class="btn" id="bShare"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>Compartir</button>' : ''}
+    ${PUB ? '' : '<button class="btn" id="bLink" title="Enlace para el grupo de WhatsApp: se ve sin iniciar sesión"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>Enlace público</button>'}
     <button class="btn" id="bPng"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.5"/></svg>Descargar imagen</button>
     <button class="btn pri" id="bPdf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>Descargar PDF</button></div>
   <div class="hmi">
@@ -307,6 +349,12 @@ function vistaHMI(v, C) {
     const W = 297, H = 210, r = Math.min(W / cv.width, H / cv.height), w = cv.width * r, h = cv.height * r;
     pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', (W - w) / 2, (H - h) / 2, w, h);
     pdf.save(nombreArchivo('pdf'));
+  };
+  const bl = $('#bLink');
+  if (bl) bl.onclick = async () => {
+    const url = new URL('./?publico', location.href.split('#')[0]).href;
+    try { await navigator.clipboard.writeText(url); toast('Enlace público copiado: péguelo en el grupo y fíjelo.'); }
+    catch (e) { prompt('Copie el enlace público:', url); }
   };
   const bs = $('#bShare');
   if (bs) bs.onclick = async () => {
@@ -915,14 +963,20 @@ function vistaParametros(v) {
     const modulos = P.modulos.map(m => ({ ...m })); v.querySelectorAll('[data-md]').forEach(i => modulos[+i.dataset.md].caudal = n(i.value));
     const nuevo = { pozos, modulos, retrolavado: { veces: n($('#pRv').value), minutos: n($('#pRm').value) }, umbral: n($('#pUm').value), reservaPct: n($('#pRe').value), alertaHoras: n($('#pAl').value), criticoHoras: n($('#pCr').value), actualizado: new Date().toISOString(), actualizadoPor: ctx.perfil?.nombre || ctx.user.email };
     b.disabled = true;
-    try { await setDoc(doc(db, 'datos', 'agua', 'config', 'parametros'), nuevo); ST.P = { ...PARAM_BASE, ...nuevo }; toast('Parámetros guardados.'); render(); }
+    try { await setDoc(doc(db, 'datos', 'agua', 'config', 'parametros'), nuevo); ST.P = { ...PARAM_BASE, ...nuevo }; toast('Parámetros guardados.'); render(); sincronizarPublico().catch(() => {}); }
     catch (e) { b.disabled = false; toast('No se pudo guardar: ' + (e.code || e.message), 'err'); }
   };
 }
 
 const hs = location.hash.slice(1); if (hs) ST.vista = hs;
+if (PUB) { document.title = 'Estado del agua · Planta Paita'; $('#hd .sub').textContent = 'Pozos, producción de ósmosis y consumo de producción congelado · se actualiza con cada muestra'; }
 try { await cargar(); } catch (e) { $('#view').innerHTML = `<div class="aviso bad">No se pudo leer: ${esc(e.code || e.message)}</div>`; throw e; }
 render();
+if (PUB) {
+  // se actualiza sola cuando se registra una nueva muestra
+  onSnapshot(RAIZ_PUB(), (s) => { const a = s.exists() ? s.data().actualizado || '' : '';
+    if (a && a !== ST.version) { ST.version = a; ST.idx = null; cargarPublico().then(render); } }, () => {});
+} else sincronizarPublico().catch(e => console.warn('Vista pública no sincronizada:', e.code || e.message));
 </script>
 </body>
 </html>

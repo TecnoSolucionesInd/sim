@@ -40,3 +40,17 @@ export const R303 = {
 };
 export const ESTADOS_MODULO = ['Produciendo', 'Retrolavado', 'Parado'];
 export const DESTINOS = ['Pozos 1 y 2', 'Pozo 3'];
+
+// Copia pública de una muestra del R-303 para la vista pública del estado del agua (sin login).
+// Solo lleva las lecturas del agua: sin nombres, firmas, observaciones ni fotos.
+// Firestore: publico/agua (parámetros, turnos, actualizado) y publico/agua/muestras/{idRegistro}.
+export const CAMPOS_PUBLICOS = [
+  ...POZOS.flatMap(p => [R303.altura(p.id), R303.volumen(p.id)]),
+  ...MODULOS.map(m => R303.estado(m.id)), R303.destino,
+  ...Object.values(R303.medidor.o), ...Object.values(R303.medidor.c)
+];
+export function muestraPublica(r) {
+  const v = {};
+  CAMPOS_PUBLICOS.forEach(k => { const x = r.v && r.v[k]; if (x != null && x !== '') v[k] = x; });
+  return { codigo: 'R-303', fechaOp: r.fechaOp || '', hora: r.hora || '', turno: r.turno || '', estado: r.estado || 'enviado', numero: r.numero || '', v };
+}

@@ -927,7 +927,10 @@ async function enviar() {
   const n = MAIN.querySelector('#okNro');
   if (!n) return;
   const hecho = res.find(r => r.id === reg.id);
-  if (hecho && hecho.numero) n.textContent = `N° ${hecho.numero}`;
+  if (hecho && hecho.numero) {
+    n.textContent = `N° ${hecho.numero}`;
+    if (reg.codigo === 'R-303') n.insertAdjacentHTML('afterend', `<div style="margin:-6px 0 18px"><a class="btn" href="${new URL('../agua/?publico', location.href).href}" target="_blank" rel="noopener">Ver y compartir el estado del agua</a></div>`);
+  }
   else n.innerHTML = `<span style="color:var(--amber-2);font-family:var(--f-body);font-size:15px">${navigator.onLine ? 'Quedó en cola: se reintentará el envío.' : 'Sin señal: quedó en la cola del celular y se enviará al recuperar la conexión.'}</span>`;
 }
 

@@ -10,6 +10,7 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, query, where, runTransaction, arrayUnion } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { db } from '../../core/core.js';
 import { CONFIG_BASE, clonar, mesClave } from './modelo.js';
+import { muestraPublica } from '../../core/agua.js';
 
 const APP = 'fmt';
 const refConfig = () => doc(db, 'datos', APP, 'config', 'general');
@@ -183,7 +184,18 @@ export async function enviarRegistro(paquete) {
       creado: serverTimestamp(), creadoPor: reg.creadoPor, creadoPorNombre: reg.creadoPorNombre
     });
   }
+  await publicarAgua(reg.id, { ...reg, numero });
   return numero;
+}
+
+// R-303: copia solo las lecturas del agua a la vista pública (sin login). Si falla, el registro ya quedó guardado.
+async function publicarAgua(id, reg) {
+  if (reg.codigo !== 'R-303') return;
+  try {
+    const m = muestraPublica(reg), ahora = new Date().toISOString();
+    await setDoc(doc(db, 'publico', 'agua', 'muestras', id), { ...m, publicado: ahora });
+    await setDoc(doc(db, 'publico', 'agua'), { actualizado: ahora, ultimo: m.numero }, { merge: true });
+  } catch (e) { console.warn('Vista pública del agua no actualizada:', e.code || e.message); }
 }
 
 // Reenvío de un registro observado, ya corregido por su autor
@@ -195,6 +207,7 @@ export async function reenviarRegistro(paquete) {
     historial: arrayUnion({ estado: 'enviado', usuario: reg.creadoPorNombre, fechaHora: new Date().toISOString(), comentario: 'Corregido y reenviado' })
   });
   for (const [campo, data] of Object.entries(fotos)) await setDoc(doc(colFotos(id), campo), { data });
+  await publicarAgua(id, { ...reg, estado: 'enviado' });
 }
 
 export async function aprobarRegistro(reg, { nombre, usuario, uid: uidUsr, indiceFirma }) {
