@@ -264,7 +264,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   (21.67 h/día, 270.8 m³/día por módulo). Reserva mínima 2 %. Alerta de cisternas con autonomía < 24 h (crítica < 12 h).
 - Producción baja (< 85 % de lo esperado según los módulos que producían): uno de los módulos falla, no se sabe cuál → revisar ambos en campo.
 - HMI 3D: pozos de concreto con baranda y regla de nivel, módulos en bastidor con luz de estado, caudalímetro de ósmosis (dial) → reparto a pozos;
-  salida del Pozo 1 → caudalímetro electromagnético → producción congelado (no pasa por la ósmosis). Etiquetas con cabecera navy.
+  salida del Pozo 2 (atrás; el Pozo 1 va adelante) → caudalímetro electromagnético → producción congelado (no pasa por la ósmosis). Etiquetas con cabecera navy.
 - HMI: etiquetas en cascada (si se tapan, suben y quedan unidas a su punto por una guía); igual en la imagen y el PDF.
 - Reglas: Agua de planta puede leer datos/fmt/registros, plantillas y config (volver a publicar firestore.rules).
 

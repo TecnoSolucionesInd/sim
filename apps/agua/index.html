@@ -412,9 +412,9 @@ function bordeGuia(i) {
 }
 
 // ---------- escena 3D (Three.js) según la distribución de planta ----------
-// Planta (vista desde arriba, el frente es +z): Pozo 3 a la izquierda; Pozo 1 (atrás) y Pozo 2 (adelante) juntos a su derecha;
-// módulos 1 y 2 a la derecha. Ósmosis → caudalímetro de ósmosis → reparto por el frente al Pozo 2 (1 y 2) o al Pozo 3.
-// Salida a producción congelado desde el Pozo 1, por el fondo, con su caudalímetro y directo a la nave.
+// Planta (vista desde arriba, el frente es +z): Pozo 3 a la izquierda; Pozo 2 (atrás) y Pozo 1 (adelante) juntos a su derecha;
+// módulos 1 y 2 a la derecha. Ósmosis → caudalímetro de ósmosis → reparto por el frente al Pozo 1 (1 y 2) o al Pozo 3.
+// Salida a producción congelado desde el Pozo 2, por el fondo, con su caudalímetro y directo a la nave.
 const COLOR_EST = { Produciendo: '#3DDC6A', Retrolavado: '#F2B234', Parado: '#E5484D' };
 function escena3D(box, P) {
   const T = window.THREE;
@@ -479,14 +479,15 @@ function escena3D(box, P) {
 
   // medidas en planta: dx (eje x) y dz (eje z) de cada pozo
   const pz = Object.fromEntries(P.pozos.map(p => [p.id, p]));
-  const p1 = pz.p1, p2 = pz.p2, p3 = pz.p3;
+  // el Pozo 2 va atrás y el Pozo 1 adelante; aquí p1 = pozo de atrás y p2 = pozo de adelante
+  const p1 = pz.p2, p2 = pz.p1, p3 = pz.p3;
   const sep = 0.3;
-  const dimP = { p3: [p3.ancho, p3.largo], p1: [p1.largo, p1.ancho], p2: [p2.largo, p2.ancho] };
+  const dimP = { p3: [p3.ancho, p3.largo], p2: [p1.largo, p1.ancho], p1: [p2.largo, p2.ancho] };
   const bloque = p1.ancho + p2.ancho + sep;
   const pos = {
     p3: [-sep / 2 - p3.ancho / 2, 0],
-    p1: [sep / 2 + p1.largo / 2, -bloque / 2 + p1.ancho / 2],
-    p2: [sep / 2 + p2.largo / 2, bloque / 2 - p2.ancho / 2]
+    p2: [sep / 2 + p1.largo / 2, -bloque / 2 + p1.ancho / 2],
+    p1: [sep / 2 + p2.largo / 2, bloque / 2 - p2.ancho / 2]
   };
   const cil = (r, l, mat, seg = 16) => new T.Mesh(new T.CylinderGeometry(r, r, l, seg), mat);
   const POZ = {};
@@ -569,10 +570,10 @@ function escena3D(box, P) {
   };
   const yT = 1.25, zH = zFrente + 1.8;
   const xM = MOD.m1.g.position.x - 3.15, xCol = xDer + 3.8, xMed = xDer + 1.9;
-  const xR2 = pos.p2[0] + 2.4, xR3 = pos.p3[0] + 1.8;
+  const xR2 = pos.p1[0] + 2.4, xR3 = pos.p3[0] + 1.8;
   const sube = (x, zf, Hh) => [[x, yT, zf + 0.7], [x, Hh + 0.25, zf + 0.7], [x, Hh + 0.25, zf - e - 0.9], [x, Hh - 0.25, zf - e - 0.9]];
-  // salida a producción congelado: desde el Pozo 1 por el fondo, directo a la nave (no toca la ósmosis)
-  const zC = pos.p1[1] - p1.ancho / 2 + 0.9, yC = p1.alto + 0.65, xNave = xDer + 16.5;
+  // salida a producción congelado: desde el Pozo 2 por el fondo, directo a la nave (no toca la ósmosis)
+  const zC = pos.p2[1] - p1.ancho / 2 + 0.9, yC = p1.alto + 0.65, xNave = xDer + 16.5;
   const TUB = {
     m1: tubo([[xM, 1.2, MOD.m1.g.position.z], [xCol, yT, MOD.m1.g.position.z], [xCol, yT, MOD.m2.g.position.z]], 0x2a78d6),
     m2: tubo([[xM, 1.2, MOD.m2.g.position.z], [xCol, yT, MOD.m2.g.position.z]], 0xeb6834),
@@ -626,7 +627,7 @@ function escena3D(box, P) {
   Object.values(POZ).forEach(z => z.tag = tag(''));
   Object.values(MOD).forEach(z => z.tag = tag('mod'));
   const tMedO = tag('med'), tMedC = tag('med co'), tCons = tag('cons');
-  const puntoPozo = (z) => new T.Vector3(z.g.position.x, z.p.alto * 0.5, z.g.position.z + (z.p.id === 'p2' ? 0 : -z.dz / 2 + 0.9));
+  const puntoPozo = (z) => new T.Vector3(z.g.position.x, z.p.alto * 0.5, z.g.position.z + (z.p.id === 'p1' ? 0 : -z.dz / 2 + 0.9));
   const anclas = () => [
     ...Object.values(POZ).map(z => [z.tag, puntoPozo(z)]),
     ...Object.values(MOD).map(z => [z.tag, new T.Vector3(z.g.position.x + 1.2, 2.3, z.g.position.z)]),
