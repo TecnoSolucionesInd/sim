@@ -266,6 +266,10 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - HMI 3D: pozos de concreto con baranda y regla de nivel, módulos en bastidor con luz de estado, caudalímetro de ósmosis (dial) → reparto a pozos;
   salida del Pozo 2 (atrás; el Pozo 1 va adelante) → caudalímetro electromagnético → producción congelado (no pasa por la ósmosis). Etiquetas con cabecera navy.
 - HMI: etiquetas en cascada (si se tapan, suben y quedan unidas a su punto por una guía); igual en la imagen y el PDF.
+- Trasvase manual: el Pozo 2 (parámetro pozoProduccion) es el único que abastece a producción congelado; cuando baja se
+  bombea a mano desde el Pozo 1 y el Pozo 3. Si entre dos muestras el pozo de producción sube más de lo que pudo aportar la
+  ósmosis (+ consumo) y los otros bajan o quedan casi vacíos (≤ 10 %), se informa "Trasvase manual" (aviso informativo) y
+  ese intervalo no se cuenta como "Balance no cuadra" (calculo.js trasvase()).
 - Vista pública sin login: apps/agua/?publico (Panel HMI y Análisis, solo lectura; se actualiza sola con cada muestra).
   Lee publico/agua (parámetros, turnos, actualizado) y publico/agua/muestras/{idRegistro} con solo los campos del agua
   (core/agua.js CAMPOS_PUBLICOS / muestraPublica: sin nombres, firmas, observaciones ni fotos).
@@ -281,6 +285,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-11-14: Agua de planta — reconoce el trasvase manual de los pozos 1 y 3 al pozo 2 (ya no se marca como balance que no cuadra); parámetro del pozo que abastece a producción.
 - 2026-11-14: Agua de planta — vista pública sin login (?publico) para el grupo de WhatsApp, copia pública del R-303 y botón al emitirlo. Reglas actualizadas: publico/agua (volver a publicar firestore.rules).
 - 2026-11-12: Agua de planta — HMI: encuadre automático de la planta, tarjetas compactas (la del caudalímetro de ósmosis a su lado), nave con contraste, reglas de nivel legibles y piso de losetas.
 - 2026-11-12: Agua de planta — HMI 3D con el modelo de referencia (concreto, barandas, reglas de nivel, módulos en bastidor, caudalímetros) y recorrido corregido de ósmosis y de producción.

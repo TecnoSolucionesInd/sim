@@ -71,7 +71,7 @@ input[type=number],input[type=text]{font:inherit;font-size:13px;border:1px solid
 .al{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #E8EDF2}
 .al:last-child{border-bottom:0}
 .al .dt{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 8px}
-.al.bad .dt{background:var(--bad)}.al.warn .dt{background:var(--warn)}
+.al.bad .dt{background:var(--bad)}.al.warn .dt{background:var(--warn)}.al.info .dt{background:var(--accent)}
 .al b{display:block;font-size:13px}.al span{font-size:12px;color:var(--ink2)}.al small{font-size:11px;color:var(--muted)}
 /* HMI */
 .hmi{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px}
@@ -944,6 +944,7 @@ function vistaParametros(v) {
         <label>Reserva mínima (% del volumen total)<input type="number" id="pRe" value="${P.reservaPct}" min="0" max="50" ${dis}></label>
         <label>Avisar cisternas si la autonomía es menor a (h)<input type="number" id="pAl" value="${P.alertaHoras}" min="1" ${dis}></label>
         <label>Crítico por debajo de (h)<input type="number" id="pCr" value="${P.criticoHoras}" min="1" ${dis}></label>
+        <label>Pozo que abastece a producción<select id="pPp" ${dis}>${P.pozos.map(p => `<option value="${p.id}" ${p.id === (P.pozoProduccion || 'p2') ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}</select></label>
       </div></div>
     <div class="card c12"><h3>Pozos y módulos</h3><div class="hint">Si cambian las medidas, actualice también el factor de volumen de cada pozo en el formato R-303.</div>
       <div class="scroll"><table class="tbl"><thead><tr><th>Pozo</th><th class="r">Largo (m)</th><th class="r">Ancho (m)</th><th class="r">Alto (m)</th><th class="r">Área</th><th class="r">Capacidad</th></tr></thead><tbody>
@@ -961,7 +962,7 @@ function vistaParametros(v) {
     const n = (s) => Number(String(s).replace(',', '.'));
     const pozos = P.pozos.map(p => ({ ...p })); v.querySelectorAll('[data-pz]').forEach(i => { const [k, c] = i.dataset.pz.split(':'); pozos[+k][c] = n(i.value); });
     const modulos = P.modulos.map(m => ({ ...m })); v.querySelectorAll('[data-md]').forEach(i => modulos[+i.dataset.md].caudal = n(i.value));
-    const nuevo = { pozos, modulos, retrolavado: { veces: n($('#pRv').value), minutos: n($('#pRm').value) }, umbral: n($('#pUm').value), reservaPct: n($('#pRe').value), alertaHoras: n($('#pAl').value), criticoHoras: n($('#pCr').value), actualizado: new Date().toISOString(), actualizadoPor: ctx.perfil?.nombre || ctx.user.email };
+    const nuevo = { pozos, modulos, retrolavado: { veces: n($('#pRv').value), minutos: n($('#pRm').value) }, umbral: n($('#pUm').value), reservaPct: n($('#pRe').value), alertaHoras: n($('#pAl').value), criticoHoras: n($('#pCr').value), pozoProduccion: $('#pPp').value, actualizado: new Date().toISOString(), actualizadoPor: ctx.perfil?.nombre || ctx.user.email };
     b.disabled = true;
     try { await setDoc(doc(db, 'datos', 'agua', 'config', 'parametros'), nuevo); ST.P = { ...PARAM_BASE, ...nuevo }; toast('Parámetros guardados.'); render(); sincronizarPublico().catch(() => {}); }
     catch (e) { b.disabled = false; toast('No se pudo guardar: ' + (e.code || e.message), 'err'); }

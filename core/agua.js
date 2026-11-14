@@ -14,6 +14,7 @@ export const MODULOS = [
 export const RETROLAVADO = { veces: 4, minutos: 35 };
 export const PARAM_BASE = {
   pozos: POZOS, modulos: MODULOS, retrolavado: RETROLAVADO,
+  pozoProduccion: 'p2', // único pozo del que sale el agua a producción congelado; los otros lo abastecen con bomba manual
   umbral: 85,          // % de la producción teórica por debajo del cual se alerta
   reservaPct: 2,       // % del volumen total que no se usa (succión de bombas)
   alertaHoras: 24,     // autonomía por debajo de la cual se alerta para programar cisternas

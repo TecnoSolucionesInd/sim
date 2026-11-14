@@ -84,6 +84,22 @@ export function lecturaEn(pts, t) {
   return pts[pts.length - 1][1];
 }
 
+// Trasvase manual: el pozo de producción (del que sale el agua a producción congelado) es el único que abastece;
+// cuando baja mucho se bombea a mano desde los otros pozos. Se reconoce porque, entre dos muestras, ese pozo sube
+// más de lo que pudo entrar por ósmosis (aunque entrara toda) y los otros pozos bajan o quedan casi vacíos.
+export function trasvase(a, b, prod, cons, P) {
+  const idP = P.pozoProduccion || 'p2', pp = P.pozos.find(p => p.id === idP);
+  if (!pp || !a.pozos[idP] || !b.pozos[idP]) return null;
+  const otros = P.pozos.filter(p => p.id !== idP && a.pozos[p.id] && b.pozos[p.id]);
+  if (!otros.length) return null;
+  const sube = b.pozos[idP].vol - a.pozos[idP].vol;
+  const exceso = sube + (ok(cons) ? cons : 0) - Math.max(0, ok(prod) ? prod : 0);   // lo que entró al pozo de producción sin venir de la ósmosis
+  const bajan = otros.map(p => ({ id: p.id, nombre: p.nombre, baja: a.pozos[p.id].vol - b.pozos[p.id].vol, queda: b.pozos[p.id].vol, vacio: b.pozos[p.id].pct <= 0.1 }));
+  const totalBaja = suma(bajan, x => Math.max(0, x.baja));
+  if (!(exceso > Math.max(3, capacidad(pp) * 0.03)) || !(totalBaja > 2 || bajan.every(x => x.vacio))) return null;
+  return { pozo: pp.nombre, sube, exceso, desde: bajan.filter(x => x.baja > 0.5 || x.vacio), totalBaja, vacios: bajan.every(x => x.vacio) };
+}
+
 export function analisis(L, P) {
   const po = curva(L, 'o'), pc = curva(L, 'c');
   const To = tramos(po), Tc = tramos(pc);
@@ -96,7 +112,9 @@ export function analisis(L, P) {
     if ([pa, pb, ca, cb].some(x => x == null) || !ok(a.stock) || !ok(b.stock)) continue;
     const dt = (b.t - a.t) / 36e5; if (!(dt > 0) || dt > 24) continue;
     const prod = pb - pa, cons = cb - ca, dS = b.stock - a.stock;
-    bal.push({ a, b, dt, prod, cons, dS, noCont: prod - cons - dS, dia: isoDia(b.d) });
+    const tras = trasvase(a, b, prod, cons, P);
+    // con trasvase manual no se cuenta como diferencia: el agua viene de los otros pozos, no de los caudalímetros
+    bal.push({ a, b, dt, prod, cons, dS, noCont: tras ? 0 : prod - cons - dS, noContBruto: prod - cons - dS, tras, dia: isoDia(b.d) });
   }
   return { po, pc, To, Tc, bal, caudalTotal, disp };
 }
@@ -146,9 +164,14 @@ export function alarmas(L, A, aut, P) {
   }
   if (ok(aut.horas) && aut.horas < (Number(P.alertaHoras) || 24)) out.push({ nivel: aut.horas < (Number(P.criticoHoras) || 12) ? 'bad' : 'warn', t: u?.t, tipo: 'Programar cisternas',
     texto: `Con el consumo de las últimas 24 h, los pozos llegan a la reserva mínima en ${Math.round(aut.horas)} h.` });
-  A.bal.slice(-12).forEach(x => { if (Math.abs(x.noCont) > Math.max(6, x.dt * 4)) out.push({ nivel: 'warn', t: x.b.t, tipo: 'Balance no cuadra',
+  A.bal.slice(-12).forEach(x => { if (!x.tras) return; const t = x.tras, nom = t.desde.map(z => 'el ' + z.nombre).join(' y ') || 'los otros pozos';
+    out.push({ nivel: 'info', t: x.b.t, tipo: `Trasvase manual al ${t.pozo}`,
+      texto: `Entre ${hm(x.a.t)} y ${hm(x.b.t)} el ${t.pozo} subió ${Math.round(t.sube)} m³ con la ósmosis aportando ${Math.round(Math.max(0, x.prod))} m³: por bajo nivel se bombeó agua desde ${nom}`
+        + (t.totalBaja > 0.5 ? ` (bajaron ${Math.round(t.totalBaja)} m³)` : '') + '.'
+        + (t.vacios ? ` ${nom.includes(' y ') ? 'Quedaron' : 'Quedó'} prácticamente ${nom.includes(' y ') ? 'vacíos' : 'vacío'}: desde ahora el abastecimiento depende del ${t.pozo} y de lo que produzca la ósmosis.` : '') }); });
+  A.bal.slice(-12).forEach(x => { if (!x.tras && Math.abs(x.noCont) > Math.max(6, x.dt * 4)) out.push({ nivel: 'warn', t: x.b.t, tipo: 'Balance no cuadra',
     texto: x.noCont > 0 ? `${Math.round(x.noCont)} m³ entraron y no se reflejan en el nivel ni en el consumo: revisar reboses (pozos llenos), fugas o lecturas.`
       : `El nivel subió ${Math.round(-x.noCont)} m³ más de lo que entró: revisar las lecturas de altura o de los caudalímetros.` }); });
-  const ord = { bad: 0, warn: 1 };
+  const ord = { bad: 0, warn: 1, info: 2 };
   return out.sort((a, b) => ord[a.nivel] - ord[b.nivel] || b.t - a.t);
 }
