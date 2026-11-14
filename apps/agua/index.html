@@ -727,7 +727,7 @@ function escena3D(box, P) {
       ULT = E; const x = E.x;
       P.pozos.forEach(p => { const z = POZ[p.id], d = x.pozos[p.id];
         z.meta = d ? Math.min(d.h, p.alto) : 0;
-        z.tag.innerHTML = `<b>${esc(p.nombre)}</b><div class="cu"><div class="big num">${d ? nf(d.vol, 0) : '—'} m³</div>${d ? `${nf(d.h, 2)} m · ${nf(d.pct * 100, 0)} %` : 'sin lectura'}<div class="bar"><i style="width:${d ? d.pct * 100 : 0}%"></i></div></div>`;
+        z.tag.innerHTML = `<b>${esc(p.nombre)}</b><div class="cu"><div class="big num">${d ? nf(d.vol, 0) : '—'} m³</div>${d ? `de ${nf(capacidad(p), 0)} m³ · ${nf(d.pct * 100, 0)} %` : 'sin lectura'}<div class="bar"><i style="width:${d ? d.pct * 100 : 0}%"></i></div></div>`;
       });
       P.modulos.forEach(m => { const z = MOD[m.id], s = x.est[m.id], c = COLOR_EST[s] || '#9AA8B6';
         z.tag.innerHTML = `<b>${esc(m.nombre)} <i class="led" style="background:${c}"></i></b><div class="cu">${esc(s || '—')}</div>`;
@@ -765,7 +765,7 @@ function escena3D(box, P) {
       if (ULT) {
         const x = ULT.x;
         P.pozos.forEach(p => { const z = POZ[p.id], d = x.pozos[p.id];
-          caja(puntoPozo(z), p.nombre, d ? [[`${nf(d.vol, 0)} m³`, 'g'], [`${nf(d.h, 2)} m · ${nf(d.pct * 100, 0)} %`, 'n']] : [['sin lectura', 'n']]); });
+          caja(puntoPozo(z), p.nombre, d ? [[`${nf(d.vol, 0)} m³`, 'g'], [`de ${nf(capacidad(p), 0)} m³ · ${nf(d.pct * 100, 0)} %`, 'n']] : [['sin lectura', 'n']]); });
         P.modulos.forEach(m => caja(new T.Vector3(MOD[m.id].g.position.x + 1.2, 2.3, MOD[m.id].g.position.z), m.nombre, [[x.est[m.id] || '—', 'n']], COLOR_EST[x.est[m.id]] || '#9AA8B6'));
         caja(MED.o.ancla, 'Caudalímetro ósmosis', [[`${nf(ULT.prod, 1)} m³/h`, 'g']], null, 'der');
         caja(MED.c.ancla, 'Caudalímetro producción', [[`${nf(ULT.cons, 1)} m³/h`, 'g']]);
