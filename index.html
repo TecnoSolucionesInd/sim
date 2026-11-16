@@ -2,202 +2,495 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#05080A">
 <title>SIM · Sistema Integrado de Mantenimiento</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236FE3CF'/%3E%3Cpath d='M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 4v2M12 18v2M4 12h2M18 12h2' stroke='%2314332E' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="core/sim.css">
+<link rel="icon" type="image/png" href="core/marca/isotipo.png">
+<link rel="apple-touch-icon" href="core/marca/isotipo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap">
+<!-- Portada del SIM (inicio de sesión y lanzador de aplicativos). Estilos propios: no usa core/sim.css,
+     que queda solo para los aplicativos internos. -->
 <style>
-  .login{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
-  .brand{display:flex;flex-direction:column;justify-content:space-between;padding:56px 64px}
-  .brand h1{font-size:60px;letter-spacing:-1.5px;line-height:1.04}
-  .brand p{margin:26px 0 0;font-size:19px;line-height:1.6;color:var(--tx-2);max-width:520px}
-  .feats{display:flex;gap:12px;margin-top:38px;flex-wrap:wrap}
-  .feat{padding:10px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.16);font-size:14px;color:#D5DDE5;display:flex;align-items:center;gap:8px}
-  .feat i{width:7px;height:7px;border-radius:50%;display:block}
-  .card-wrap{display:flex;align-items:center;justify-content:center;padding:32px 20px}
-  .card{width:100%;max-width:430px;padding:44px 40px;border-radius:26px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 40px 80px -40px rgba(6,12,18,.8)}
-  .card h2{font-family:var(--f-display);font-size:28px;font-weight:600;letter-spacing:-.4px;margin:0}
-  .card .sub{margin-top:8px;font-size:15px;color:#BAC5D0}
-  .fgroup{margin-top:18px}
-  .row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-  .linkbtn{background:none;border:0;padding:0;color:var(--mint-2);font-size:14px;text-decoration:underline;text-underline-offset:3px}
-  .linkbtn:hover{color:#BFF7EC}
-  .secure{margin-top:26px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx-3)}
+:root{
+  color-scheme:dark;
+  --bg:#05080A; --bg-2:#080D10; --surf:#0C1216; --surf-2:#10181D; --surf-3:#152027;
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.12); --line-3:rgba(255,255,255,.2);
+  --tx:#EEF3F6; --tx-2:#A7B4BF; --tx-3:#6C7A86; --tx-4:#47535D;
+  --mint:#6FE3CF; --mint-2:#A5F5E7; --mint-ink:#062A25; --blue:#4FA8E0; --amber:#F5B94A; --slate:#8FA0AE; --lav:#A9B4FF; --red:#FF8F8F;
+  --f:'Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --fm:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.2,.7,.2,1); --spring:cubic-bezier(.3,1.3,.5,1);
+  --gl:max(16px, env(safe-area-inset-left, 0px)); --gr:max(16px, env(safe-area-inset-right, 0px));
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+input{font:inherit;color:inherit}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:var(--fm)}
+::selection{background:rgba(111,227,207,.3)}
 
-  .portal{position:relative;z-index:1}
-  .main{max-width:1320px;margin:0 auto;padding:56px 32px 80px}
-  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap}
-  .head h2{font-size:46px;letter-spacing:-1.2px;margin-top:14px}
-  .stats{display:flex;gap:12px;flex-wrap:wrap}
-  .stat{padding:16px 22px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);min-width:120px}
-  .stat b{display:block;font-family:var(--f-display);font-size:30px;font-weight:600}
-  .stat span{font-size:13px;color:#BAC5D0}
-  .filters{display:flex;gap:10px;margin-top:40px;flex-wrap:wrap}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px;margin-top:30px}
-  .tile{position:relative;overflow:hidden;text-align:left;padding:26px;min-height:236px;border-radius:24px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;flex-direction:column;justify-content:space-between;transition:transform .45s var(--ease),border-color .35s,box-shadow .45s,background .35s;animation:rise .8s var(--ease) both}
-  .tile::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.10),transparent);transform:skewX(-18deg);transition:left .8s ease}
-  .tile:hover{transform:translateY(-8px);border-color:rgba(255,255,255,.28);background:rgba(255,255,255,.09);box-shadow:0 28px 50px -24px rgba(8,14,20,.75)}
-  .tile:hover::after{left:130%}
-  .tile .ico{width:62px;height:62px;border-radius:18px;display:flex;align-items:center;justify-content:center;transition:transform .5s var(--ease)}
-  .tile:hover .ico{transform:scale(1.1) rotate(-6deg)}
-  .tile .top{display:flex;justify-content:space-between;align-items:flex-start;width:100%}
-  .tile .fase{font-family:var(--f-mono);font-size:12px;color:var(--tx-3)}
-  .tile .nm{font-family:var(--f-display);font-size:20px;font-weight:600;letter-spacing:-.3px}
-  .tile .sb{margin-top:6px;font-size:14px;color:#BAC5D0}
-  .tile .bt{margin-top:18px;display:flex;justify-content:space-between;align-items:center}
-  .tile .arrow{transition:transform .35s,opacity .35s;opacity:.45}
-  .tile:hover .arrow{transform:translateX(4px);opacity:1}
-  .tile.off{opacity:.62}
-  .empty{margin-top:30px;padding:48px;text-align:center;border-radius:22px;border:1.5px dashed rgba(255,255,255,.2);color:var(--tx-2)}
+/* ---------- ambientación ---------- */
+.amb{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.amb .glow{position:absolute;border-radius:50%;filter:blur(20px);will-change:transform}
+.amb .g1{top:-340px;left:-180px;width:900px;height:760px;background:radial-gradient(closest-side,rgba(111,227,207,.20),rgba(111,227,207,.05) 55%,transparent);animation:drift1 28s ease-in-out infinite}
+.amb .g2{top:-260px;right:-260px;width:880px;height:720px;background:radial-gradient(closest-side,rgba(79,168,224,.16),rgba(79,168,224,.04) 55%,transparent);animation:drift2 34s ease-in-out infinite}
+.amb .g3{bottom:-420px;left:30%;width:900px;height:700px;background:radial-gradient(closest-side,rgba(111,227,207,.07),transparent);}
+.amb .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:64px 64px;background-position:center -1px;
+  -webkit-mask-image:radial-gradient(120% 70% at 50% 0%,#000 0%,rgba(0,0,0,.5) 45%,transparent 78%);mask-image:radial-gradient(120% 70% at 50% 0%,#000 0%,rgba(0,0,0,.5) 45%,transparent 78%)}
+.amb .noise{position:absolute;inset:0;opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
+@keyframes drift1{50%{transform:translate(90px,50px) scale(1.08)}}
+@keyframes drift2{50%{transform:translate(-110px,40px) scale(1.06)}}
 
-  .overlay{position:fixed;inset:0;z-index:40;background:rgba(40,50,62,.82);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;animation:fadein .4s ease both}
-  .overlay .big{width:112px;height:112px;border-radius:32px;display:flex;align-items:center;justify-content:center}
-  .overlay .nm{font-family:var(--f-display);font-size:26px;font-weight:600}
-  .overlay .track{width:220px;height:4px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden}
-  .overlay .track div{height:100%;border-radius:4px;animation:bar .9s cubic-bezier(.4,0,.2,1) both}
+.wrap{max-width:1296px;margin:0 auto;padding-left:max(28px, env(safe-area-inset-left, 0px));padding-right:max(28px, env(safe-area-inset-right, 0px))}
 
-  .mbrand{display:none}
-  @media (max-width:900px){
-    .mbrand{display:flex}
-    .login{grid-template-columns:minmax(0,1fr)}
-    .brand{display:none}
-    .card{padding:34px 24px}
-    .main{padding:36px 16px 60px}
-    .head h2{font-size:34px}
-  }
+/* ---------- barra superior ---------- */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:31;background:var(--bg)}
+.top{position:sticky;top:env(safe-area-inset-top, 0px);z-index:30;background:rgba(5,8,10,.66);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border-bottom:1px solid var(--line)}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(111,227,207,.45) 18%,rgba(79,168,224,.35) 50%,transparent 82%);opacity:.55}
+.top .in{display:flex;align-items:center;gap:20px;height:68px}
+.lock{display:flex;align-items:center;gap:16px;min-width:0;flex:0 0 auto}
+.sim{min-width:0}
+.sim b{display:block;font-size:16px;font-weight:650;letter-spacing:.09em;line-height:1.15;color:var(--mint-2)}
+.sim small{display:block;font-size:11.5px;color:var(--tx-3);letter-spacing:.01em;line-height:1.2;white-space:nowrap}
+.lock .sep{width:1px;height:26px;background:linear-gradient(transparent,var(--line-3),transparent)}
+.corp{height:34px;width:auto;display:block;flex:0 0 auto}
+.search{position:relative;flex:1 1 auto;max-width:440px;margin:0 auto}
+.search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--tx-3);pointer-events:none;transition:color .2s}
+.search input{width:100%;height:40px;padding:0 64px 0 38px;border-radius:11px;border:1px solid var(--line-2);background:rgba(255,255,255,.035);font-size:14px;outline:none;transition:border-color .2s,background .2s,box-shadow .2s}
+.search input::placeholder{color:var(--tx-3)}
+.search input:hover{border-color:var(--line-3)}
+.search input:focus{border-color:rgba(111,227,207,.7);background:rgba(111,227,207,.05);box-shadow:0 0 0 4px rgba(111,227,207,.12)}
+.search:focus-within svg{color:var(--mint)}
+.search kbd{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-family:var(--fm);font-size:11px;color:var(--tx-3);padding:2px 7px;border-radius:6px;border:1px solid var(--line-2);background:rgba(255,255,255,.04);pointer-events:none}
+.top .r{display:flex;align-items:center;gap:14px;flex:0 0 auto}
+.when{display:flex;align-items:center;gap:9px;font-family:var(--fm);font-size:12.5px;color:var(--tx-2);white-space:nowrap}
+.live{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 0 rgba(111,227,207,.6);animation:pulse 2.4s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(111,227,207,0)}100%{box-shadow:0 0 0 0 rgba(111,227,207,0)}}
+.user{display:flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;border-radius:999px;border:1px solid var(--line-2);background:rgba(255,255,255,.035)}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:650;color:var(--mint-ink);background:linear-gradient(145deg,#C4FBF0,#6FE3CF)}
+.user .n{font-size:13px;font-weight:550;line-height:1.15;white-space:nowrap}
+.user .ro{font-size:11px;color:var(--tx-3);line-height:1.15;white-space:nowrap}
+.ib{width:38px;height:38px;border-radius:11px;border:1px solid var(--line-2);background:rgba(255,255,255,.035);display:grid;place-items:center;color:var(--tx-2);transition:background .2s,border-color .2s,color .2s}
+.ib:hover{background:rgba(255,143,143,.1);border-color:rgba(255,143,143,.45);color:#FFC2C2}
+:is(.ib,.seg button,.card,.search input):focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+
+/* ---------- bienvenida ---------- */
+main{position:relative;z-index:1;overflow-x:clip}
+.hero{position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:56px;align-items:end;padding-block:72px 52px}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--fm);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx-2);padding:6px 12px 6px 10px;border-radius:999px;border:1px solid var(--line-2);background:rgba(255,255,255,.03)}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint)}
+.eyebrow em{font-style:normal;color:var(--tx-4)}
+h1{margin:22px 0 0;font-size:clamp(38px,5.3vw,70px);font-weight:600;letter-spacing:-.04em;line-height:1.02;text-wrap:balance}
+h1 .hi{display:block;color:var(--tx-2);font-weight:400;font-size:.52em;letter-spacing:-.025em;line-height:1.3;margin-bottom:6px}
+h1 .nm{background:linear-gradient(100deg,#FFFFFF 10%,#B9F7EC 55%,#6FE3CF 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{margin:20px 0 0;max-width:520px;font-size:17px;line-height:1.6;color:var(--tx-2)}
+.lead b{color:var(--tx);font-weight:550}
+
+/* ---------- indicadores ---------- */
+.state{position:relative}
+.dial{position:absolute;left:50%;top:50%;margin:-330px 0 0 -330px;width:660px;height:660px;pointer-events:none;-webkit-mask-image:radial-gradient(closest-side,#000 40%,transparent 100%);mask-image:radial-gradient(closest-side,#000 40%,transparent 100%)}
+.dial .a{transform-origin:50% 50%;animation:spin 90s linear infinite}
+.dial .b{transform-origin:50% 50%;animation:spin 140s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.panel{position:relative;border-radius:20px;padding:22px 22px 20px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.02));border:1px solid var(--line-2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 30px 70px -40px #000,0 1px 0 rgba(255,255,255,.08) inset}
+.panel .ph{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.panel .ph span{font-family:var(--fm);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx-3)}
+.panel .ph b{font-family:var(--fm);font-size:12.5px;font-weight:500;color:var(--tx-2)}
+.bar{display:flex;gap:4px;height:8px;margin:16px 0 20px}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--c);flex:0 0 0;transition:flex-basis 1.1s var(--ease);box-shadow:0 0 16px -2px var(--c)}
+.bar i.dim{box-shadow:none;opacity:.55}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpi{padding:0 16px;border-left:1px solid var(--line)}
+.kpi:first-child{padding-left:0;border-left:0}
+.kpi .v{font-size:46px;font-weight:600;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums;color:var(--c)}
+.kpi .l{margin-top:10px;display:flex;align-items:center;gap:7px;font-size:13px;color:var(--tx);white-space:nowrap}
+.kpi .l i{width:7px;height:7px;border-radius:50%;background:var(--c);flex:0 0 7px}
+.kpi .s{margin-top:3px;font-family:var(--fm);font-size:11px;color:var(--tx-3)}
+
+/* ---------- filtros ---------- */
+.tools{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--line)}
+.seg{position:relative;display:inline-flex;padding:4px;border-radius:13px;border:1px solid var(--line-2);background:rgba(255,255,255,.03);max-width:100%;overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg .ind{position:absolute;top:4px;left:0;height:calc(100% - 8px);border-radius:9px;background:linear-gradient(180deg,rgba(111,227,207,.22),rgba(111,227,207,.12));border:1px solid rgba(111,227,207,.45);box-shadow:0 6px 20px -8px rgba(111,227,207,.5);transition:transform .45s var(--ease),width .45s var(--ease)}
+.seg button{position:relative;z-index:1;height:36px;padding:0 15px;border-radius:9px;font-size:13.5px;font-weight:500;color:var(--tx-2);display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:color .25s}
+.seg button:hover{color:var(--tx)}
+.seg button.on{color:#DFFCF6}
+.seg button small{font-family:var(--fm);font-size:11px;color:var(--tx-3);transition:color .25s}
+.seg button.on small{color:var(--mint)}
+.count{font-family:var(--fm);font-size:12px;color:var(--tx-3)}
+.count b{color:var(--tx-2);font-weight:500}
+.msearch{display:none;flex:1 1 100%;margin:0}
+
+/* ---------- tarjetas ---------- */
+.gridc{display:grid;grid-template-columns:repeat(auto-fill,minmax(296px,1fr));gap:16px;padding-block:24px 0}
+.card{--mx:50%;--my:0%;position:relative;isolation:isolate;display:flex;flex-direction:column;text-align:left;min-height:232px;padding:20px 20px 16px;border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018));border:1px solid var(--line-2);overflow:hidden;
+  transition:transform .5s var(--ease),border-color .35s,box-shadow .5s var(--ease),background .35s}
+.card::before{content:"";position:absolute;inset:0;z-index:-1;opacity:0;transition:opacity .4s;background:radial-gradient(340px circle at var(--mx) var(--my),color-mix(in srgb,var(--c) 22%,transparent),transparent 62%)}
+.card::after{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:0;transition:opacity .4s}
+.card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--c) 46%,transparent);box-shadow:0 26px 50px -28px #000,0 18px 44px -30px var(--c)}
+.card:hover::before,.card:hover::after{opacity:1}
+.card:active{transform:translateY(-1px) scale(.992);transition-duration:.12s}
+.intro .card{animation:rise .7s var(--ease) both;animation-delay:calc(.18s + var(--i) * 45ms)}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.c-top{display:flex;justify-content:space-between;align-items:flex-start}
+.ico{position:relative;width:46px;height:46px;border-radius:13px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 13%,transparent);border:1px solid color-mix(in srgb,var(--c) 34%,transparent);transition:transform .5s var(--spring),box-shadow .4s,background .35s}
+.card:hover .ico{transform:translateY(-2px) scale(1.06);background:color-mix(in srgb,var(--c) 20%,transparent);box-shadow:0 10px 26px -10px var(--c)}
+.fase{font-family:var(--fm);font-size:11px;color:var(--tx-3);padding:3px 8px;border-radius:7px;border:1px solid var(--line);letter-spacing:.04em;transition:color .3s,border-color .3s}
+.card:hover .fase{color:var(--tx-2);border-color:var(--line-2)}
+.c-nm{margin-top:18px;font-size:17.5px;font-weight:600;letter-spacing:-.02em;line-height:1.25;text-wrap:balance}
+.c-sb{margin-top:5px;font-size:13.5px;line-height:1.5;color:var(--tx-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mods{display:flex;flex-wrap:nowrap;gap:5px;margin-top:13px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent)}
+.mods span{flex:0 0 auto;font-family:var(--fm);font-size:10.5px;line-height:1;color:var(--tx-3);padding:5px 7px;border-radius:6px;background:rgba(255,255,255,.04);white-space:nowrap;transition:color .3s,background .3s}
+.mods span.n{color:color-mix(in srgb,var(--c) 70%,#fff);background:color-mix(in srgb,var(--c) 12%,transparent)}
+.card:hover .mods span{color:var(--tx-2);background:rgba(255,255,255,.07)}
+.card:hover .mods span.n{color:color-mix(in srgb,var(--c) 60%,#fff);background:color-mix(in srgb,var(--c) 20%,transparent)}
+.c-body{flex:1 1 auto;padding-bottom:16px}
+.c-ft{padding-top:13px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:34px}
+.st{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:500;color:var(--sc)}
+.st i{width:7px;height:7px;border-radius:50%;background:var(--sc);flex:0 0 7px}
+.st.prod i{box-shadow:0 0 0 0 color-mix(in srgb,var(--sc) 60%,transparent);animation:pulse2 2.4s infinite}
+@keyframes pulse2{70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.st.plan i{background:transparent;box-shadow:0 0 0 1.5px var(--sc) inset}
+.go{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:550;color:var(--tx-3);transition:color .3s}
+.go span{opacity:0;transform:translateX(6px);transition:opacity .3s,transform .4s var(--ease)}
+.go svg{transition:transform .4s var(--ease)}
+.card:hover .go{color:var(--c)}
+.card:hover .go span{opacity:1;transform:none}
+.card:hover .go svg{transform:translateX(3px)}
+.card.off{background:transparent;border-style:dashed;border-color:var(--line-2)}
+.card.off .ico{filter:saturate(.55);opacity:.8}
+.card.off .c-nm{color:var(--tx-2)}
+.card.off .c-sb{color:var(--tx-3)}
+.card.off:hover{transform:none;box-shadow:none;border-color:var(--line-3)}
+.card.off:hover::before{opacity:.5}
+.card.off:hover::after{opacity:0}
+.card.off .go{font-family:var(--fm);font-size:11px;font-weight:400;letter-spacing:.04em}
+mark{background:rgba(111,227,207,.22);color:inherit;border-radius:3px;padding:0 1px}
+.empty{margin-top:24px;padding:56px 24px;text-align:center;border-radius:18px;border:1px dashed var(--line-2);color:var(--tx-2)}
+.empty b{display:block;color:var(--tx);font-size:16px;font-weight:600;margin-bottom:4px}
+
+/* ---------- pie ---------- */
+footer{position:relative;z-index:1;margin-top:72px;border-top:1px solid var(--line)}
+footer .in{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-block:22px 30px;font-size:12.5px;color:var(--tx-3)}
+footer .l{display:flex;align-items:center;gap:14px}
+footer img{height:20px;opacity:.7}
+
+/* ---------- apertura de aplicativo ---------- */
+.launch{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:rgba(5,8,10,.78);backdrop-filter:blur(26px) saturate(1.3);-webkit-backdrop-filter:blur(26px) saturate(1.3);animation:fade .35s ease both}
+.launch[hidden]{display:none}
+.launch .big{position:relative;width:104px;height:104px;border-radius:30px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid color-mix(in srgb,var(--c) 42%,transparent);box-shadow:0 30px 80px -24px var(--c);animation:pop .7s var(--spring) both}
+.launch .big::after{content:"";position:absolute;inset:-14px;border-radius:40px;border:1px solid color-mix(in srgb,var(--c) 30%,transparent);animation:ring 1.4s var(--ease) infinite}
+.launch .nm{font-size:25px;font-weight:600;letter-spacing:-.025em;animation:rise .6s var(--ease) .08s both}
+.launch .track{width:220px;height:3px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;animation:rise .6s var(--ease) .16s both}
+.launch .track i{display:block;height:100%;border-radius:3px;background:var(--c);box-shadow:0 0 12px var(--c);animation:fill .95s cubic-bezier(.4,0,.2,1) both}
+.launch .msg{font-family:var(--fm);font-size:12.5px;color:var(--tx-2);animation:rise .6s var(--ease) .24s both}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
+@keyframes ring{0%{transform:scale(.92);opacity:.9}100%{transform:scale(1.18);opacity:0}}
+@keyframes fill{from{width:0}to{width:100%}}
+.toasts{position:fixed;z-index:60;bottom:calc(22px + env(safe-area-inset-bottom, 0px));right:max(22px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 44px)}
+.toast{padding:12px 16px;border-radius:12px;background:rgba(16,24,29,.92);border:1px solid rgba(111,227,207,.4);backdrop-filter:blur(12px);font-size:13.5px;box-shadow:0 20px 40px -20px #000;animation:rise .4s var(--ease) both;transition:opacity .4s}
+
+/* entrada */
+.in-a{animation:rise .8s var(--ease) both}
+.d1{animation-delay:.06s}.d2{animation-delay:.14s}.d3{animation-delay:.22s}.d4{animation-delay:.3s}
+
+@media (max-width:1100px){
+  .sim small,.user .tx,.when .dt{display:none}
+  .user{padding:4px}
+  .hero{grid-template-columns:minmax(0,1fr);gap:36px;padding-block:52px 40px;align-items:start}
+  .dial{right:-200px;top:auto;bottom:-260px;opacity:.4}
+}
+@media (max-width:720px){
+  .wrap{padding-left:var(--gl);padding-right:var(--gr)}
+  .top .in{height:60px;gap:12px}
+  .top .search,.when{display:none}
+  .lock{gap:12px;flex:1 1 auto}
+  .lock .sep{height:22px}
+  .corp{height:28px}
+  .hero{padding-block:36px 30px;gap:28px}
+  .eyebrow{font-size:9.5px;letter-spacing:.08em;white-space:nowrap;gap:8px;padding:5px 10px 5px 9px}
+  .lead{font-size:15.5px}
+  .panel{padding:18px 16px 16px;border-radius:18px}
+  .kpi{padding:0 10px}
+  .kpi .v{font-size:36px}
+  .kpi .l{font-size:11.5px;white-space:normal;line-height:1.25;align-items:flex-start}
+  .kpi .l i{margin-top:4px}
+  .kpi .s span{display:none}
+  .seg{display:flex;width:100%}
+  .seg button{flex:1 1 0;justify-content:center;padding:0 6px;font-size:13px;gap:6px}
+  .dial{display:none}
+  .tools{gap:12px;padding-bottom:18px}
+  .msearch{display:block;max-width:none}
+  .msearch input{padding-right:14px}
+  .count{display:none}
+  .gridc{grid-template-columns:minmax(0,1fr);gap:12px;padding-top:18px}
+  .card{min-height:0;padding:16px 16px 12px;border-radius:16px}
+  .c-body{display:grid;grid-template-columns:42px minmax(0,1fr) auto;column-gap:13px;padding-bottom:13px}
+  .c-top{display:contents}
+  .ico{width:42px;height:42px;border-radius:12px;grid-column:1;grid-row:1 / span 2;align-self:start}
+  .fase{grid-column:3;grid-row:1;align-self:start}
+  .c-nm{grid-column:2;grid-row:1;margin-top:0;font-size:16.5px}
+  .c-sb{grid-column:2 / 4;grid-row:2;margin-top:3px;font-size:13px}
+  .mods{grid-column:1 / 4;grid-row:3;margin-top:12px}
+  .go span{opacity:1;transform:none}
+  footer{margin-top:48px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}
+}
+
+/* ---------- utilidades (propias de la portada; no dependen de core/sim.css) ---------- */
+[hidden]{display:none!important}
+a{color:var(--mint-2)}
+.boot{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:var(--bg);transition:opacity .4s}
+.boot.out{opacity:0;pointer-events:none}
+.spinner{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(255,255,255,.16);border-top-color:var(--mint);animation:giro .8s linear infinite}
+@keyframes giro{to{transform:rotate(360deg)}}
+.alert{padding:13px 16px;border-radius:12px;font-size:14px;line-height:1.5}
+.alert.err{background:rgba(255,143,143,.1);border:1px solid rgba(255,143,143,.4);color:#FFD0D0}
+.alert.ok{background:rgba(111,227,207,.1);border:1px solid rgba(111,227,207,.4);color:#CFF8F0}
+.alert.warn{background:rgba(245,185,74,.1);border:1px solid rgba(245,185,74,.4);color:#FFE3AE}
+.avisos .alert{margin-top:24px}
+.btn{height:40px;padding:0 16px;border-radius:10px;border:1px solid var(--line-2);background:rgba(255,255,255,.05);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:9px;transition:background .2s,border-color .2s}
+.btn:hover{background:rgba(255,255,255,.1);border-color:var(--line-3)}
+.toast.err{border-color:rgba(255,143,143,.55)}
+
+/* ---------- inicio de sesión ---------- */
+.login{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:flex}
+#gl{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;opacity:0;transition:opacity 1.6s ease}
+#gl.on{opacity:1}
+.lg-veil{position:fixed;inset:0;z-index:0;pointer-events:none;background:
+  radial-gradient(60% 70% at 78% 50%,rgba(5,8,10,.7),transparent 75%),
+  radial-gradient(46% 40% at 20% 50%,rgba(5,8,10,.62),transparent 80%),
+  linear-gradient(180deg,rgba(5,8,10,.55) 0%,transparent 22%,transparent 70%,rgba(5,8,10,.8) 100%),
+  linear-gradient(90deg,rgba(5,8,10,.55) 0%,rgba(5,8,10,.12) 40%,rgba(5,8,10,.2) 100%)}
+.lg-in{position:relative;z-index:1;flex:1;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);max-width:1440px;margin:0 auto;width:100%}
+.lg-brand{display:flex;flex-direction:column;justify-content:space-between;gap:40px;padding:52px 40px 44px max(64px, env(safe-area-inset-left, 0px))}
+.lg-logo{height:54px;width:auto;align-self:flex-start;display:block}
+.lg-h{margin:24px 0 0;font-size:clamp(40px,4.9vw,72px);font-weight:600;letter-spacing:-.04em;line-height:1.02}
+.lg-h .nm{background:linear-gradient(100deg,#FFFFFF 5%,#B9F7EC 50%,#6FE3CF 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lg-brand .lead{max-width:480px;text-shadow:0 1px 18px rgba(5,8,10,.9)}
+.feats{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.feats span{display:inline-flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;border:1px solid var(--line-2);background:rgba(5,8,10,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-size:13px;color:var(--tx)}
+.feats i{width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+.lg-foot{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx-3)}
+.lg-side{display:flex;align-items:center;justify-content:center;padding:32px max(40px, env(safe-area-inset-right, 0px)) 32px 20px}
+.lcard{position:relative;width:100%;max-width:428px;padding:38px 36px 30px;border-radius:24px;background:linear-gradient(180deg,rgba(18,26,32,.78),rgba(10,15,19,.72));border:1px solid var(--line-2);
+  backdrop-filter:blur(26px) saturate(1.4);-webkit-backdrop-filter:blur(26px) saturate(1.4);box-shadow:0 50px 100px -40px #000,0 1px 0 rgba(255,255,255,.1) inset}
+.lcard::before{content:"";position:absolute;left:28px;right:28px;top:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(111,227,207,.8),rgba(79,168,224,.6),transparent)}
+.lc-logo{display:none;height:40px;width:auto;margin-bottom:26px}
+.lc-eb{display:flex;align-items:center;gap:9px;font-family:var(--fm);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mint)}
+.lc-eb::before{content:"";width:18px;height:1px;background:var(--mint)}
+.lcard h2{margin:14px 0 0;font-size:28px;font-weight:600;letter-spacing:-.03em;line-height:1.15}
+.lcard .sub{margin-top:7px;font-size:14.5px;color:var(--tx-2);line-height:1.5}
+.fgroup{margin-top:18px}
+.label{display:block;margin-bottom:8px;font-size:12.5px;font-weight:500;color:var(--tx-2);letter-spacing:.01em}
+.fwrap{position:relative}
+.field{width:100%;height:48px;padding:0 15px;border-radius:12px;border:1px solid var(--line-2);background:rgba(255,255,255,.04);color:var(--tx);font-size:15px;outline:none;transition:border-color .2s,background .2s,box-shadow .2s}
+.field::placeholder{color:var(--tx-4)}
+.field:hover{border-color:var(--line-3)}
+.field:focus{border-color:rgba(111,227,207,.75);background:rgba(111,227,207,.05);box-shadow:0 0 0 4px rgba(111,227,207,.13)}
+.field:-webkit-autofill{-webkit-text-fill-color:var(--tx);box-shadow:0 0 0 1000px #0F181D inset;caret-color:var(--tx)}
+.fwrap .field{padding-right:48px}
+.ojo{position:absolute;right:6px;top:6px;width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--tx-3);transition:color .2s,background .2s}
+.ojo:hover{color:var(--tx);background:rgba(255,255,255,.06)}
+.row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.check{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;color:var(--tx-2)}
+.check input{width:16px;height:16px;accent-color:var(--mint)}
+.linkbtn{font-size:13.5px;color:var(--mint-2);text-decoration:underline;text-decoration-color:rgba(165,245,231,.35);text-underline-offset:4px;transition:color .2s,text-decoration-color .2s}
+.linkbtn:hover{color:#fff;text-decoration-color:currentColor}
+.btn-primary{width:100%;height:52px;margin-top:24px;border-radius:13px;border:0;font-size:15.5px;font-weight:600;color:var(--mint-ink);background:linear-gradient(180deg,#A5F5E7,#6FE3CF 55%,#55CDB9);display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 16px 34px -14px rgba(111,227,207,.7);transition:transform .25s var(--ease),box-shadow .25s,filter .2s}
+.btn-primary:hover{transform:translateY(-2px);filter:brightness(1.05);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 22px 40px -14px rgba(111,227,207,.85)}
+.btn-primary:active{transform:none}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-primary svg{transition:transform .3s var(--ease)}
+.btn-primary:hover svg{transform:translateX(3px)}
+.secure{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--tx-3)}
+.first{margin-top:10px;font-size:12.5px;color:var(--tx-3)}
+.first .linkbtn{font-size:12.5px}
+:is(.field,.btn-primary,.linkbtn,.ojo,.btn):focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+@media (max-width:980px){
+  .lg-in{grid-template-columns:minmax(0,1fr)}
+  .lg-brand{display:none}
+  .lg-side{padding:28px var(--gr) 28px var(--gl);min-height:100dvh}
+  .lc-logo{display:block}
+  .lcard{padding:30px 22px 24px;border-radius:22px}
+  .lg-veil{background:linear-gradient(180deg,rgba(5,8,10,.3),rgba(5,8,10,.2) 60%,rgba(5,8,10,.5))}
+}
 </style>
 </head>
 <body>
-<div class="amb"></div>
+<div class="amb" aria-hidden="true"><div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div><div class="grid"></div><div class="noise"></div></div>
 <div class="boot" id="boot"><div class="spinner"></div></div>
 
-<!-- ================= LOGIN ================= -->
+<!-- ================= INICIO DE SESIÓN ================= -->
 <section class="login" id="vLogin" hidden>
-  <div class="brand">
-    <div class="logo rise">
-      <div class="logo-mark" style="width:46px;height:46px;border-radius:14px">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#14332E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
-      </div>
-      <div class="logo-name" style="font-size:20px">SIM</div>
-    </div>
-    <div style="max-width:620px">
-      <div class="eyebrow rise d1" style="margin-bottom:22px">Departamento de Mantenimiento</div>
-      <h1 class="h-display rise d2">Sistema Integrado<br>de Mantenimiento</h1>
-      <p class="rise d3">Un solo acceso a todos los aplicativos de la planta. Cada uno con sus módulos y permisos.</p>
-      <div class="feats rise d4">
-        <div class="feat"><i style="background:#6FE3CF"></i>Acceso único</div>
-        <div class="feat"><i style="background:#F5B94A"></i>Permisos por aplicativo</div>
-        <div class="feat"><i style="background:#A9B4FF"></i>Datos en tiempo real</div>
-      </div>
-    </div>
-    <div class="rise d5" style="font-size:13px;color:var(--tx-3)">IP Santa Mónica Fishing · Planta Paita</div>
-  </div>
-
-  <div class="card-wrap">
-    <!-- Iniciar sesión -->
-    <form class="card rise d2" id="fLogin" novalidate>
-      <div class="mbrand logo" style="margin-bottom:26px">
-        <div class="logo-mark"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#14332E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></div>
-        <div><div class="logo-name">SIM</div><div class="logo-sub">Sistema Integrado de Mantenimiento</div></div>
-      </div>
-      <h2>Iniciar sesión</h2>
-      <div class="sub">Ingrese con su usuario asignado</div>
-      <div class="fgroup" style="margin-top:30px"><label class="label" for="lEmail">Correo</label><input class="field" id="lEmail" type="email" autocomplete="username" placeholder="usuario@empresa.com" required></div>
-      <div class="fgroup"><label class="label" for="lPass">Contraseña</label><input class="field" id="lPass" type="password" autocomplete="current-password" placeholder="••••••••" required></div>
-      <div class="row-between" style="margin-top:18px">
-        <label class="check"><input type="checkbox" id="lRemember" checked>Recordar sesión</label>
-        <button type="button" class="linkbtn" data-go="fReset">¿Olvidó su clave?</button>
-      </div>
-      <div class="alert err" id="lErr" style="margin-top:18px" hidden></div>
-      <button type="submit" class="btn btn-primary" id="lBtn" style="margin-top:26px;width:100%;height:54px;font-size:16px">Ingresar
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
-      <div class="secure"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"/></svg>Conexión cifrada · acceso según permisos asignados</div>
-      <div style="margin-top:14px;font-size:13px;color:var(--tx-3)">¿Primer ingreso del administrador? <button type="button" class="linkbtn" style="font-size:13px" data-go="fFirst">Crear clave</button></div>
-    </form>
-
-    <!-- Recuperar clave -->
-    <form class="card rise" id="fReset" novalidate hidden>
-      <h2>Restablecer clave</h2>
-      <div class="sub">Se enviará un enlace a su correo para crear una nueva clave.</div>
-      <div class="fgroup" style="margin-top:30px"><label class="label" for="rEmail">Correo</label><input class="field" id="rEmail" type="email" autocomplete="username" placeholder="usuario@empresa.com" required></div>
-      <div class="alert" id="rMsg" style="margin-top:18px" hidden></div>
-      <button type="submit" class="btn btn-primary" id="rBtn" style="margin-top:26px;width:100%;height:54px">Enviar enlace</button>
-      <div style="margin-top:18px"><button type="button" class="linkbtn" data-go="fLogin">Volver a iniciar sesión</button></div>
-    </form>
-
-    <!-- Primer acceso del administrador -->
-    <form class="card rise" id="fFirst" novalidate hidden>
-      <h2>Crear clave de administrador</h2>
-      <div class="sub">Solo para el primer ingreso del administrador del sistema.</div>
-      <div class="fgroup" style="margin-top:30px"><label class="label" for="aEmail">Correo del administrador</label><input class="field" id="aEmail" type="email" autocomplete="username" required></div>
-      <div class="fgroup"><label class="label" for="aPass">Nueva clave (mínimo 8 caracteres)</label><input class="field" id="aPass" type="password" autocomplete="new-password" required></div>
-      <div class="fgroup"><label class="label" for="aPass2">Repetir clave</label><input class="field" id="aPass2" type="password" autocomplete="new-password" required></div>
-      <div class="alert" id="aMsg" style="margin-top:18px" hidden></div>
-      <button type="submit" class="btn btn-primary" id="aBtn" style="margin-top:26px;width:100%;height:54px">Crear clave</button>
-      <div style="margin-top:18px"><button type="button" class="linkbtn" data-go="fLogin">Volver a iniciar sesión</button></div>
-    </form>
-  </div>
-</section>
-
-<!-- ================= PORTAL ================= -->
-<section class="portal" id="vPortal" hidden>
-  <header class="topbar fade">
-    <div class="logo">
-      <div class="logo-mark"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#14332E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></div>
-      <div><div class="logo-name">SIM</div><div class="logo-sub hide-sm">Sistema Integrado de Mantenimiento</div></div>
-    </div>
-    <div class="hide-sm" style="flex-grow:1;max-width:440px;position:relative">
-      <label for="q" class="sr">Buscar aplicativo</label>
-      <svg style="position:absolute;left:14px;top:13px" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#AEBAC6" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"/></svg>
-      <input id="q" class="field" placeholder="Buscar aplicativo o módulo" style="height:44px;padding-left:42px;font-size:14px;background:rgba(14,22,30,.25)">
-    </div>
-    <div class="topbar-r">
-      <div class="hide-sm mono" style="font-size:13px;color:var(--tx-2);display:flex;align-items:center;gap:8px"><span class="live"></span><span id="clock"></span></div>
-      <button class="btn btn-icon" id="btnLogout" aria-label="Cerrar sesión" title="Cerrar sesión"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg></button>
-      <div class="avatar" id="avatar" title=""></div>
-    </div>
-  </header>
-
-  <main class="main">
-    <div class="alert warn rise" id="verifyBox" style="margin-bottom:28px" hidden>
-      Verifique su correo para activar los permisos de administrador. Revise también la carpeta de spam.
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn" id="btnResend" style="height:40px">Reenviar correo</button>
-        <button class="btn" id="btnRecheck" style="height:40px">Ya verifiqué</button>
-      </div>
-    </div>
-
-    <div class="alert rise" id="usoBox" style="margin-bottom:28px" hidden></div>
-    <div class="head">
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <div class="lg-veil" aria-hidden="true"></div>
+  <div class="lg-in">
+    <div class="lg-brand">
+      <img class="lg-logo in-a" src="core/marca/logo-negativo.png" alt="Santa Monica Fishing">
       <div>
-        <div class="eyebrow rise">Aplicativos</div>
-        <h2 class="h-display rise d1" id="greet"></h2>
-        <p class="rise d2 muted" style="margin:14px 0 0;font-size:17px">Seleccione un aplicativo para abrirlo con sus módulos.</p>
+        <div class="eyebrow in-a d1"><i></i>Planta Paita <em>/</em> Departamento de Mantenimiento</div>
+        <h1 class="lg-h in-a d2">Sistema Integrado<br><span class="nm">de Mantenimiento</span></h1>
+        <p class="lead in-a d3">Un solo acceso a todos los aplicativos de la planta, cada uno con sus módulos y permisos.</p>
+        <div class="feats in-a d4">
+          <span><i style="--c:#6FE3CF"></i>Acceso único</span>
+          <span><i style="--c:#F5B94A"></i>Permisos por aplicativo</span>
+          <span><i style="--c:#4FA8E0"></i>Datos en tiempo real</span>
+        </div>
       </div>
-      <div class="stats rise d3" id="stats"></div>
+      <div class="lg-foot in-a d4">SIM · IP Santa Mónica Fishing</div>
     </div>
-    <div class="filters rise d3" id="filters"></div>
-    <div class="grid" id="grid"></div>
-    <div class="empty" id="empty" hidden></div>
-  </main>
+
+    <div class="lg-side">
+      <!-- Iniciar sesión -->
+      <form class="lcard in-a d2" id="fLogin" novalidate>
+        <img class="lc-logo" src="core/marca/logo-negativo.png" alt="Santa Monica Fishing">
+        <div class="lc-eb">SIM · Acceso al sistema</div>
+        <h2>Iniciar sesión</h2>
+        <div class="sub">Ingrese con su usuario asignado</div>
+        <div class="fgroup" style="margin-top:26px"><label class="label" for="lEmail">Correo</label><input class="field" id="lEmail" type="email" autocomplete="username" placeholder="usuario@empresa.com" required></div>
+        <div class="fgroup"><label class="label" for="lPass">Contraseña</label>
+          <div class="fwrap"><input class="field" id="lPass" type="password" autocomplete="current-password" placeholder="••••••••" required>
+            <button type="button" class="ojo" id="lOjo" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+        <div class="row-between" style="margin-top:16px">
+          <label class="check"><input type="checkbox" id="lRemember" checked>Recordar sesión</label>
+          <button type="button" class="linkbtn" data-go="fReset">¿Olvidó su clave?</button>
+        </div>
+        <div class="alert err" id="lErr" style="margin-top:16px" hidden></div>
+        <button type="submit" class="btn-primary" id="lBtn">Ingresar
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <div class="secure"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"/></svg>Conexión cifrada · acceso según permisos asignados</div>
+        <div class="first">¿Primer ingreso del administrador? <button type="button" class="linkbtn" data-go="fFirst">Crear clave</button></div>
+      </form>
+
+      <!-- Recuperar clave -->
+      <form class="lcard in-a" id="fReset" novalidate hidden>
+        <div class="lc-eb">SIM · Acceso al sistema</div>
+        <h2>Restablecer clave</h2>
+        <div class="sub">Se enviará un enlace a su correo para crear una nueva clave.</div>
+        <div class="fgroup" style="margin-top:26px"><label class="label" for="rEmail">Correo</label><input class="field" id="rEmail" type="email" autocomplete="username" placeholder="usuario@empresa.com" required></div>
+        <div class="alert" id="rMsg" style="margin-top:16px" hidden></div>
+        <button type="submit" class="btn-primary" id="rBtn">Enviar enlace</button>
+        <div style="margin-top:18px"><button type="button" class="linkbtn" data-go="fLogin">Volver a iniciar sesión</button></div>
+      </form>
+
+      <!-- Primer acceso del administrador -->
+      <form class="lcard in-a" id="fFirst" novalidate hidden>
+        <div class="lc-eb">SIM · Acceso al sistema</div>
+        <h2>Crear clave de administrador</h2>
+        <div class="sub">Solo para el primer ingreso del administrador del sistema.</div>
+        <div class="fgroup" style="margin-top:26px"><label class="label" for="aEmail">Correo del administrador</label><input class="field" id="aEmail" type="email" autocomplete="username" required></div>
+        <div class="fgroup"><label class="label" for="aPass">Nueva clave (mínimo 8 caracteres)</label><input class="field" id="aPass" type="password" autocomplete="new-password" required></div>
+        <div class="fgroup"><label class="label" for="aPass2">Repetir clave</label><input class="field" id="aPass2" type="password" autocomplete="new-password" required></div>
+        <div class="alert" id="aMsg" style="margin-top:16px" hidden></div>
+        <button type="submit" class="btn-primary" id="aBtn">Crear clave</button>
+        <div style="margin-top:18px"><button type="button" class="linkbtn" data-go="fLogin">Volver a iniciar sesión</button></div>
+      </form>
+    </div>
+  </div>
 </section>
 
-<div class="overlay" id="overlay" hidden>
-  <div class="big popin" id="ovIco"></div>
-  <div class="nm rise d1" id="ovName"></div>
-  <div class="track rise d2"><div id="ovBar"></div></div>
-  <div class="mono rise d3" style="font-size:13px;color:#BAC5D0" id="ovMsg">Verificando permisos…</div>
-</div>
+<!-- ================= PORTADA ================= -->
+<section id="vPortal" hidden>
+<header class="top">
+  <div class="wrap in">
+    <div class="lock">
+      <img class="corp" src="core/marca/logo-negativo.png" alt="Santa Monica Fishing">
+      <span class="sep"></span>
+      <div class="sim"><b>SIM</b><small>Sistema Integrado de Mantenimiento</small></div>
+    </div>
+    <div class="search">
+      <label for="q" class="sr">Buscar aplicativo o módulo</label>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"/></svg>
+      <input id="q" placeholder="Buscar aplicativo o módulo" autocomplete="off">
+      <kbd id="kbd">Ctrl K</kbd>
+    </div>
+    <div class="r">
+      <div class="when"><i class="live"></i><span><span class="dt" id="cDate"></span><span id="cTime"></span></span></div>
+      <div class="user" id="user"><div class="av" id="av"></div><div class="tx"><div class="n" id="uName"></div><div class="ro" id="uRole"></div></div></div>
+      <button class="ib" id="btnLogout" aria-label="Cerrar sesión" title="Cerrar sesión"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg></button>
+    </div>
+  </div>
+</header>
 
+<main>
+  <div class="wrap">
+    <div class="avisos">
+      <div class="alert warn" id="verifyBox" hidden>
+        Verifique su correo para activar los permisos de administrador. Revise también la carpeta de spam.
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" id="btnResend">Reenviar correo</button>
+          <button class="btn" id="btnRecheck">Ya verifiqué</button>
+        </div>
+      </div>
+      <div class="alert" id="usoBox" hidden></div>
+    </div>
+    <section class="hero">
+      <div>
+        <div class="eyebrow in-a"><i></i>Planta Paita <em>/</em> Departamento de Mantenimiento</div>
+        <h1 class="in-a d1"><span class="hi" id="hi"></span><span class="nm" id="nm"></span></h1>
+        <p class="lead in-a d2">Todos los aplicativos de mantenimiento de la planta en <b>un solo acceso</b>, cada uno con sus módulos y permisos.</p>
+      </div>
+      <div class="state in-a d3">
+        <svg class="dial" viewBox="0 0 560 560" fill="none" aria-hidden="true">
+          <g class="a" stroke="#6FE3CF"><circle cx="280" cy="280" r="270" stroke-opacity=".7" stroke-width="1.2" stroke-dasharray="2 10"/><circle cx="280" cy="280" r="206" stroke-opacity=".3"/><path d="M280 4v22M280 534v22M4 280h22M534 280h22" stroke-opacity=".9" stroke-width="1.6"/></g>
+          <g class="b" stroke="#4FA8E0"><circle cx="280" cy="280" r="240" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="64 18"/><circle cx="280" cy="280" r="172" stroke-opacity=".4" stroke-dasharray="1 8"/></g>
+        </svg>
+        <div class="panel">
+          <div class="ph"><span>Aplicativos</span><b id="nTot"></b></div>
+          <div class="bar" id="bar"></div>
+          <div class="kpis" id="kpis"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="tools in-a d4">
+      <div class="seg" id="seg" role="tablist" aria-label="Filtrar por grupo"></div>
+      <div class="count" id="count"></div>
+      <div class="search msearch">
+        <label for="q2" class="sr">Buscar aplicativo o módulo</label>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"/></svg>
+        <input id="q2" placeholder="Buscar aplicativo o módulo" autocomplete="off">
+      </div>
+    </div>
+    <div class="gridc intro" id="grid"></div>
+    <div class="empty" id="empty" hidden></div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap in">
+    <div class="l"><img src="core/marca/logo-negativo.png" alt=""><span>IP Santa Mónica Fishing · Planta Paita</span></div>
+    <div class="mono">SIM · Sistema Integrado de Mantenimiento</div>
+  </div>
+</footer>
+</section>
+
+<div class="launch" id="launch" hidden>
+  <div class="big" id="lIco"></div>
+  <div class="nm" id="lName"></div>
+  <div class="track"><i></i></div>
+  <div class="msg">Verificando permisos…</div>
+</div>
 <div class="toasts" id="toasts"></div>
 
 <script type="module">
 import { auth } from './core/firebase.js';
 import { ADMIN_EMAIL } from './core/config.js';
-import { APPS, ESTADOS, GRUPOS } from './core/catalogo.js';
+import { APPS, GRUPOS } from './core/catalogo.js';
 import { esAdmin, esCorreoAdmin, cargarPerfil, appsVisibles, accesoApp, iniciales } from './core/sesion.js';
 import { usoAlmacenamiento, fmtBytes, LIMITE_STORAGE, UMBRAL_AVISO, UMBRAL_CRITICO } from './core/informes.js';
+import { iniciarEscena } from './core/marca/escena.js';
 import {
   onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword,
   sendPasswordResetEmail, sendEmailVerification, setPersistence, browserLocalPersistence, browserSessionPersistence
@@ -205,13 +498,22 @@ import {
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-const state = { user: null, perfil: null, filtro: 'all', q: '' };
+const norm = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const state = { user: null, perfil: null, filtro: 'all', q: '', vis: [] };
+const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Colores de estado propios de la portada (los aplicativos usan los de core/catalogo.js)
+const EST = {
+  prod: { label: 'En producción', c: '#6FE3CF' },
+  dev:  { label: 'En construcción', c: '#F5B94A' },
+  plan: { label: 'Planificado', c: '#8FA0AE' },
+  adm:  { label: 'Solo administrador', c: '#A9B4FF' }
+};
 
 function toast(msg, tipo = 'ok') {
   const t = document.createElement('div');
   t.className = 'toast ' + tipo; t.textContent = msg;
   $('toasts').appendChild(t);
-  setTimeout(() => { t.style.transition = 'opacity .4s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3800);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3800);
 }
 
 const MSG = {
@@ -236,12 +538,19 @@ function showForm(id) {
 }
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => showForm(b.dataset.go)));
 
-function busy(btn, on, label) {
+function busy(btn, on) {
   btn.disabled = on;
-  if (on) { btn.dataset.l = btn.innerHTML; btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-top-color:#11302B"></div>'; }
+  if (on) { btn.dataset.l = btn.innerHTML; btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-color:rgba(6,42,37,.25);border-top-color:#062A25"></div>'; }
   else if (btn.dataset.l) btn.innerHTML = btn.dataset.l;
 }
 function setMsg(el, txt, tipo) { el.hidden = !txt; el.className = 'alert ' + (tipo || 'err'); el.textContent = txt || ''; }
+
+$('lOjo').onclick = () => {
+  const ver = $('lPass').type === 'password';
+  $('lPass').type = ver ? 'text' : 'password';
+  $('lOjo').title = ver ? 'Ocultar contraseña' : 'Mostrar contraseña'; $('lOjo').setAttribute('aria-label', $('lOjo').title);
+  $('lOjo').style.color = ver ? 'var(--mint)' : '';
+};
 
 // ---------- login ----------
 $('fLogin').addEventListener('submit', async (ev) => {
@@ -286,89 +595,156 @@ $('fFirst').addEventListener('submit', async (ev) => {
   busy($('aBtn'), false);
 });
 
-// ---------- portal ----------
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+// ---------- fondo 3D del inicio de sesión ----------
+let escena = null, pidiendo = false;
+async function fondoLogin(on) {
+  if (!on) { if (escena) { escena.detener(); escena = null; } return; }
+  if (escena || pidiendo) return;
+  pidiendo = true;
+  try { const e = await iniciarEscena($('gl')); if ($('vLogin').hidden) e?.detener(); else escena = e; } catch (e) { console.warn(e); }
+  pidiendo = false;
 }
-function tickClock() {
-  try { $('clock').textContent = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date()); } catch {}
+
+// ---------- portada ----------
+const ico = (a, size, sw) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"><path d="${a.icon}"/></svg>`;
+// resalta la coincidencia de la búsqueda
+function hl(txt, q) {
+  if (!q) return esc(txt);
+  const i = norm(txt).indexOf(q); if (i < 0) return esc(txt);
+  return esc(txt.slice(0, i)) + '<mark>' + esc(txt.slice(i, i + q.length)) + '</mark>' + esc(txt.slice(i + q.length));
 }
-setInterval(tickClock, 30000);
+function reloj() {
+  const d = new Date();
+  try {
+    $('cDate').textContent = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: '2-digit', month: 'short' }).format(d).replace(/\./g, '').replace(',', '') + ' · ';
+    $('cTime').textContent = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+  } catch {}
+}
+setInterval(reloj, 20000);
+function saludo() { const h = new Date().getHours(); return h < 12 ? 'Buenos días,' : h < 19 ? 'Buenas tardes,' : 'Buenas noches,'; }
 
-const icoSvg = (a, size, sw) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${a.color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"><path d="${a.icon}"/></svg>`;
-
-function renderPortal() {
+function cabecera() {
   const { user, perfil } = state;
-  const nombre = (perfil?.nombre || user.email).split(' ')[0];
-  $('greet').textContent = `${greeting()}, ${nombre}`;
-  $('avatar').textContent = iniciales(perfil?.nombre, user.email);
-  $('avatar').title = `${perfil?.nombre || ''} · ${user.email}`;
-  tickClock();
+  $('hi').textContent = saludo();
+  $('nm').textContent = (perfil?.nombre || user.email).split(' ')[0];
+  $('av').textContent = iniciales(perfil?.nombre, user.email);
+  $('uName').textContent = perfil?.nombre || user.email;
+  $('uRole').textContent = esAdmin(user) ? 'Administrador' : (perfil?.area || 'Usuario');
+  $('user').title = `${perfil?.nombre || ''} · ${user.email}`;
+  if (/Mac|iPhone|iPad/.test(navigator.platform)) $('kbd').textContent = '⌘ K';
+  reloj();
+}
+function avisos() {
+  const { user } = state;
   $('verifyBox').hidden = !(esCorreoAdmin(user) && !user.emailVerified);
+  $('usoBox').hidden = true;
   if (esAdmin(user)) usoAlmacenamiento().then(({ bytes, frac }) => {
     if (frac < UMBRAL_AVISO) { $('usoBox').hidden = true; return; }
     const crit = frac >= UMBRAL_CRITICO;
-    $('usoBox').className = 'alert rise ' + (crit ? 'err' : 'warn');
+    $('usoBox').className = 'alert ' + (crit ? 'err' : 'warn');
     $('usoBox').innerHTML = `Archivos de informes al ${(frac * 100).toFixed(0)} % del espacio reservado (${fmtBytes(bytes)} de ${fmtBytes(LIMITE_STORAGE)}). ${crit ? 'Retire archivos antiguos antes de seguir cargando: al llegar al límite no se podrán cargar más.' : 'Conviene descargar y retirar los archivos más antiguos.'} <a href="apps/inf/#almacenamiento">Ir a Almacenamiento</a>`;
     $('usoBox').hidden = false;
   }).catch(() => {});
+}
 
-  const visibles = appsVisibles(user, perfil);
-  const n = (st) => visibles.filter(a => a.estado === st).length;
-  $('stats').innerHTML = [
-    ['#8FF0DE', n('prod'), 'En producción'],
-    ['#FFCF73', n('dev'), 'En construcción'],
-    ['#DDE4EB', n('plan'), 'Planificados']
-  ].map(([c, v, l]) => `<div class="stat"><b style="color:${c}">${v}</b><span>${l}</span></div>`).join('');
+// indicadores: conteo real de los aplicativos que el usuario puede ver
+function contar(el, n) {
+  if (reducido || !n) { el.textContent = n; return; }
+  const t0 = performance.now(), dur = 900 + n * 40;
+  const paso = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 4); el.textContent = Math.round(n * e); if (k < 1) requestAnimationFrame(paso); };
+  requestAnimationFrame(paso);
+}
+function indicadores() {
+  const vis = state.vis, n = (st) => vis.filter(a => a.estado === st).length, tot = vis.length;
+  $('nTot').textContent = `${tot} en total`;
+  const segs = ['prod', 'dev', 'plan', 'adm'].map(k => [k, n(k)]).filter(([, v]) => v);
+  $('bar').innerHTML = segs.map(([k]) => `<i class="${k === 'plan' || k === 'adm' ? 'dim' : ''}" style="--c:${EST[k].c}" title="${EST[k].label}"></i>`).join('');
+  requestAnimationFrame(() => requestAnimationFrame(() => [...$('bar').children].forEach((el, i) => el.style.flex = `${segs[i][1]} 1 0`)));
+  $('kpis').innerHTML = [['prod', 'En producción'], ['dev', 'En construcción'], ['plan', 'Planificados']].map(([k, l]) =>
+    `<div class="kpi" style="--c:${EST[k].c}"><div class="v" data-n="${n(k)}">0</div><div class="l"><i></i>${l}</div><div class="s">${tot ? Math.round(n(k) / tot * 100) : 0} %<span> del total</span></div></div>`).join('');
+  $('kpis').querySelectorAll('[data-n]').forEach(el => setTimeout(() => contar(el, +el.dataset.n), 350));
+}
 
-  $('filters').innerHTML = GRUPOS.map(g => `<button class="chip ${state.filtro === g.id ? 'on' : ''}" data-f="${g.id}">${g.label}</button>`).join('');
-  $('filters').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { state.filtro = b.dataset.f; renderPortal(); });
+function filtros() {
+  const vis = state.vis, cnt = (g) => g === 'all' ? vis.length : vis.filter(a => a.grupo === g).length;
+  $('seg').innerHTML = '<span class="ind" id="ind"></span>' + GRUPOS.map(g => `<button role="tab" data-f="${g.id}" class="${state.filtro === g.id ? 'on' : ''}" aria-selected="${state.filtro === g.id}">${g.label}<small>${cnt(g.id)}</small></button>`).join('');
+  $('seg').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { if (state.filtro === b.dataset.f) return; state.filtro = b.dataset.f; marcar(); cambiar(); });
+  marcar(true);
+}
+function marcar(sinAnim) {
+  const seg = $('seg'), on = seg.querySelector(`[data-f="${state.filtro}"]`), ind = $('ind');
+  if (!on || !ind) return;
+  seg.querySelectorAll('[data-f]').forEach(b => { const s = b === on; b.classList.toggle('on', s); b.setAttribute('aria-selected', s); });
+  if (sinAnim) ind.style.transition = 'none';
+  ind.style.width = on.offsetWidth + 'px'; ind.style.transform = `translateX(${on.offsetLeft}px)`;
+  if (sinAnim) requestAnimationFrame(() => ind.style.transition = '');
+}
 
-  const q = state.q.toLowerCase();
-  const lista = visibles.filter(a => (state.filtro === 'all' || a.grupo === state.filtro) &&
-    (!q || (a.nombre + ' ' + a.sub + ' ' + a.modulos.map(m => m.nombre).join(' ')).toLowerCase().includes(q)));
-
+function tarjetas() {
+  const vis = state.vis, q = norm(state.q.trim());
+  const lista = vis.filter(a => (state.filtro === 'all' || a.grupo === state.filtro) &&
+    (!q || norm(a.nombre + ' ' + a.sub + ' ' + a.modulos.map(m => m.nombre).join(' ')).includes(q)));
   $('grid').innerHTML = lista.map((a, i) => {
-    const st = ESTADOS[a.estado];
-    const off = !a.url;
-    return `<button class="tile ${off ? 'off' : ''}" data-app="${a.id}" style="animation-delay:${(0.1 + i * 0.06).toFixed(2)}s">
-      <div class="top">
-        <div class="ico" style="background:${a.color}24;border:1px solid ${a.color}55">${icoSvg(a, 30, 1.7)}</div>
-        <div class="fase">${a.fase}</div>
+    const st = EST[a.estado] || EST.plan, off = !a.url;
+    // con búsqueda, primero los módulos que coinciden
+    const nombres = a.modulos.map(m => m.nombre), mods = q ? [...nombres].sort((x, y) => norm(y).includes(q) - norm(x).includes(q)) : nombres;
+    return `<button class="card ${off ? 'off' : ''}" data-app="${a.id}" style="--c:${a.color};--sc:${st.c};--i:${i};view-transition-name:app-${a.id}">
+      <div class="c-body">
+      <div class="c-top"><div class="ico">${ico(a, 23, 1.7)}</div><span class="fase">${esc(a.fase)}</span></div>
+      <div class="c-nm">${hl(a.nombre, q)}</div>
+      <div class="c-sb">${hl(a.sub, q)}</div>
+      ${mods.length ? `<div class="mods"><span class="n">${mods.length} ${mods.length === 1 ? 'módulo' : 'módulos'}</span>${mods.map(m => `<span>${hl(m, q)}</span>`).join('')}</div>` : ''}
       </div>
-      <div style="width:100%">
-        <div class="nm">${esc(a.nombre)}</div>
-        <div class="sb">${esc(a.sub)}</div>
-        <div class="bt">
-          <span class="pill" style="background:${st.bg};color:${st.fg}">${off && a.estado !== 'plan' ? 'Por integrar' : st.label}</span>
-          <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </div>
-      </div>
+      <div class="c-ft"><span class="st ${a.estado}"><i></i>${off && a.estado !== 'plan' ? 'Por integrar' : st.label}</span>
+        ${off ? '<span class="go">PRÓXIMAMENTE</span>' : `<span class="go"><span>Abrir</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>`}</div>
     </button>`;
   }).join('');
   $('grid').querySelectorAll('[data-app]').forEach(b => b.onclick = () => abrir(b.dataset.app));
+  $('count').innerHTML = `<b>${lista.length}</b> de ${vis.length} aplicativos`;
+  const vacio = !lista.length; $('empty').hidden = !vacio;
+  if (vacio) $('empty').innerHTML = vis.length ? '<b>Sin resultados</b>Ningún aplicativo o módulo coincide con la búsqueda.' : '<b>Sin aplicativos asignados</b>Solicite acceso al administrador del sistema.';
+}
+// al filtrar o buscar, las tarjetas se reacomodan con una transición (si el navegador la ofrece)
+function cambiar() {
+  $('grid').classList.remove('intro');
+  if (document.startViewTransition && !reducido) document.startViewTransition(tarjetas); else tarjetas();
+}
+// luz que sigue al cursor dentro de cada tarjeta
+$('grid').addEventListener('pointermove', (e) => {
+  const c = e.target.closest('.card'); if (!c) return;
+  const r = c.getBoundingClientRect(); c.style.setProperty('--mx', (e.clientX - r.left) + 'px'); c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+});
 
-  const vacio = lista.length === 0;
-  $('empty').hidden = !vacio;
-  if (vacio) $('empty').textContent = visibles.length ? 'No hay aplicativos que coincidan con la búsqueda.' : 'Aún no tiene aplicativos asignados. Solicite acceso al administrador del sistema.';
+function renderPortal() {
+  state.vis = appsVisibles(state.user, state.perfil);
+  if (state.filtro !== 'all' && !state.vis.some(a => a.grupo === state.filtro)) state.filtro = 'all';
+  $('grid').classList.add('intro');
+  cabecera(); avisos(); indicadores(); filtros(); tarjetas();
+  if (document.fonts?.ready) document.fonts.ready.then(() => marcar(true));
 }
 
-$('q').addEventListener('input', (e) => { state.q = e.target.value; renderPortal(); });
+const buscar = (v, otro) => { state.q = v; otro.value = v; cambiar(); };
+$('q').addEventListener('input', (e) => buscar(e.target.value, $('q2')));
+$('q2').addEventListener('input', (e) => buscar(e.target.value, $('q')));
+addEventListener('keydown', (e) => {
+  if ($('vPortal').hidden) return;
+  const campo = getComputedStyle($('q').parentElement).display === 'none' ? $('q2') : $('q');
+  if ((e.key === 'k' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) { e.preventDefault(); campo.focus(); campo.select(); }
+  else if (e.key === 'Escape' && state.q) { $('q').value = ''; buscar('', $('q2')); document.activeElement.blur(); }
+});
+addEventListener('resize', () => { if (!$('vPortal').hidden) marcar(true); });
 
 function abrir(id) {
   const a = APPS.find(x => x.id === id);
   if (!a) return;
   if (!a.url) { toast(`${a.nombre}: se habilitará al integrarse al portal.`); return; }
   if (!accesoApp(state.user, state.perfil, id)) { toast('No tiene permisos para este aplicativo.', 'err'); return; }
-  $('ovIco').innerHTML = icoSvg(a, 54, 1.5);
-  $('ovIco').style.cssText = `background:${a.color}24;border:1px solid ${a.color}55;box-shadow:0 30px 70px -30px ${a.color}`;
-  $('ovName').textContent = a.nombre;
-  $('ovBar').style.background = a.color;
-  $('overlay').hidden = false;
+  const L = $('launch'); L.style.setProperty('--c', a.color);
+  $('lIco').innerHTML = ico(a, 50, 1.5); $('lName').textContent = a.nombre;
+  L.hidden = false;
   setTimeout(() => { location.href = a.url; }, 950);
 }
-window.addEventListener('pageshow', () => { $('overlay').hidden = true; });
+window.addEventListener('pageshow', () => { $('launch').hidden = true; });
 
 $('btnLogout').onclick = () => signOut(auth);
 $('btnResend').onclick = async () => {
@@ -395,6 +771,7 @@ async function entrar(user) {
   }
   $('vLogin').hidden = true;
   $('vPortal').hidden = false;
+  fondoLogin(false);
   renderPortal();
 }
 
@@ -404,6 +781,7 @@ onAuthStateChanged(auth, async (user) => {
     state.user = null; state.perfil = null;
     $('vPortal').hidden = true; $('vLogin').hidden = false;
     $('lPass').value = '';
+    fondoLogin(true);
   }
   $('boot').classList.add('out');
 });
