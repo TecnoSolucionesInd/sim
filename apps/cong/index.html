@@ -924,6 +924,80 @@ tr.clickable-row:hover td { background: var(--surface2); }
   grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
 }
+/* ===== Informe de tiempos de congelamiento (paleta clara, para exponer) ===== */
+.btn-informe{background:linear-gradient(135deg,#0E9E96,#14B8A6);color:#fff;border:none;border-radius:8px;
+  padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;
+  box-shadow:0 2px 10px rgba(20,184,166,.28);transition:.15s;}
+.btn-informe:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(20,184,166,.4);}
+
+#inf-ov{position:fixed;inset:0;z-index:9000;background:#F4F6F9;overflow-y:auto;display:none;
+  font-family:'Inter',system-ui,sans-serif;color:#1B2A3D;}
+#inf-ov.abierto{display:block;}
+#inf-ov .inf-top{background:linear-gradient(135deg,#16314F,#1E4164);color:#fff;padding:18px 26px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  position:sticky;top:0;z-index:5;box-shadow:0 2px 12px rgba(22,49,79,.22);}
+#inf-ov .inf-t1{font-size:19px;font-weight:800;letter-spacing:-.2px;}
+#inf-ov .inf-t2{font-size:12px;color:#A9C4DD;margin-top:3px;}
+#inf-ov .inf-x{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;
+  border-radius:8px;padding:8px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+#inf-ov .inf-body{max-width:1180px;margin:0 auto;padding:18px 20px 60px;}
+
+#inf-ov .inf-filt{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;background:#fff;
+  border:1px solid #DFE5EC;border-radius:11px;padding:13px 16px;margin-bottom:14px;
+  box-shadow:0 1px 3px rgba(22,49,79,.06);}
+#inf-ov .fi{display:flex;flex-direction:column;gap:5px;}
+#inf-ov .fl{font-size:9.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:#8396AA;}
+#inf-ov .fin{background:#fff;border:1px solid #CBD6E2;color:#1B2A3D;border-radius:7px;padding:7px 10px;
+  font-size:12.5px;font-family:inherit;font-weight:600;outline:none;}
+#inf-ov .fin:focus{border-color:#14B8A6;}
+#inf-ov .chips{display:flex;gap:6px;flex-wrap:wrap;}
+#inf-ov .chip{background:#fff;border:1px solid #CBD6E2;color:#5A6E84;border-radius:20px;padding:5px 13px;
+  font-size:12px;font-weight:700;cursor:pointer;user-select:none;transition:.15s;}
+#inf-ov .chip.on{background:#E6F7F5;border-color:#14B8A6;color:#0B7A73;}
+
+#inf-ov .ic{background:#fff;border:1px solid #DFE5EC;border-radius:11px;padding:16px 18px;margin-bottom:14px;
+  box-shadow:0 1px 3px rgba(22,49,79,.06);}
+#inf-ov .ic-t{font-size:14.5px;font-weight:800;color:#16314F;}
+#inf-ov .ic-s{font-size:11.5px;color:#8396AA;margin-top:2px;font-weight:500;}
+#inf-ov .ic-h{margin-bottom:14px;}
+#inf-ov .cv{position:relative;height:300px;}
+
+#inf-ov .hero{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+#inf-ov .hc{background:#fff;border:1px solid #DFE5EC;border-radius:11px;padding:14px 16px;
+  border-top:3px solid #14B8A6;box-shadow:0 1px 3px rgba(22,49,79,.06);}
+#inf-ov .hc.r{border-top-color:#D64550;} #inf-ov .hc.a{border-top-color:#E08A1E;}
+#inf-ov .hc-l{font-size:9.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:#8396AA;margin-bottom:5px;}
+#inf-ov .hc-v{font-size:27px;font-weight:800;letter-spacing:-1px;color:#16314F;line-height:1;}
+#inf-ov .hc-v small{font-size:13px;font-weight:600;color:#5A6E84;margin-left:2px;}
+#inf-ov .hc-d{font-size:11px;color:#5A6E84;margin-top:5px;line-height:1.4;}
+#inf-ov .hc-v.rojo{color:#D64550;} #inf-ov .hc-v.ambar{color:#E08A1E;} #inf-ov .hc-v.verde{color:#1A9E5F;}
+
+#inf-ov table{width:100%;border-collapse:collapse;font-size:12.5px;}
+#inf-ov th{text-align:right;font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:#8396AA;padding:9px 10px;border-bottom:2px solid #E3E9F0;white-space:nowrap;}
+#inf-ov th:first-child,#inf-ov td:first-child{text-align:left;}
+#inf-ov td{padding:10px;border-bottom:1px solid #EDF1F6;text-align:right;
+  font-family:'DM Mono',ui-monospace,monospace;color:#1B2A3D;}
+#inf-ov td:first-child{font-family:inherit;font-weight:700;}
+#inf-ov tr:last-child td{border-bottom:none;}
+#inf-ov .eqd{display:inline-flex;align-items:center;gap:8px;}
+#inf-ov .dot{width:10px;height:10px;border-radius:3px;}
+#inf-ov .pill{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:5px;font-family:inherit;display:inline-block;}
+#inf-ov .p-ok{background:#E3F6EC;color:#15804A;}
+#inf-ov .p-bad{background:#FDE8EA;color:#B3303B;}
+#inf-ov .p-mid{background:#FDF1DF;color:#A96A10;}
+#inf-ov .lect{background:#F7FAFC;border:1px solid #DFE5EC;border-left:4px solid #0E9E96;border-radius:9px;
+  padding:16px 18px;font-size:13.5px;line-height:1.8;color:#3A4D63;}
+#inf-ov .lect b{color:#16314F;}
+#inf-ov .lect p{margin-bottom:11px;} #inf-ov .lect p:last-child{margin-bottom:0;}
+#inf-ov .nota{font-size:11.5px;color:#8396AA;margin-top:11px;line-height:1.55;}
+@media(max-width:820px){
+  #inf-ov .hero{grid-template-columns:repeat(2,1fr);}
+  #inf-ov .cv{height:250px;}
+  #inf-ov table{font-size:11px;} #inf-ov th,#inf-ov td{padding:7px 5px;}
+  #inf-ov .inf-body{padding:14px 12px 50px;}
+}
+
 /* ===== Producción mensual · histórico ===== */
 .pm-yr-wrap{display:flex;align-items:center;gap:7px;}
 .pm-yr-label{font-size:10.5px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--text3);}
@@ -1310,6 +1384,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
                 <div class="pbi-header-title"><span class="pbi-header-icon">❄️</span> Dashboard General</div>
                 <div class="pbi-header-sub">Vista ejecutiva unificada · indicadores y producción de congelamiento</div>
               </div>
+              <button class="btn-informe" onclick="abrirInformeTiempos()">📊 Informe de tiempos</button>
               <div class="pbi-header-side">
                 <div class="pbi-header-side-label">Período</div>
                 <div class="pbi-header-side-value" id="pbi-prod-periodo">—</div>
@@ -5311,6 +5386,249 @@ function renderTendenciaProduccion() {
 }
 
 // ============================================================
+// INFORME DE TIEMPOS DE CONGELAMIENTO
+// ------------------------------------------------------------
+// Compara el tiempo real de congelamiento (campo tcong de cada bachada)
+// contra el rango comprometido por el proveedor, separando por tramo de
+// carga: un tiempo bajo con carga reducida no acredita el cumplimiento,
+// porque el compromiso se refiere a la carga nominal del equipo.
+// ============================================================
+const INF_COL = {C1:'#2563EB',C2:'#0E9E96',C3:'#E08A1E',C4:'#7C3AED',C5:'#D64550',C6:'#0891B2',
+  C7:'#65A30D',C8:'#DB2777',C9:'#9333EA',C10:'#2563EB',C11:'#0E9E96',C12:'#E08A1E',C13:'#7C3AED',TE:'#475569'};
+let _infEq = ['C10','C11','C12','C13'];
+const _infCharts = {};
+
+function abrirInformeTiempos(){
+  const ov = document.getElementById('inf-ov');
+  if(!ov) return;
+  cargarHistorico();                       // el informe mira 2 meses atrás
+  const hoy = new Date();
+  const d0  = new Date(); d0.setMonth(d0.getMonth() - 2);
+  const dEl = document.getElementById('inf-desde'), hEl = document.getElementById('inf-hasta');
+  if(dEl && !dEl.value) dEl.value = fechaLocal(d0);
+  if(hEl && !hEl.value) hEl.value = fechaLocal(hoy);
+  document.getElementById('inf-chips').innerHTML = ORDEN_EQ.map(eq =>
+    `<span class="chip${_infEq.includes(eq)?' on':''}" onclick="infToggleEq('${eq}')">${eq}</span>`).join('');
+  ov.classList.add('abierto');
+  document.body.style.overflow = 'hidden';
+  renderInformeTiempos();
+}
+function cerrarInformeTiempos(){
+  document.getElementById('inf-ov')?.classList.remove('abierto');
+  document.body.style.overflow = '';
+}
+function infToggleEq(eq){
+  _infEq = _infEq.includes(eq) ? _infEq.filter(x => x !== eq) : [..._infEq, eq];
+  _infEq = ORDEN_EQ.filter(x => _infEq.includes(x));
+  document.getElementById('inf-chips').innerHTML = ORDEN_EQ.map(x =>
+    `<span class="chip${_infEq.includes(x)?' on':''}" onclick="infToggleEq('${x}')">${x}</span>`).join('');
+  renderInformeTiempos();
+}
+
+function renderInformeTiempos(){
+  const desde = document.getElementById('inf-desde')?.value || '';
+  const hasta = document.getElementById('inf-hasta')?.value || '';
+  const cMin  = parseFloat(document.getElementById('inf-cmin')?.value) || 2.5;
+  const cMax  = parseFloat(document.getElementById('inf-cmax')?.value) || 3.0;
+
+  const bachs = DB.get('bachadas', []).filter(b =>
+    b && _infEq.includes(b.equipo) && b.tcong != null && b.tcong > 0 &&
+    b.fecha && (!desde || b.fecha >= desde) && (!hasta || b.fecha <= hasta));
+
+  const fmt = (n,k=2) => (n==null||isNaN(n)) ? '—' : n.toLocaleString('es-PE',{minimumFractionDigits:k,maximumFractionDigits:k});
+  const prom = a => a.length ? a.reduce((s,v)=>s+v,0)/a.length : null;
+  const medi = a => { if(!a.length) return null; const b=[...a].sort((x,y)=>x-y), m=b.length>>1;
+    return b.length%2 ? b[m] : (b[m-1]+b[m])/2; };
+  const desv = a => { if(a.length<2) return null; const m=prom(a); return Math.sqrt(prom(a.map(v=>(v-m)**2))); };
+  const dmy  = s => s ? s.split('-').reverse().join('/') : '—';
+
+  document.getElementById('inf-sub').textContent =
+    `${_infEq.join(', ')} · ${dmy(desde)} a ${dmy(hasta)} · ${bachs.length} bachadas registradas`;
+  document.getElementById('inf-s1').textContent =
+    `Compromiso del proveedor: ${fmt(cMin)} a ${fmt(cMax)} h`;
+
+  const vacio = '<div style="padding:26px;text-align:center;color:#8396AA;font-size:13px;">Sin bachadas con tiempo registrado en el período y equipos seleccionados.</div>';
+  if(!bachs.length){
+    document.getElementById('inf-hero').innerHTML = '';
+    document.getElementById('inf-tabla').innerHTML = '';
+    document.getElementById('inf-lect').innerHTML = vacio;
+    document.getElementById('inf-nota-carga').textContent = '';
+    Object.values(_infCharts).forEach(c => { try{ c.destroy(); }catch(e){} });
+    return;
+  }
+
+  const tAll    = bachs.map(b => b.tcong);
+  const cumple  = bachs.filter(b => b.tcong <= cMax).length;
+  const pctCump = cumple / bachs.length * 100;
+  const exceso  = prom(tAll) - cMax;
+
+  // ---- tarjetas principales
+  const cl = p => p >= 80 ? 'verde' : p >= 50 ? 'ambar' : 'rojo';
+  document.getElementById('inf-hero').innerHTML = `
+    <div class="hc ${pctCump>=80?'':pctCump>=50?'a':'r'}">
+      <div class="hc-l">Dentro del compromiso</div>
+      <div class="hc-v ${cl(pctCump)}">${fmt(pctCump,1)}<small>%</small></div>
+      <div class="hc-d">${cumple} de ${bachs.length} bachadas en ${fmt(cMax)} h o menos</div></div>
+    <div class="hc ${exceso>0?'r':''}">
+      <div class="hc-l">Tiempo promedio</div>
+      <div class="hc-v ${exceso>0?'rojo':'verde'}">${fmt(prom(tAll))}<small>h</small></div>
+      <div class="hc-d">${exceso>0 ? fmt(exceso)+' h por encima del tope comprometido' : 'dentro del rango comprometido'}</div></div>
+    <div class="hc a">
+      <div class="hc-l">Tiempo máximo</div>
+      <div class="hc-v">${fmt(Math.max(...tAll))}<small>h</small></div>
+      <div class="hc-d">mínimo registrado: ${fmt(Math.min(...tAll))} h</div></div>
+    <div class="hc">
+      <div class="hc-l">Rendimiento</div>
+      <div class="hc-v">${fmt(prom(bachs.map(b => (b.peso||0)/b.tcong)),0)}<small>kg/h</small></div>
+      <div class="hc-d">carga promedio ${fmt(prom(bachs.map(b => (b.peso||0)/1000)))} t por bachada</div></div>`;
+
+  // ---- ① tabla por equipo
+  const mitad = desde && hasta
+    ? fechaLocal(new Date((new Date(desde+'T00:00:00').getTime() + new Date(hasta+'T00:00:00').getTime())/2))
+    : null;
+  const res = {};
+  let filas = '';
+  for(const eq of _infEq){
+    const b = bachs.filter(x => x.equipo === eq);
+    if(!b.length) continue;
+    const t  = b.map(x => x.tcong);
+    const m1 = prom(b.filter(x => !mitad || x.fecha <  mitad).map(x => x.tcong));
+    const m2 = prom(b.filter(x =>  mitad && x.fecha >= mitad).map(x => x.tcong));
+    const d  = (m1 != null && m2 != null) ? m2 - m1 : null;
+    const pc = b.filter(x => x.tcong <= cMax).length / b.length * 100;
+    res[eq] = {n:b.length, prom:prom(t), med:medi(t), sd:desv(t), pc, m1, m2, d,
+               kgh:prom(b.map(x => (x.peso||0)/x.tcong))};
+    const pill = d == null ? 'p-mid' : d < -0.05 ? 'p-ok' : d > 0.05 ? 'p-bad' : 'p-mid';
+    const txt  = d == null ? '—' : (d > 0 ? '▲ +' : d < 0 ? '▼ ' : '') + fmt(d) + ' h';
+    filas += `<tr>
+      <td><span class="eqd"><span class="dot" style="background:${INF_COL[eq]||'#5A6E84'}"></span>${eq}</span></td>
+      <td>${b.length}</td><td><b>${fmt(res[eq].prom)} h</b></td><td>${fmt(res[eq].med)} h</td>
+      <td>${res[eq].sd==null?'—':'±'+fmt(res[eq].sd)}</td>
+      <td style="color:${pc>=80?'#15804A':pc>=50?'#A96A10':'#B3303B'};font-weight:700">${fmt(pc,0)}%</td>
+      <td>${fmt(res[eq].kgh,0)}</td>
+      <td><span class="pill ${pill}">${txt}</span></td></tr>`;
+  }
+  document.getElementById('inf-tabla').innerHTML = filas
+    ? `<thead><tr><th>Equipo</th><th>Bachadas</th><th>Promedio</th><th>Mediana</th><th>Desv.</th>
+       <th>Cumple</th><th>kg/h</th><th>2.ª mitad vs 1.ª</th></tr></thead><tbody>${filas}</tbody>`
+    : '';
+  document.getElementById('inf-s4').textContent = mitad
+    ? `Corte el ${dmy(mitad)} · menos horas es mejor` : 'Periodo sin corte definido';
+
+  // suggestedMin deja siempre visible la franja del compromiso: sin él la
+  // escala arranca por encima de ella y no se aprecia la brecha. Dos decimales
+  // evitan etiquetas repetidas cuando el rango de horas es estrecho.
+  const ejeY = (txt) => ({beginAtZero:false, suggestedMin:Math.max(0, cMin - 0.15),
+    grid:{color:'#EDF1F6'}, border:{display:false},
+    ticks:{color:'#8396AA', font:{size:10}, maxTicksLimit:8, callback:v => fmt(v,2)+' h'},
+    title:{display:true, text:txt, color:'#8396AA', font:{size:10,weight:'600'}}});
+  const ejeX = {grid:{display:false}, border:{color:'#DFE5EC'}, ticks:{color:'#5A6E84', font:{size:11,weight:'600'}}};
+  const leyenda = {position:'bottom', labels:{color:'#5A6E84', font:{size:11.5}, usePointStyle:true, pointStyle:'circle', padding:14}};
+  const tip = {backgroundColor:'#16314F', titleColor:'#fff', bodyColor:'#C9DCEE', padding:10, cornerRadius:7,
+    titleFont:{size:12,weight:'700'}, bodyFont:{size:11.5}};
+  const franja = {id:'franjaCmp', beforeDatasetsDraw(c){
+    const a = c.chartArea, y = c.scales.y; if(!a||!y) return;
+    const y1 = y.getPixelForValue(cMax), y2 = y.getPixelForValue(cMin);
+    c.ctx.save(); c.ctx.fillStyle = 'rgba(26,158,95,.10)';
+    c.ctx.fillRect(a.left, Math.min(y1,y2), a.right-a.left, Math.abs(y2-y1));
+    c.ctx.strokeStyle = 'rgba(26,158,95,.45)'; c.ctx.setLineDash([5,4]); c.ctx.lineWidth = 1;
+    c.ctx.beginPath(); c.ctx.moveTo(a.left,y1); c.ctx.lineTo(a.right,y1); c.ctx.stroke();
+    c.ctx.restore();
+  }};
+  const nuevo = (id, cfg) => { if(_infCharts[id]) _infCharts[id].destroy();
+    const el = document.getElementById(id); if(el) _infCharts[id] = new Chart(el, cfg); };
+
+  // ---- ② tendencia semanal
+  const d0 = new Date((desde || bachs.map(b=>b.fecha).sort()[0]) + 'T00:00:00');
+  const semDe = f => Math.floor((new Date(f+'T00:00:00') - d0) / 604800000);
+  const nSem  = Math.max(1, Math.max(...bachs.map(b => semDe(b.fecha))) + 1);
+  nuevo('inf-ch-tend', {
+    type:'line',
+    data:{labels:[...Array(nSem)].map((_,i)=>'Sem '+(i+1)),
+      datasets:_infEq.filter(eq=>res[eq]).map(eq => ({label:eq,
+        borderColor:INF_COL[eq]||'#5A6E84', backgroundColor:INF_COL[eq]||'#5A6E84',
+        data:[...Array(nSem)].map((_,i) => {
+          const b = bachs.filter(x => x.equipo===eq && semDe(x.fecha)===i);
+          return b.length ? +prom(b.map(x=>x.tcong)).toFixed(2) : null; }),
+        borderWidth:2.4, pointRadius:3, pointHoverRadius:5, tension:.3, fill:false, spanGaps:true}))},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      plugins:{legend:leyenda, tooltip:{...tip, callbacks:{label:c=>c.dataset.label+': '+fmt(c.parsed.y)+' h'}}},
+      scales:{x:ejeX, y:ejeY('horas de congelamiento')}},
+    plugins:[franja]});
+
+  // ---- ③ cumplimiento según la carga
+  const TRAMOS = [
+    {k:'Menos de 1.8 t', f:b => (b.peso||0) <  1800},
+    {k:'1.8 – 2.0 t',    f:b => (b.peso||0) >= 1800 && (b.peso||0) < 2000},
+    {k:'2.0 t o más',    f:b => (b.peso||0) >= 2000}
+  ];
+  nuevo('inf-ch-carga', {
+    type:'bar',
+    data:{labels:TRAMOS.map(t=>t.k),
+      datasets:_infEq.filter(eq=>res[eq]).map(eq => ({label:eq,
+        backgroundColor:INF_COL[eq]||'#5A6E84', borderRadius:{topLeft:5,topRight:5},
+        data:TRAMOS.map(tr => { const b = bachs.filter(x => x.equipo===eq && tr.f(x));
+          return b.length ? +prom(b.map(x=>x.tcong)).toFixed(2) : null; })}))},
+    options:{responsive:true, maintainAspectRatio:false, layout:{padding:{top:16}},
+      plugins:{legend:leyenda, tooltip:{...tip, callbacks:{
+        label:c => { const b = bachs.filter(x => x.equipo===c.dataset.label && TRAMOS[c.dataIndex].f(x));
+          return c.dataset.label+': '+fmt(c.parsed.y)+' h  ('+b.length+' bachadas)'; }}}},
+      scales:{x:ejeX, y:ejeY('horas de congelamiento')}},
+    plugins:[franja]});
+
+  const nTr = TRAMOS.map(tr => bachs.filter(tr.f).length);
+  const pTr = TRAMOS.map(tr => { const b = bachs.filter(tr.f); return b.length ? prom(b.map(x=>x.tcong)) : null; });
+  const idxNom = 2, idxBajo = 0;
+  let notaCarga = `Bachadas por tramo: ${TRAMOS.map((t,i)=>t.k+' → '+nTr[i]).join(' · ')}.`;
+  if(pTr[idxNom] != null && pTr[idxBajo] != null){
+    const dif = pTr[idxNom] - pTr[idxBajo];
+    notaCarga += ` Con carga de 2.0 t o más el tiempo promedio es de ${fmt(pTr[idxNom])} h, frente a ${fmt(pTr[idxBajo])} h con menos de 1.8 t`
+      + (dif > 0.05
+        ? `: una diferencia de ${fmt(dif)} h. Los tiempos cortos corresponden a bachadas con carga por debajo de la nominal, por lo que no acreditan el cumplimiento del compromiso a plena carga.`
+        : dif < -0.05 ? `: el tiempo no aumenta con la carga.` : `: la carga no modifica el tiempo de forma apreciable.`);
+  }
+  document.getElementById('inf-nota-carga').textContent = notaCarga;
+
+  // ---- ④ primera mitad vs segunda
+  const eqC = _infEq.filter(eq => res[eq] && res[eq].m1 != null && res[eq].m2 != null);
+  nuevo('inf-ch-comp', {
+    type:'bar',
+    data:{labels:eqC, datasets:[
+      {label:'1.ª mitad', data:eqC.map(e=>+res[e].m1.toFixed(2)), backgroundColor:'#A9BDD1', borderRadius:{topLeft:5,topRight:5}},
+      {label:'2.ª mitad', data:eqC.map(e=>+res[e].m2.toFixed(2)), backgroundColor:'#0E9E96', borderRadius:{topLeft:5,topRight:5}}]},
+    options:{responsive:true, maintainAspectRatio:false, layout:{padding:{top:18}},
+      plugins:{legend:{...leyenda, labels:{...leyenda.labels, pointStyle:'rect'}},
+        tooltip:{...tip, callbacks:{label:c=>c.dataset.label+': '+fmt(c.parsed.y)+' h'}}},
+      scales:{x:ejeX, y:ejeY('horas')}},
+    plugins:[franja, {id:'lblComp', afterDatasetsDraw(c){
+      const x = c.ctx; x.save(); x.font = '700 10px Inter, sans-serif';
+      x.textAlign = 'center'; x.textBaseline = 'bottom';
+      c.data.datasets.forEach((ds,di) => c.getDatasetMeta(di).data.forEach((bar,i) => {
+        if(ds.data[i] == null) return;
+        x.fillStyle = di ? '#0B7A73' : '#6B8299'; x.fillText(fmt(ds.data[i]), bar.x, bar.y - 4); }));
+      x.restore(); }}]});
+
+  // ---- ⑤ lectura del período
+  const fuera   = bachs.length - cumple;
+  const mejoran = eqC.filter(e => res[e].d < -0.05);
+  const peoran  = eqC.filter(e => res[e].d >  0.05);
+  const peor    = Object.keys(res).sort((a,b) => res[b].prom - res[a].prom)[0];
+  document.getElementById('inf-lect').innerHTML = `
+    <p>Se han analizado <b>${bachs.length} bachadas</b> de ${_infEq.join(', ')} registradas entre el
+    ${dmy(desde)} y el ${dmy(hasta)}. El tiempo de congelamiento promedio es de <b>${fmt(prom(tAll))} h</b>,
+    frente a un compromiso del proveedor de ${fmt(cMin)} a ${fmt(cMax)} h.</p>
+    <p><b>${fmt(100-pctCump,1)}% de las bachadas (${fuera} de ${bachs.length}) superan el tope de ${fmt(cMax)} h.</b>
+    ${exceso > 0 ? `El exceso promedio sobre ese tope es de <b>${fmt(exceso)} h</b> por bachada.` : ''}
+    El mayor tiempo promedio corresponde a <b>${peor}</b> (${fmt(res[peor].prom)} h).</p>
+    <p>${notaCarga}</p>
+    ${(mejoran.length || peoran.length) ? `<p>Comparando la segunda mitad del período con la primera,
+    ${mejoran.length ? `<b>${mejoran.join(', ')}</b> ${mejoran.length>1?'reducen':'reduce'} su tiempo
+    (${mejoran.map(e=>e+' '+fmt(res[e].d)+' h').join('; ')})` : 'ningún equipo reduce su tiempo'}${
+    peoran.length ? `, mientras que <b>${peoran.join(', ')}</b> lo ${peoran.length>1?'incrementan':'incrementa'}
+    (${peoran.map(e=>e+' +'+fmt(res[e].d)+' h').join('; ')})` : ''}.</p>` : ''}`;
+}
+
+// ============================================================
 // PRODUCCIÓN MENSUAL · HISTÓRICO
 // ------------------------------------------------------------
 // Gráfica estrictamente mensual con filtro de AÑO propio. No depende del
@@ -8224,6 +8542,67 @@ async function guardarPostBachada() {
       <button class="btn-sm btn-ghost" onclick="closeModal('modal-post-bachada')" style="font-size:12px;">Registrar más tarde</button>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:8px;">Si cierras sin registrar, puedes hacerlo manualmente en la pestaña Eventos / Paradas.</div>
+  </div>
+</div>
+
+<!-- ===== Informe de tiempos de congelamiento ===== -->
+<div id="inf-ov">
+  <div class="inf-top">
+    <div>
+      <div class="inf-t1">Comportamiento de los tiempos de congelamiento</div>
+      <div class="inf-t2" id="inf-sub">—</div>
+    </div>
+    <button class="inf-x" onclick="cerrarInformeTiempos()">✕ Cerrar</button>
+  </div>
+  <div class="inf-body">
+
+    <div class="inf-filt">
+      <div class="fi"><span class="fl">Desde</span><input class="fin" type="date" id="inf-desde" onchange="renderInformeTiempos()"></div>
+      <div class="fi"><span class="fl">Hasta</span><input class="fin" type="date" id="inf-hasta" onchange="renderInformeTiempos()"></div>
+      <div class="fi"><span class="fl">Equipos</span><div class="chips" id="inf-chips"></div></div>
+      <div class="fi"><span class="fl">Compromiso del proveedor</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input class="fin" type="number" id="inf-cmin" step="0.05" value="2.5" style="width:74px">
+          <span style="color:#8396AA;font-size:12px;">a</span>
+          <input class="fin" type="number" id="inf-cmax" step="0.05" value="3" style="width:74px">
+          <span style="color:#8396AA;font-size:12px;">h</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero" id="inf-hero"></div>
+
+    <div class="ic">
+      <div class="ic-h"><div class="ic-t">① Resumen por equipo</div>
+        <div class="ic-s" id="inf-s1">—</div></div>
+      <div style="overflow-x:auto"><table id="inf-tabla"></table></div>
+    </div>
+
+    <div class="ic">
+      <div class="ic-h"><div class="ic-t">② Tendencia semanal</div>
+        <div class="ic-s">Tiempo promedio por semana · la franja verde es el compromiso del proveedor</div></div>
+      <div class="cv"><canvas id="inf-ch-tend"></canvas></div>
+    </div>
+
+    <div class="ic">
+      <div class="ic-h"><div class="ic-t">③ Cumplimiento según la carga</div>
+        <div class="ic-s">Tiempo promedio por tramo de carga · la carga nominal del grupo es 2.16 t (216 aros de 10 kg)</div></div>
+      <div class="cv"><canvas id="inf-ch-carga"></canvas></div>
+      <div class="nota" id="inf-nota-carga"></div>
+    </div>
+
+    <div class="ic">
+      <div class="ic-h"><div class="ic-t">④ Primera mitad frente a la segunda</div>
+        <div class="ic-s" id="inf-s4">—</div></div>
+      <div class="cv" style="height:260px"><canvas id="inf-ch-comp"></canvas></div>
+    </div>
+
+    <div class="ic">
+      <div class="ic-h"><div class="ic-t">⑤ Lectura del período</div>
+        <div class="ic-s">Resumen de lo registrado en el sistema</div></div>
+      <div class="lect" id="inf-lect"></div>
+    </div>
+
   </div>
 </div>
 
