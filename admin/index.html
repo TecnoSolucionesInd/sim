@@ -5,20 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Administración · SIM</title>
 <link rel="stylesheet" href="../core/sim.css">
+<link rel="stylesheet" href="../core/tema-claro.css">
 <style>
   .pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:26px}
   .pagehead h1{font-size:38px}
   .tbl-wrap{overflow-x:auto}
   .u-cell{display:flex;align-items:center;gap:12px}
-  .u-ini{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
+  .u-ini{width:36px;height:36px;border-radius:50%;background:rgba(15,27,36,.085);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
   .rowbtn{cursor:pointer}
-  .perm-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;align-items:start;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+  .perm-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;align-items:start;padding:14px 0;border-bottom:1px solid rgba(15,27,36,.042)}
   .perm-app{display:flex;align-items:center;gap:12px}
   .perm-ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .mods{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 18px;padding:4px 0 2px 50px}
   .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
   .appcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
-  .appcard{padding:22px;border-radius:20px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);animation:rise .7s var(--ease) both}
+  .appcard{padding:22px;border-radius:20px;background:rgba(15,27,36,.033);border:1px solid rgba(15,27,36,.085);animation:rise .7s var(--ease) both}
+  .perm-ico svg{filter:brightness(.68) saturate(1.7)}   /* los colores pastel del catálogo se oscurecen para leerse sobre blanco */
   .stitle{font-family:var(--f-display);font-weight:600;font-size:17px;margin:26px 0 6px}
   @media (max-width:700px){.grid2{grid-template-columns:minmax(0,1fr)}.perm-row{grid-template-columns:minmax(0,1fr)}.mods{padding-left:0}.pagehead h1{font-size:30px}}
 </style>
@@ -36,8 +38,8 @@ import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmai
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const APPS_ASIG = APPS.filter(a => !a.soloAdmin);
-const ROL_COLOR = { admin: ['rgba(111,227,207,.16)', '#8FF0DE'], supervisor: ['rgba(245,185,74,.16)', '#FFCF73'], operador: ['rgba(169,180,255,.16)', '#C5CCFF'], lectura: ['rgba(255,255,255,.09)', '#DDE4EB'] };
-const rolPill = (r) => r ? `<span class="pill" style="background:${ROL_COLOR[r][0]};color:${ROL_COLOR[r][1]}">${ROLES.find(x => x.id === r).label}</span>` : '<span style="color:#8B97A3">—</span>';
+const ROL_COLOR = { admin: ['rgba(111,227,207,.16)', '#0B8C80'], supervisor: ['rgba(245,185,74,.16)', '#A8710A'], operador: ['rgba(169,180,255,.16)', '#4753C4'], lectura: ['rgba(15,27,36,.076)', '#3A4955'] };
+const rolPill = (r) => r ? `<span class="pill" style="background:${ROL_COLOR[r][0]};color:${ROL_COLOR[r][1]}">${ROLES.find(x => x.id === r).label}</span>` : '<span style="color:#7A8894">—</span>';
 const esAdminSist = (u) => (u.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
 let usuarios = [];
@@ -71,9 +73,9 @@ function pintarUsuarios(main) {
   if (!usuarios.length) { tb.innerHTML = '<tr><td colspan="5" class="muted" style="padding:28px 20px">Aún no hay usuarios registrados.</td></tr>'; return; }
   tb.innerHTML = usuarios.map((u, i) => {
     const nApps = esAdminSist(u) ? 'Todos' : Object.values(u.apps || {}).filter(p => p && p.rol).length;
-    const est = u.activo ? '<span class="pill" style="background:rgba(111,227,207,.16);color:#8FF0DE">Activo</span>' : '<span class="pill" style="background:rgba(255,143,143,.14);color:#FFB3B3">Inactivo</span>';
+    const est = u.activo ? '<span class="pill" style="background:rgba(111,227,207,.16);color:#0B8C80">Activo</span>' : '<span class="pill" style="background:rgba(255,143,143,.14);color:#C23B3B">Inactivo</span>';
     return `<tr class="rowbtn slide" data-uid="${u.uid}" style="animation-delay:${(0.05 * i).toFixed(2)}s">
-      <td><div class="u-cell"><div class="u-ini">${esc(iniciales(u.nombre, u.email))}</div><div><div style="font-weight:500">${esc(u.nombre || '—')}${esAdminSist(u) ? ' <span class="pill" style="background:rgba(169,180,255,.16);color:#C5CCFF;margin-left:6px">Administrador</span>' : ''}</div><div style="font-size:12.5px;color:var(--tx-3)">${esc(u.email)}</div></div></div></td>
+      <td><div class="u-cell"><div class="u-ini">${esc(iniciales(u.nombre, u.email))}</div><div><div style="font-weight:500">${esc(u.nombre || '—')}${esAdminSist(u) ? ' <span class="pill" style="background:rgba(169,180,255,.16);color:#4753C4;margin-left:6px">Administrador</span>' : ''}</div><div style="font-size:12.5px;color:var(--tx-3)">${esc(u.email)}</div></div></div></td>
       <td>${esc(u.area || '—')}</td>
       <td class="mono">${nApps}</td>
       <td>${est}</td>
@@ -100,7 +102,7 @@ function vistaPermisos(main) {
         </tbody>
       </table>
     </div>
-    <div class="rise d3" style="margin-top:18px;display:flex;gap:20px;flex-wrap:wrap;font-size:13px;color:#BAC5D0">
+    <div class="rise d3" style="margin-top:18px;display:flex;gap:20px;flex-wrap:wrap;font-size:13px;color:#465662">
       ${ROLES.map(r => `<span><b style="color:${ROL_COLOR[r.id][1]}">${r.label}</b> ${r.desc.toLowerCase()}</span>`).join('')}
     </div>`;
   main.querySelectorAll('[data-uid]').forEach(r => r.onclick = () => abrirModal(usuarios.find(u => u.uid === r.dataset.uid)));
@@ -120,10 +122,10 @@ function vistaAplicativos(main) {
           <span class="mono" style="font-size:12px;color:var(--tx-3)">${a.fase}</span>
         </div>
         <div style="font-family:var(--f-display);font-weight:600;font-size:18px;margin-top:16px">${esc(a.nombre)}</div>
-        <div style="font-size:13.5px;color:#BAC5D0;margin-top:4px">${esc(a.sub)}</div>
+        <div style="font-size:13.5px;color:#465662;margin-top:4px">${esc(a.sub)}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
           <span class="pill" style="background:${st.bg};color:${st.fg}">${st.label}</span>
-          <span class="pill" style="background:${a.url ? 'rgba(111,227,207,.12)' : 'rgba(255,255,255,.06)'};color:${a.url ? '#8FF0DE' : '#C3CDD8'}">${a.url ? 'Integrado' : 'Por integrar'}</span>
+          <span class="pill" style="background:${a.url ? 'rgba(111,227,207,.12)' : 'rgba(15,27,36,.036)'};color:${a.url ? '#0B8C80' : '#465662'}">${a.url ? 'Integrado' : 'Por integrar'}</span>
         </div>
         <div style="margin-top:14px;font-size:13px;color:var(--tx-2)">${a.modulos.length ? a.modulos.map(m => esc(m.nombre)).join(' · ') : 'Módulos por definir'}</div>
         ${(a.herramientas || []).map(h => `<a class="btn" href="../${h.url}" style="margin-top:14px;height:40px;font-size:13px">${esc(h.nombre)}</a>`).join('')}

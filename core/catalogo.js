@@ -15,10 +15,10 @@ export const ROLES = [
 export const ROLES_ESCRITURA = ['admin', 'supervisor', 'operador'];
 
 export const ESTADOS = {
-  prod: { label: 'En producción',      bg: 'rgba(111,227,207,.16)', fg: '#8FF0DE' },
-  dev:  { label: 'En construcción',    bg: 'rgba(245,185,74,.16)',  fg: '#FFCF73' },
-  plan: { label: 'Planificado',        bg: 'rgba(255,255,255,.09)', fg: '#DDE4EB' },
-  adm:  { label: 'Solo administrador', bg: 'rgba(169,180,255,.16)', fg: '#C5CCFF' }
+  prod: { label: 'En producción',      bg: 'rgba(11,154,139,.13)',  fg: '#087F74' },
+  dev:  { label: 'En construcción',    bg: 'rgba(245,185,74,.2)',   fg: '#946005' },
+  plan: { label: 'Planificado',        bg: 'rgba(15,27,36,.07)',    fg: '#465662' },
+  adm:  { label: 'Solo administrador', bg: 'rgba(85,100,216,.13)',  fg: '#4753C4' }
 };
 
 export const GRUPOS = [

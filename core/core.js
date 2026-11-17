@@ -39,36 +39,56 @@ const ICO_OUT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" str
 const ICO_MENU = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 
 const CSS = `
-.sim-shell{position:relative;z-index:1;display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh;transition:grid-template-columns .35s var(--ease)}
+.sim-shell{position:relative;z-index:1;display:grid;grid-template-columns:272px minmax(0,1fr);min-height:100vh;transition:grid-template-columns .35s var(--ease)}
 .sim-shell.side-off{grid-template-columns:0 minmax(0,1fr)}
 .sim-shell.side-off .sim-side{opacity:0;transform:translateX(-30px);pointer-events:none;overflow:hidden;padding-left:0;padding-right:0}
-.sim-side{position:sticky;top:0;height:100vh;overflow-y:auto;padding:22px 16px;background:rgba(36,46,57,.62);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:24px;animation:slidein .5s var(--ease) both}
-.sim-apphead{display:flex;align-items:center;gap:14px;padding:0 6px}
-.sim-appico{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sim-appname{font-family:var(--f-display);font-weight:600;font-size:16px;line-height:1.25}
-.sim-navt{font-family:var(--f-mono);font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--tx-3);padding:0 12px 10px}
-.sim-mod{width:100%;height:46px;padding:0 14px;border:0;border-radius:12px;text-align:left;font-size:14.5px;font-weight:500;display:flex;align-items:center;gap:12px;background:transparent;color:var(--tx-2);transition:background .25s,color .25s,transform .25s}
-.sim-mod:hover{background:rgba(255,255,255,.07);transform:translateX(3px)}
-.sim-mod i{width:8px;height:8px;border-radius:3px;background:rgba(255,255,255,.25);display:block;flex-shrink:0}
-.sim-mod.on{color:#fff}
-.sim-user{margin-top:auto;display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.05)}
-.sim-user .avatar{width:38px;height:38px;font-size:13px}
+/* menú lateral: oscuro, como la portada (colores fijos: no depende del tema del aplicativo) */
+.sim-side{position:sticky;top:0;height:100vh;overflow-y:auto;padding:18px 14px 14px;color:#EEF3F6;display:flex;flex-direction:column;gap:20px;animation:slidein .5s var(--ease) both;
+  background:radial-gradient(120% 50% at 0% 0%,rgba(111,227,207,.13),transparent 60%),radial-gradient(90% 40% at 100% 100%,rgba(79,168,224,.10),transparent 65%),#060B0E;border-right:1px solid rgba(255,255,255,.07);scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+.sim-brand{display:flex;align-items:center;gap:11px;padding:4px 8px 0;text-decoration:none;color:#EEF3F6}
+.sim-brand img{height:27px;width:auto;display:block}
+.sim-brand span{width:1px;height:20px;background:rgba(255,255,255,.2)}
+.sim-brand b{font:650 13.5px/1 var(--f-display);letter-spacing:.1em;color:#A5F5E7}
+.sim-back{height:40px;padding:0 12px;border-radius:11px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);color:#C9D4DC;display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:500;text-decoration:none;transition:background .25s,border-color .25s,color .25s}
+.sim-back:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff}
+.sim-back svg{transition:transform .3s var(--ease)}
+.sim-back:hover svg{transform:translateX(-3px)}
+.sim-apphead{display:flex;align-items:center;gap:13px;padding:14px 12px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08)}
+.sim-appico{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sim-appname{font-family:var(--f-display);font-weight:600;font-size:15px;line-height:1.25;letter-spacing:-.01em}
+.sim-rol{font-size:11.5px;color:#8FA0AC;margin-top:3px;text-transform:capitalize}
+.sim-navt{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6C7A86;padding:0 12px 9px}
+.sim-mod{position:relative;width:100%;min-height:42px;padding:9px 12px 9px 14px;border:0;border-radius:11px;text-align:left;font-size:14px;font-weight:500;line-height:1.3;display:flex;align-items:center;gap:12px;background:transparent;color:#A7B4BF;transition:background .25s,color .25s}
+.sim-mod:hover{background:rgba(255,255,255,.06);color:#EEF3F6}
+.sim-mod i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.22);display:block;flex-shrink:0;transition:transform .3s var(--ease),background .25s}
+.sim-mod.on{color:#fff;background:color-mix(in srgb,var(--ac) 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 30%,transparent)}
+.sim-mod.on i{background:var(--ac);transform:scale(1.35);box-shadow:0 0 10px var(--ac)}
+.sim-user{margin-top:auto;display:flex;align-items:center;gap:11px;padding:10px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07)}
+.sim-user .avatar{width:36px;height:36px;font-size:12.5px;background:linear-gradient(145deg,#C4FBF0,#6FE3CF);color:#062A25}
+.sim-user .n{font-size:13px;font-weight:500;color:#EEF3F6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sim-user .e{font-size:11.5px;color:#7F8E9A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sim-out{width:36px;height:36px;flex-shrink:0;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#C9D4DC;display:grid;place-items:center;transition:background .2s,border-color .2s,color .2s}
+.sim-out:hover{background:rgba(255,143,143,.12);border-color:rgba(255,143,143,.45);color:#FFC2C2}
 .sim-body{min-width:0;display:flex;flex-direction:column}
-.sim-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 36px;flex-wrap:wrap}
-.sim-crumb{font-family:var(--f-mono);font-size:13px;color:var(--tx-3)}
+.sim-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 36px;flex-wrap:wrap}
+.sim-crumb{font-family:var(--f-mono);font-size:12.5px;color:var(--tx-3)}
 .sim-crumb b{color:var(--tx);font-weight:500}
+.sim-sync{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--tx-2)}
 .sim-main{padding:6px 36px 60px;min-width:0}
 .sim-menu{display:inline-flex}
-.sim-float{position:fixed;left:16px;bottom:16px;z-index:9999;height:44px;padding:0 16px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(46,58,71,.88);backdrop-filter:blur(12px);color:#F1F4F7;display:flex;align-items:center;gap:8px;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;text-decoration:none;box-shadow:0 14px 30px -14px rgba(0,0,0,.6)}
-.sim-float:hover{background:rgba(58,71,87,.95)}
+.sim-float{position:fixed;left:16px;bottom:16px;z-index:9999;height:42px;padding:0 16px 0 13px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(6,11,14,.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#EEF3F6;display:flex;align-items:center;gap:8px;font:500 13.5px 'Geist','Segoe UI',system-ui,sans-serif;text-decoration:none;box-shadow:0 14px 30px -14px rgba(0,0,0,.6);transition:background .2s,border-color .2s,transform .25s}
+.sim-float:hover{background:#0D181D;border-color:rgba(111,227,207,.6);color:#fff;transform:translateY(-2px)}
+.sim-velo{display:none}
 @media (max-width:900px){
   .sim-shell{grid-template-columns:minmax(0,1fr)}
   .sim-side{position:fixed;inset:0 auto 0 0;width:284px;z-index:30;transform:translateX(-100%);transition:transform .35s var(--ease);animation:none}
   .sim-shell.menu-open .sim-side{transform:none;box-shadow:30px 0 60px -20px rgba(0,0,0,.6)}
   .sim-shell.side-off{grid-template-columns:minmax(0,1fr)}
-  .sim-shell.side-off .sim-side{opacity:1;pointer-events:auto;padding:22px 16px;overflow-y:auto;transform:translateX(-100%)}
+  .sim-shell.side-off .sim-side{opacity:1;pointer-events:auto;padding:18px 14px 14px;overflow-y:auto;transform:translateX(-100%)}
   .sim-shell.side-off.menu-open .sim-side{transform:none}
-  .sim-bar{padding:14px 16px}
+  .sim-velo{display:block;position:fixed;inset:0;z-index:29;background:rgba(6,11,14,.5);opacity:0;pointer-events:none;transition:opacity .3s}
+  .sim-shell.menu-open .sim-velo{opacity:1;pointer-events:auto}
+  .sim-bar{padding:12px 16px}
   .sim-main{padding:4px 16px 48px}
 }`;
 
@@ -122,11 +142,12 @@ export async function iniciarApp({ appId, layout = 'completo', alCambiarModulo =
   const shell = document.createElement('div');
   shell.className = 'sim-shell';
   shell.innerHTML = `
-    <aside class="sim-side">
-      <a class="btn" href="${RAIZ}" style="justify-content:flex-start">${ICO_BACK} Volver al portal</a>
+    <aside class="sim-side" style="--ac:${app.color}">
+      <a class="sim-brand" href="${RAIZ}" title="Ir al portal"><img src="${RAIZ}core/marca/logo-negativo.png" alt="Santa Monica Fishing"><span></span><b>SIM</b></a>
+      <a class="sim-back" href="${RAIZ}">${ICO_BACK} Volver al portal</a>
       <div class="sim-apphead">
         <div class="sim-appico" style="background:${app.color}24;border:1px solid ${app.color}55">${ico}</div>
-        <div><div class="sim-appname">${esc(app.nombre)}</div><div style="font-size:12px;color:var(--tx-3);margin-top:3px;text-transform:capitalize">Rol: ${esc(acceso.rol)}</div></div>
+        <div style="min-width:0"><div class="sim-appname">${esc(app.nombre)}</div><div class="sim-rol">Rol: ${esc(acceso.rol)}</div></div>
       </div>
       <nav>
         <div class="sim-navt">Módulos</div>
@@ -134,17 +155,18 @@ export async function iniciarApp({ appId, layout = 'completo', alCambiarModulo =
       </nav>
       <div class="sim-user">
         <div class="avatar">${esc(iniciales(perfil?.nombre, user.email))}</div>
-        <div style="min-width:0;flex-grow:1"><div style="font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(perfil?.nombre || user.email)}</div><div style="font-size:12px;color:var(--tx-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(user.email)}</div></div>
-        <button class="btn btn-icon" id="simOut" aria-label="Cerrar sesión" title="Cerrar sesión" style="width:38px;height:38px">${ICO_OUT}</button>
+        <div style="min-width:0;flex-grow:1"><div class="n">${esc(perfil?.nombre || user.email)}</div><div class="e">${esc(user.email)}</div></div>
+        <button class="sim-out" id="simOut" aria-label="Cerrar sesión" title="Cerrar sesión">${ICO_OUT}</button>
       </div>
     </aside>
+    <div class="sim-velo" id="simVelo"></div>
     <div class="sim-body">
       <div class="sim-bar">
         <div style="display:flex;align-items:center;gap:12px">
           <button class="btn btn-icon sim-menu" id="simMenu" aria-label="Abrir menú">${ICO_MENU}</button>
           <div class="sim-crumb">SIM <span style="opacity:.5">/</span> ${esc(app.nombre)} <span style="opacity:.5">/</span> <b id="simCrumb"></b></div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--tx-2)"><span class="live"></span>Sincronizado</div>
+        <div class="sim-sync"><span class="live"></span>Sincronizado</div>
       </div>
       <main class="sim-main" id="simMain"></main>
     </div>`;
@@ -152,6 +174,7 @@ export async function iniciarApp({ appId, layout = 'completo', alCambiarModulo =
   document.body.insertAdjacentHTML('afterbegin', '<div class="amb"></div>');
   ctx.main = shell.querySelector('#simMain');
   shell.querySelector('#simOut').onclick = ctx.salir;
+  shell.querySelector('#simVelo').onclick = () => shell.classList.remove('menu-open');
   // Menú lateral: en celular se abre sobre el contenido; en pantalla grande se oculta o muestra (se recuerda la preferencia)
   const LS_SIDE = 'sim_menu_oculto';
   const movil = () => matchMedia('(max-width:900px)').matches;
@@ -167,8 +190,8 @@ export async function iniciarApp({ appId, layout = 'completo', alCambiarModulo =
 
   const pintarMenu = () => {
     shell.querySelector('#simMods').innerHTML = modulos.length
-      ? modulos.map(m => `<button class="sim-mod ${ctx.modulo === m.id ? 'on' : ''}" data-m="${m.id}" style="${ctx.modulo === m.id ? `background:${app.color}26` : ''}"><i style="${ctx.modulo === m.id ? `background:${app.color}` : ''}"></i>${esc(m.nombre)}</button>`).join('')
-      : '<div style="padding:12px 14px;font-size:14px;color:var(--tx-2)">Módulos por definir</div>';
+      ? modulos.map(m => `<button class="sim-mod ${ctx.modulo === m.id ? 'on' : ''}" data-m="${m.id}"><i></i>${esc(m.nombre)}</button>`).join('')
+      : '<div style="padding:12px 14px;font-size:14px;color:#A7B4BF">Módulos por definir</div>';
     shell.querySelectorAll('[data-m]').forEach(b => b.onclick = () => ctx.irA(b.dataset.m));
   };
 
