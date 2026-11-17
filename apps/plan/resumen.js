@@ -7,21 +7,21 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
 const MESL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 // Estados (reservados, siempre con texto) y especialidades (paleta categórica validada para fondo oscuro, orden fijo)
-const ST = { hecho: '#2ec4a6', atrasada: '#ff6b6b', pend: '#8b9bb0', no: '#5d6b79', meta: '#f5b54a' };
-const COL_ROL = { 'Frigorista': '#3987e5', 'Mecánico': '#d95926', 'Electricista': '#199e70', 'Soldador': '#c98500', 'Op. calderos': '#d55181', 'Op. ósmosis': '#9085e9', 'Tercero': '#8b9bb0' };
+const ST = { hecho: '#2ec4a6', atrasada: '#ff6b6b', pend: '#6B7A88', no: '#5d6b79', meta: '#f5b54a' };
+const COL_ROL = { 'Frigorista': '#3987e5', 'Mecánico': '#d95926', 'Electricista': '#199e70', 'Soldador': '#c98500', 'Op. calderos': '#d55181', 'Op. ósmosis': '#9085e9', 'Tercero': '#6B7A88' };
 const META = 90;
 
 const F = { periodo: '', sis: '', rol: '', crit: '' };
 let GR = [];
 
 const CSS = `
-.rs-f{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;padding:12px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--pp-line)}
+.rs-f{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;padding:12px 16px;border-radius:14px;background:rgba(15,27,36,.024);border:1px solid var(--pp-line)}
 .rs-f label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx-3);font-weight:600}
 .rs-f select{height:38px;font-size:13px;padding:0 30px 0 10px;width:auto;min-width:150px;text-transform:none;letter-spacing:0}
 .rs-f .nota{margin-left:auto;font-size:12px;color:var(--tx-3);max-width:340px;line-height:1.4}
 .rs-k{display:grid;grid-template-columns:1.25fr repeat(5,minmax(0,1fr));gap:12px;margin-bottom:12px}
 .rs-t{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:14px;padding:14px 16px;position:relative;overflow:hidden}
-.rs-t::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,#3bb4e5)}
+.rs-t::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,#1B86C4)}
 .rs-t .l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-3);font-weight:600}
 .rs-t .v{font-family:var(--f-display);font-size:30px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.1}
 .rs-t .v small{font-size:14px;color:var(--tx-3);font-weight:600}
@@ -30,7 +30,7 @@ const CSS = `
 .rs-ring{width:92px;height:92px;flex:none}
 .rs-ring circle{fill:none;stroke-width:10}
 .rs-ring text{fill:var(--tx);font:700 19px var(--f-display);text-anchor:middle;dominant-baseline:central}
-.rs-pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;margin-top:6px}
+.rs-pill{color:color-mix(in srgb,var(--c,#465662) 62%,#0F1B24)!important;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;margin-top:6px}
 .rs-g{display:grid;gap:12px;margin-bottom:12px}
 .rs-g2{grid-template-columns:1.55fr 1fr}.rs-g3{grid-template-columns:repeat(3,minmax(0,1fr))}.rs-g11{grid-template-columns:1fr 1fr}
 .rs-c{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:16px;padding:14px 16px;min-width:0}
@@ -42,12 +42,12 @@ const CSS = `
 .rs-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--tx-2);margin-bottom:6px}
 .rs-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 .rs-al{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto}
-.rs-a{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--pp-line)}
+.rs-a{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:10px 12px;border-radius:12px;background:rgba(15,27,36,.024);border:1px solid var(--pp-line)}
 .rs-a .ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font:700 13px var(--f-display)}
 .rs-a b{font-size:13.5px;display:block}
 .rs-a span{font-size:12.5px;color:var(--tx-2);line-height:1.45}
 .rs-hb{display:grid;grid-template-columns:120px minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:12.5px;margin-bottom:9px}
-.rs-hb .tr{height:14px;border-radius:7px;background:rgba(255,255,255,.07);overflow:hidden;display:flex;gap:2px}
+.rs-hb .tr{height:14px;border-radius:7px;background:rgba(15,27,36,.042);overflow:hidden;display:flex;gap:2px}
 .rs-hb .tr div{height:100%}
 .rs-hb .tr div:first-child{border-radius:7px 0 0 7px}.rs-hb .tr div:last-child{border-radius:0 7px 7px 0}
 .rs-hb .n{text-align:right;font-variant-numeric:tabular-nums;color:var(--tx-2)}
@@ -124,12 +124,12 @@ export function vResumen(box, M) {
   // servicios de terceros próximos (30 días) para gestionar OC/OS a tiempo
   const lim = masSem(ref, 5);
   const tercProx = TAR.filter(t => (t.resp || {})['Tercero'] != null).flatMap(ocurrencias).filter(o => o.est === 'pendiente' && o.ef >= ref && o.ef <= lim);
-  if (tercProx.length) alertas.push({ n: 1, ic: 'S', c: '#7cc8f8', t: `${tercProx.length} servicio${tercProx.length > 1 ? 's' : ''} de terceros en las próximas 5 semanas`, d: 'Gestionar pedido y orden de servicio con anticipación: ' + [...new Set(tercProx.map(o => `${o.t.eq} (${corto(o.ef)})`))].slice(0, 5).join(', ') });
+  if (tercProx.length) alertas.push({ n: 1, ic: 'S', c: '#2A8FCF', t: `${tercProx.length} servicio${tercProx.length > 1 ? 's' : ''} de terceros en las próximas 5 semanas`, d: 'Gestionar pedido y orden de servicio con anticipación: ' + [...new Set(tercProx.map(o => `${o.t.eq} (${corto(o.ef)})`))].slice(0, 5).join(', ') });
   // overhauls próximos
-  Object.entries(CFG.eventos || {}).forEach(([eq, l]) => l.filter(x => x.semana >= ref && x.semana <= masSem(ref, 8)).forEach(x => alertas.push({ n: 1, ic: 'O', c: '#c9a7ff', t: `${eq}: ${x.texto}`, d: `Semana del ${corto(x.semana)}. Coordinar con Producción y verificar repuestos.` })));
+  Object.entries(CFG.eventos || {}).forEach(([eq, l]) => l.filter(x => x.semana >= ref && x.semana <= masSem(ref, 8)).forEach(x => alertas.push({ n: 1, ic: 'O', c: '#8A5BD6', t: `${eq}: ${x.texto}`, d: `Semana del ${corto(x.semana)}. Coordinar con Producción y verificar repuestos.` })));
   // por horómetro próximas
   const hor = TAR.filter(t => t.porHoras).flatMap(ocurrencias).filter(o => o.est === 'pendiente' && o.ef >= ref && o.ef <= masSem(ref, 3));
-  if (hor.length) alertas.push({ n: 1, ic: 'h', c: '#7cc8f8', t: `${hor.length} tarea${hor.length > 1 ? 's' : ''} por horómetro en las próximas 4 semanas`, d: 'Verificar las horas reales antes de ejecutar: ' + [...new Set(hor.map(o => o.t.eq))].join(', ') });
+  if (hor.length) alertas.push({ n: 1, ic: 'h', c: '#2A8FCF', t: `${hor.length} tarea${hor.length > 1 ? 's' : ''} por horómetro en las próximas 4 semanas`, d: 'Verificar las horas reales antes de ejecutar: ' + [...new Set(hor.map(o => o.t.eq))].join(', ') });
   alertas.sort((a, b) => b.n - a.n);
 
   // ---------- agregados ----------
@@ -154,7 +154,7 @@ export function vResumen(box, M) {
 
   const barra = (r) => { const tot = r.h + r.a + r.p || 1; return `<div class="tr">${r.h ? `<div style="width:${r.h / tot * 100}%;background:${ST.hecho}"></div>` : ''}${r.a ? `<div style="width:${r.a / tot * 100}%;background:${ST.atrasada}"></div>` : ''}${r.p ? `<div style="width:${r.p / tot * 100}%;background:${ST.pend}"></div>` : ''}</div>`; };
   const legEst = `<div class="rs-leg"><span><i style="background:${ST.hecho}"></i>Ejecutadas</span><span><i style="background:${ST.atrasada}"></i>Atrasadas / no ejecutadas</span><span><i style="background:${ST.pend}"></i>Por ejecutar</span></div>`;
-  const ring = (v, c) => { const r = 38, L = 2 * Math.PI * r, p = v == null ? 0 : Math.min(v, 100); return `<svg class="rs-ring" viewBox="0 0 92 92"><circle cx="46" cy="46" r="${r}" stroke="rgba(255,255,255,.1)"/><circle cx="46" cy="46" r="${r}" stroke="${c}" stroke-linecap="round" stroke-dasharray="${L}" stroke-dashoffset="${L * (1 - p / 100)}" transform="rotate(-90 46 46)"/><text x="46" y="46">${v == null ? '—' : v + '%'}</text></svg>`; };
+  const ring = (v, c) => { const r = 38, L = 2 * Math.PI * r, p = v == null ? 0 : Math.min(v, 100); return `<svg class="rs-ring" viewBox="0 0 92 92"><circle cx="46" cy="46" r="${r}" stroke="rgba(15,27,36,.085)"/><circle cx="46" cy="46" r="${r}" stroke="${c}" stroke-linecap="round" stroke-dasharray="${L}" stroke-dashoffset="${L * (1 - p / 100)}" transform="rotate(-90 46 46)"/><text x="46" y="46">${v == null ? '—' : v + '%'}</text></svg>`; };
 
   box.innerHTML = `
     <div class="rs-f">
@@ -172,11 +172,11 @@ export function vResumen(box, M) {
 
     <div class="rs-k">
       <div class="rs-t hero" style="--c:${est.c}">${ring(cumpl, est.c)}<div><div class="l">Cumplimiento del PMP</div><div class="s">${venc.length ? `${vencH.length} de ${venc.length} tareas vencidas` : 'Aún no hay semanas cerradas'} · ${esc(nomPeriodo)}</div><span class="rs-pill" style="color:${est.c};background:${est.c}22">${est.t}</span></div></div>
-      <div class="rs-t" style="--c:#3bb4e5"><div class="l">Avance del periodo</div><div class="v">${pctTxt(avance)}</div><div class="s">${hechas.length} de ${P.length} tareas programadas</div></div>
+      <div class="rs-t" style="--c:#1B86C4"><div class="l">Avance del periodo</div><div class="v">${pctTxt(avance)}</div><div class="s">${hechas.length} de ${P.length} tareas programadas</div></div>
       <div class="rs-t" style="--c:${ST.atrasada}"><div class="l">Backlog</div><div class="v">${back.length}</div><div class="s">${f1(hhBack)} HH · ${f1(backSem)} sem. de capacidad</div></div>
       <div class="rs-t" style="--c:#2ec4a6"><div class="l">Horas-hombre</div><div class="v">${Math.round(hhE)}<small> / ${Math.round(hhP)}</small></div><div class="s">Ejecutadas / programadas (personal propio)</div></div>
       <div class="rs-t" style="--c:${ST.meta}"><div class="l">Reprogramación</div><div class="v">${pctTxt(P.length ? Math.round(repro / P.length * 100) : 0)}</div><div class="s">${repro} tareas reprogramadas</div></div>
-      <div class="rs-t" style="--c:#c9a7ff"><div class="l">Servicios de terceros</div><div class="v">${terc.length}</div><div class="s">${terc.filter(o => o.est === 'hecho').length} ejecutados en el periodo</div></div>
+      <div class="rs-t" style="--c:#8A5BD6"><div class="l">Servicios de terceros</div><div class="v">${terc.length}</div><div class="s">${terc.filter(o => o.est === 'hecho').length} ejecutados en el periodo</div></div>
     </div>
 
     <div class="rs-g rs-g2">
@@ -219,10 +219,10 @@ export function vResumen(box, M) {
   t1.innerHTML = `<thead><tr><th>Periodo</th><th style="text-align:right">Ejecutadas</th><th style="text-align:right">Atrasadas</th><th style="text-align:right">Por ejecutar</th></tr></thead><tbody>${series1.map(x => `<tr><td>${x.l}</td><td class="n">${x.h}</td><td class="n">${x.a}</td><td class="n">${x.p}</td></tr>`).join('')}</tbody>`;
   const Ch = window.Chart;
   if (!Ch) { box.querySelectorAll('canvas').forEach(c => { c.parentElement.innerHTML = '<div class="rs-vacio">No se pudo cargar el graficador. Revise la conexión.</div>'; }); return; }
-  Ch.defaults.color = '#B8C4D0'; Ch.defaults.font.family = "'IBM Plex Sans', system-ui, sans-serif"; Ch.defaults.font.size = 11.5;
-  const grid = { color: 'rgba(255,255,255,.06)', drawTicks: false }, axis = { border: { display: false }, grid, ticks: { padding: 6 } };
-  const tip = { backgroundColor: '#1f2a35', borderColor: 'rgba(255,255,255,.15)', borderWidth: 1, padding: 10, titleFont: { weight: '600' } };
-  const bar = (label, data, color) => ({ label, data, backgroundColor: color, borderRadius: 4, borderSkipped: 'start', borderColor: '#3a4755', borderWidth: { top: 2 }, maxBarThickness: 34 });
+  Ch.defaults.color = '#55646F'; Ch.defaults.font.family = "'IBM Plex Sans', system-ui, sans-serif"; Ch.defaults.font.size = 11.5;
+  const grid = { color: 'rgba(15,27,36,.036)', drawTicks: false }, axis = { border: { display: false }, grid, ticks: { padding: 6 } };
+  const tip = { backgroundColor: '#1f2a35', borderColor: 'rgba(15,27,36,.128)', borderWidth: 1, padding: 10, titleFont: { weight: '600' } };
+  const bar = (label, data, color) => ({ label, data, backgroundColor: color, borderRadius: 4, borderSkipped: 'start', borderColor: '#FFFFFF', borderWidth: { top: 2 }, maxBarThickness: 34 });
   GR.push(new Ch(box.querySelector('#rsC1'), {
     type: 'bar',
     data: { labels: series1.map(x => x.l), datasets: [bar('Ejecutadas', series1.map(x => x.h), ST.hecho), bar('Atrasadas / no ejecutadas', series1.map(x => x.a), ST.atrasada), bar('Por ejecutar', series1.map(x => x.p), ST.pend)] },
@@ -255,6 +255,6 @@ export function vResumen(box, M) {
     data: { labels: porFrec.map(x => FREC[x.k].l), datasets: [{ label: 'Tareas', data: porFrec.map(x => x.n), backgroundColor: porFrec.map(x => FREC[x.k].hex), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 22 }] },
     options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: (c) => `${c.parsed.x} tareas (${Math.round(c.parsed.x / (P.length || 1) * 100)} %)` } } },
       scales: { x: { ...axis, beginAtZero: true, ticks: { precision: 0 } }, y: { ...axis, grid: { display: false } } } },
-    plugins: [{ id: 'etq', afterDatasetsDraw(ch) { const { ctx } = ch; ctx.save(); ctx.fillStyle = '#DDE4EB'; ctx.font = '600 11px IBM Plex Sans, sans-serif'; ctx.textBaseline = 'middle'; ch.getDatasetMeta(0).data.forEach((b, i) => ctx.fillText(String(porFrec[i].n), b.x + 6, b.y)); ctx.restore(); } }]
+    plugins: [{ id: 'etq', afterDatasetsDraw(ch) { const { ctx } = ch; ctx.save(); ctx.fillStyle = '#3A4955'; ctx.font = '600 11px IBM Plex Sans, sans-serif'; ctx.textBaseline = 'middle'; ch.getDatasetMeta(0).data.forEach((b, i) => ctx.fillText(String(porFrec[i].n), b.x + 6, b.y)); ctx.restore(); } }]
   }));
 }

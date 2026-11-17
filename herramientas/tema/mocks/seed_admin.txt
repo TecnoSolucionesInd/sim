@@ -1,0 +1,1 @@
+'usuarios/u2':{email:'jperez@ejemplo.com',nombre:'Juan Pérez',area:'Frigoristas',activo:true,apps:{fmt:{rol:'operador',modulos:['llenar']},agua:{rol:'lectura',modulos:['hmi']}}},'usuarios/u3':{email:'mrojas@ejemplo.com',nombre:'María Rojas',area:'Ósmosis',activo:false,apps:{fmt:{rol:'supervisor',modulos:['llenar','registros']}}},

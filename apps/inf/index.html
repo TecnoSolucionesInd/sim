@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Informes técnicos · SIM</title>
 <link rel="stylesheet" href="../../core/sim.css">
+<link rel="stylesheet" href="../../core/tema-claro.css">
 <style>
   .pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
   .pagehead h1{font-size:38px;margin-top:12px}
   .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}
-  .kpi{padding:16px 18px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);animation:rise .7s var(--ease) both}
+  .kpi{padding:16px 18px;border-radius:18px;background:#FFFFFF;border:1px solid var(--line);box-shadow:var(--sombra);animation:rise .7s var(--ease) both}
   .kpi b{display:block;font-family:var(--f-display);font-size:28px;font-weight:600}
   .kpi span{font-size:12.5px;color:var(--tx-3)}
   .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
@@ -23,24 +24,24 @@
   .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
   .fic{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:22px}
   .side h4{font-family:var(--f-display);font-size:14px;font-weight:600;margin:0 0 10px;color:var(--tx)}
-  .box{padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);margin-bottom:14px}
-  .it{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13.5px}
+  .box{padding:14px 16px;border-radius:14px;background:rgba(15,27,36,.03);border:1px solid rgba(15,27,36,.076);margin-bottom:14px}
+  .it{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(15,27,36,.036);font-size:13.5px}
   .it:last-child{border-bottom:0}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-  .chip2{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12.5px}
+  .chip2{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(15,27,36,.068);font-size:12.5px}
   .chip2 button{background:none;border:0;color:var(--tx-3);padding:0;font-size:14px;line-height:1}
   .tl{position:relative;padding-left:18px}
-  .tl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:rgba(255,255,255,.1)}
+  .tl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:rgba(15,27,36,.085)}
   .tl .e{position:relative;padding:4px 0 12px;font-size:13px}
-  .tl .e::before{content:"";position:absolute;left:-17px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--c,#8b9bb0)}
-  .drop{display:block;padding:26px 18px;border-radius:16px;border:1.5px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.04);text-align:center;cursor:pointer;transition:border-color .25s,background .25s}
+  .tl .e::before{content:"";position:absolute;left:-17px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--c,#6B7A88)}
+  .drop{display:block;padding:26px 18px;border-radius:16px;border:1.5px dashed rgba(15,27,36,.212);background:rgba(15,27,36,.024);text-align:center;cursor:pointer;transition:border-color .25s,background .25s}
   .drop:hover,.drop.over{border-color:var(--mint);background:rgba(111,227,207,.06)}
-  .meter{height:14px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;margin:14px 0 8px}
+  .meter{height:14px;border-radius:999px;background:rgba(15,27,36,.085);overflow:hidden;margin:14px 0 8px}
   .meter div{height:100%;border-radius:999px;transition:width .6s var(--ease)}
-  .viewer{position:fixed;inset:0;z-index:70;background:rgba(20,26,34,.92);display:flex;flex-direction:column;animation:fadein .25s ease both}
-  .viewer header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .viewer{position:fixed;inset:0;z-index:70;color:#EEF3F6;background:rgba(10,16,20,.94);display:flex;flex-direction:column;animation:fadein .25s ease both}
+  .viewer header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.12)}
   .viewer iframe{flex:1;border:0;background:#fff;width:100%}
-  .bar{height:6px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:10px}
+  .bar{height:6px;border-radius:6px;background:rgba(15,27,36,.085);overflow:hidden;margin-top:10px}
   .bar div{height:100%;width:0;background:var(--mint);transition:width .2s}
   @media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.fic,.g2{grid-template-columns:minmax(0,1fr)}.pagehead h1{font-size:30px}}
 </style>
@@ -284,9 +285,9 @@ function vistaInformes(main) {
     ${avisoUso()}
     <div class="kpis">
       <div class="kpi"><b>${L.length}</b><span>Informes registrados</span></div>
-      <div class="kpi d1"><b style="color:#9ED6FA">${pend.length}</b><span>Presentados, en espera de respuesta</span></div>
-      <div class="kpi d2"><b style="color:#8FF0DE">${n('aprobado')}</b><span>Aprobados</span></div>
-      <div class="kpi d3"><b style="color:#FFCF73">${n('observado')}</b><span>Observados</span></div>
+      <div class="kpi d1"><b style="color:#1F79B8">${pend.length}</b><span>Presentados, en espera de respuesta</span></div>
+      <div class="kpi d2"><b style="color:#0B8C80">${n('aprobado')}</b><span>Aprobados</span></div>
+      <div class="kpi d3"><b style="color:#A8710A">${n('observado')}</b><span>Observados</span></div>
     </div>
     <div class="tools rise d2">
       <label class="sr" for="fQ">Buscar</label><input class="field" id="fQ" placeholder="Buscar por código, título, proveedor…" style="flex:1;min-width:220px" value="${esc(FIL.q)}">
@@ -309,7 +310,7 @@ function pintarTabla(main) {
   tb.innerHTML = lista.map((x, i) => `<tr class="rowbtn slide" data-id="${x.id}" style="animation-delay:${Math.min(i * 0.04, .6).toFixed(2)}s">
     <td><div class="cod">${esc(x.codigo)}${x.version > 1 ? ` · v${x.version}` : ''}</div><div class="ttl">${esc(x.titulo)}</div>${x.proveedor ? `<div class="sub">${esc(x.proveedor)}</div>` : ''}</td>
     <td style="font-size:13.5px">${esc(tipoLbl(x.tipo))}</td><td style="font-size:13.5px">${esc(x.dirigido || '—')}</td>
-    <td style="white-space:nowrap;font-size:13.5px">${fmtF(x.fecha)}</td><td class="num">${money(x.monto, x.moneda)}</td><td>${pill(x.estado)}${x.estado === 'aprobado' ? (x.aprobacion?.correo?.enviado ? '<div class="sub" style="color:#8FF0DE">✓ Correo enviado</div>' : '<div class="sub" style="color:#FFCF73">Correo pendiente</div>') : ''}</td></tr>`).join('')
+    <td style="white-space:nowrap;font-size:13.5px">${fmtF(x.fecha)}</td><td class="num">${money(x.monto, x.moneda)}</td><td>${pill(x.estado)}${x.estado === 'aprobado' ? (x.aprobacion?.correo?.enviado ? '<div class="sub" style="color:#0B8C80">✓ Correo enviado</div>' : '<div class="sub" style="color:#A8710A">Correo pendiente</div>') : ''}</td></tr>`).join('')
     || `<tr><td colspan="6" class="muted" style="padding:28px 20px">${L.length ? 'No hay informes que coincidan con el filtro.' : 'Aún no hay informes registrados.'}</td></tr>`;
   tb.querySelectorAll('[data-id]').forEach(r => r.onclick = () => ficha(r.dataset.id));
 }
@@ -622,7 +623,7 @@ function destTabla(x, ap = null) {
   const dir = contactoDe(x.dirigido);
   const enPara = (c) => yaPara ? yaPara.includes(c.id) : ((dir && dir.id === c.id) || rolDef(c) === 'para');
   const enCC = (c) => yaCC ? yaCC.includes(c.id) && !enPara(c) : (!enPara(c) && rolDef(c) === 'copia');
-  return `<div id="eDest" style="margin-top:10px;max-height:220px;overflow:auto;border:1px solid rgba(255,255,255,.1);border-radius:12px">
+  return `<div id="eDest" style="margin-top:10px;max-height:220px;overflow:auto;border:1px solid rgba(15,27,36,.085);border-radius:12px">
     <table class="table" style="font-size:13.5px"><thead><tr><th style="padding:10px 14px">Destinatario</th><th style="padding:10px 14px;text-align:center;width:70px">Para</th><th style="padding:10px 14px;text-align:center;width:70px">CC</th></tr></thead>
     <tbody>${conCorreo.map(c => `<tr><td style="padding:8px 14px"><div style="font-weight:500">${esc(c.nombre)}</div><div class="sub" style="margin:0">${esc(c.cargo || c.correo)}</div></td>
       <td style="padding:8px 14px;text-align:center"><input type="checkbox" class="eTo" value="${c.id}" aria-label="Para: ${esc(c.nombre)}" style="width:18px;height:18px;accent-color:var(--mint)" ${enPara(c) ? 'checked' : ''}></td>
@@ -710,12 +711,12 @@ function bloqueCorreo(ap) {
   const btn = (id, txt, pri) => `<button type="button" class="btn ${pri ? 'btn-primary' : ''}" id="${id}" style="height:36px;margin-top:8px;font-size:13px">${txt}</button>`;
   const enlace = (id, txt) => `<button type="button" id="${id}" style="background:none;border:0;padding:0;margin-top:8px;color:var(--mint-2);font-size:12.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer">${txt}</button>`;
   if (c.enviado) return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(111,227,207,.10);border:1px solid rgba(111,227,207,.35)">
-      <div style="color:#8FF0DE;font-weight:600">✓ Correo de aprobación enviado</div>
+      <div style="color:#0B8C80;font-weight:600">✓ Correo de aprobación enviado</div>
       <div class="sub" style="margin-top:2px">${fmtFH(c.enviado)}${c.para ? ' · Para: ' + esc(c.para) : ''}${c.cc ? ' · CC: ' + esc(c.cc) : ''}</div>
       ${(c.adjuntos || []).length ? `<div class="sub">Adjuntos: ${c.adjuntos.map(esc).join(' · ')}</div>` : ''}</div>
     ${enlace('bMail', 'Preparar nuevamente (reenvío)')}`;
   if (c.preparado) return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(245,185,74,.10);border:1px solid rgba(245,185,74,.35)">
-      <div style="color:#FFCF73;font-weight:600">Correo preparado · envío por registrar</div>
+      <div style="color:#A8710A;font-weight:600">Correo preparado · envío por registrar</div>
       <div class="sub" style="margin-top:2px">Preparado el ${fmtFH(c.preparado)}${c.para ? ' para ' + esc(c.para) : ''}</div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${btn('bEnv', 'Registrar envío', true)}${btn('bMail', 'Preparar nuevamente')}</div>`;
   return `<div style="display:flex;gap:8px;flex-wrap:wrap">${btn('bMail', 'Preparar correo de aprobación', true)}</div>${enlace('bEnv', 'Ya lo envié por otro medio: registrar envío')}`;
@@ -872,7 +873,7 @@ function vistaDestinatarios(main) {
     <div class="glass rise d3 tbl-wrap"><table class="table" style="min-width:720px">
       <thead><tr><th>Nombre</th><th>Cargo</th><th>Correo</th><th>Área</th><th>Por defecto</th><th></th></tr></thead>
       <tbody>${CONTACTOS.map(c => `<tr><td style="font-weight:500">${esc(c.nombre)}</td><td style="font-size:13.5px">${esc(c.cargo || '')}</td><td class="mono" style="font-size:12.5px">${esc(c.correo || '—')}</td>
-        <td style="font-size:13.5px">${esc(c.area || '')}</td><td>${rolDef(c) === 'para' ? '<span class="pill" style="background:rgba(124,200,248,.16);color:#9ED6FA">Para</span>' : rolDef(c) === 'copia' ? '<span class="pill" style="background:rgba(111,227,207,.16);color:#8FF0DE">Copia</span>' : ''}</td>
+        <td style="font-size:13.5px">${esc(c.area || '')}</td><td>${rolDef(c) === 'para' ? '<span class="pill" style="background:rgba(124,200,248,.16);color:#1F79B8">Para</span>' : rolDef(c) === 'copia' ? '<span class="pill" style="background:rgba(111,227,207,.16);color:#0B8C80">Copia</span>' : ''}</td>
         <td style="text-align:right">${ed ? `<button class="btn" data-ec="${c.id}" style="height:36px;font-size:12.5px">Editar</button>` : ''}</td></tr>`).join('')
         || '<tr><td colspan="6" class="muted" style="padding:28px 20px">Aún no hay destinatarios registrados.</td></tr>'}</tbody></table></div>`;
   if (main.querySelector('#bNC')) main.querySelector('#bNC').onclick = () => editarContacto(null);
@@ -913,7 +914,7 @@ function archivosDe(lista) {
 }
 function vistaAlmacen(main) {
   const f = fracUso(), pct = Math.min(f * 100, 100);
-  const col = f >= UMBRAL_CRITICO ? '#FF8F8F' : f >= UMBRAL_AVISO ? '#F5B94A' : '#6FE3CF';
+  const col = f >= UMBRAL_CRITICO ? '#D64545' : f >= UMBRAL_AVISO ? '#E0A020' : '#0B9A8B';
   const files = archivosDe(L);
   const activos = files.filter(z => !z.a.retirado);
   main.innerHTML = `

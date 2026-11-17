@@ -18,7 +18,7 @@ const IC = {
   print: I('M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z'), up: I('M12 16V4M6 10l6-6 6 6M4 20h16'), undo: I('M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8')
 };
 const FREC = {
-  U: { l: 'Única vez', c: '1', hex: '#c9a7ff' }, D: { l: 'Diario', c: 'D', hex: '#8b9bb0' }, S: { l: 'Semanal', c: 'S', hex: '#7cc8f8' }, M: { l: 'Mensual', c: 'M', hex: '#4aa3ff' },
+  U: { l: 'Única vez', c: '1', hex: '#8A5BD6' }, D: { l: 'Diario', c: 'D', hex: '#6B7A88' }, S: { l: 'Semanal', c: 'S', hex: '#2A8FCF' }, M: { l: 'Mensual', c: 'M', hex: '#2F7FE0' },
   TRI: { l: 'Trimestral', c: 'T', hex: '#f5b54a' }, SEM: { l: 'Semestral', c: 'SE', hex: '#ff9f5a' }, A: { l: 'Anual', c: 'A', hex: '#ff6b8a' }
 };
 const ORD_F = ['S', 'M', 'TRI', 'SEM', 'A', 'U'];
@@ -26,7 +26,7 @@ const MESES_F = { M: 1, TRI: 3, SEM: 6, A: 12 };
 const CONDS = ['Operando', 'Parada corta', 'Parado', 'Energizado', 'Desenergizado', 'Lado agua aislado'];
 const ROLES = ['Frigorista', 'Mecánico', 'Electricista', 'Soldador', 'Op. calderos', 'Op. ósmosis', 'Tercero'];
 const EST = {
-  hecho: { l: 'Ejecutado', hex: '#2ec4a6' }, no: { l: 'No ejecutado', hex: '#8b9bb0' },
+  hecho: { l: 'Ejecutado', hex: '#2ec4a6' }, no: { l: 'No ejecutado', hex: '#6B7A88' },
   atrasada: { l: 'Atrasada', hex: '#ff6b6b' }, pendiente: { l: 'Programada', hex: '#f5b54a' }
 };
 const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
@@ -71,7 +71,7 @@ const pasaFiltro = (t) => (!FIL.rol || (t.resp || {})[FIL.rol] != null) && (FIL.
 const CSS = `
 .pv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
 .pv-kpi{background:var(--pp-card);border:1px solid var(--pp-line);border-radius:14px;padding:14px 16px;position:relative;overflow:hidden}
-.pv-kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,#3bb4e5)}
+.pv-kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,#1B86C4)}
 .pv-kpi .l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-3);font-weight:600}
 .pv-kpi .v{font-family:var(--f-display);font-size:28px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
 .pv-kpi .v small{font-size:14px;color:var(--tx-3)}
@@ -80,8 +80,8 @@ const CSS = `
 .pv-tabs{display:flex;gap:4px 26px;flex-wrap:wrap;border-bottom:1px solid var(--pp-line);margin:18px 0 16px}
 .pv-tabs button{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 2px 11px;color:var(--tx-3);font:600 14.5px var(--f-display);cursor:pointer;transition:color .2s,border-color .2s}
 .pv-tabs button:hover{color:var(--tx)}
-.pv-tabs button.on{color:#fff;border-bottom-color:var(--pp-acc)}
-.pv-tb{display:flex;flex-wrap:wrap;gap:14px 0;align-items:stretch;padding:12px 6px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--pp-line);margin-bottom:14px}
+.pv-tabs button.on{color:var(--tx);border-bottom-color:var(--pp-acc)}
+.pv-tb{display:flex;flex-wrap:wrap;gap:14px 0;align-items:stretch;padding:12px 6px;border-radius:14px;background:rgba(15,27,36,.024);border:1px solid var(--pp-line);margin-bottom:14px}
 .pv-blk{display:flex;flex-direction:column;gap:7px;padding:0 16px;min-width:0}
 .pv-blk+.pv-blk{border-left:1px solid var(--pp-line)}
 .pv-blk.der{margin-left:auto}
@@ -99,7 +99,7 @@ const CSS = `
 .pv-sec{margin:18px 0 8px;font-family:var(--f-display);font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px}
 .pv-sec span{font-family:var(--f-mono);font-size:12px;color:var(--tx-3);font-weight:400}
 .pv-eq{margin-bottom:10px;border:1px solid var(--pp-line);border-radius:14px;background:var(--pp-card);overflow:hidden}
-.pv-eqh{display:flex;align-items:baseline;gap:10px;padding:10px 14px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--pp-line);flex-wrap:wrap}
+.pv-eqh{display:flex;align-items:baseline;gap:10px;padding:10px 14px;background:rgba(15,27,36,.018);border-bottom:1px solid var(--pp-line);flex-wrap:wrap}
 .pv-eqh b{font-family:var(--f-mono);font-size:13px;color:var(--mint-2);font-weight:500}
 .pv-eqh span{font-size:13.5px}.pv-eqh small{margin-left:auto;font-size:12px;color:var(--tx-3)}
 .pv-it{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--pp-line)}
@@ -113,37 +113,37 @@ const CSS = `
 .pv-st{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
 .pv-st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .pv-meta{font-size:11.5px;color:var(--tx-3);text-align:right;margin-top:3px}
-.pv-seg{display:inline-flex;border:1px solid var(--pp-line);border-radius:999px;padding:3px;background:rgba(255,255,255,.04)}
+.pv-seg{display:inline-flex;border:1px solid var(--pp-line);border-radius:999px;padding:3px;background:rgba(15,27,36,.024)}
 .pv-seg button{border:0;background:transparent;color:var(--tx-2);padding:7px 14px;border-radius:999px;font:500 13px var(--f-body);cursor:pointer}
 .pv-seg button.on{background:linear-gradient(120deg,var(--pp-acc2),var(--pp-acc));color:#fff}
 .pv-gwrap{overflow-x:auto;border-radius:10px;max-height:72vh;overflow-y:auto}
 .pv-gantt{position:relative}
 .pv-grow{display:grid;grid-template-columns:440px minmax(0,1fr);align-items:stretch;border-bottom:1px solid var(--pp-line)}
-.pv-grow:hover{background:rgba(255,255,255,.025)}
-.pv-gname{padding:9px 12px;font-size:13px;line-height:1.4;position:sticky;left:0;background:#3a4755;z-index:2;border-right:1px solid var(--pp-line)}
+.pv-grow:hover{background:rgba(15,27,36,.015)}
+.pv-gname{padding:9px 12px;font-size:13px;line-height:1.4;position:sticky;left:0;background:#F6F8FA;z-index:2;border-right:1px solid var(--pp-line)}
 .pv-gact{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;align-items:start}
 .pv-gact .pv-f{width:28px;height:26px;font-size:10.5px}
 .pv-gact .c{font-family:var(--f-mono);font-size:11px;color:var(--tx-3)}
 .pv-gact .x{font-size:13px;margin:2px 0;white-space:normal}
-.pv-geq{background:rgba(59,180,229,.06)}
-.pv-geq .pv-gname{background:#3d4c5c;font-family:var(--f-display);font-weight:600;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.pv-geq{background:rgba(27,134,196,.06)}
+.pv-geq .pv-gname{background:#EEF2F5;font-family:var(--f-display);font-weight:600;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .pv-geq .pv-gname b{font-family:var(--f-mono);font-weight:500;color:var(--mint-2);font-size:12.5px}
 .pv-geq .pv-gname .r{margin-left:auto;font:400 11px var(--f-body);color:var(--tx-3)}
 .pv-gtrack{position:relative;min-height:40px}
 .pv-gb{position:absolute;top:50%;transform:translateY(-50%);height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font:700 10.5px var(--f-mono);color:#14202b;cursor:pointer;white-space:nowrap;overflow:hidden;padding:0 4px;transition:filter .2s,transform .2s}
 .pv-gb:hover{filter:brightness(1.12);transform:translateY(-50%) scaleY(1.08)}
-.pv-gb.atrasada{color:#fff}.pv-gb.no{color:#cfd8e3}
+.pv-gb.atrasada{color:#fff}.pv-gb.no{color:#3A4955}
 .pv-gb.orig{border:1.5px dashed #f5b54a;color:#f5b54a;cursor:default}
 .pv-gb.oh{background:#b4232c;color:#fff;cursor:default}
-.pv-ghead{position:sticky;top:0;z-index:4;background:#3E4C5D}
-.pv-ghead .pv-gname{background:#3E4C5D;font:600 11.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--tx-3);display:flex;align-items:flex-end}
+.pv-ghead{position:sticky;top:0;z-index:4;background:#F6F8FA}
+.pv-ghead .pv-gname{background:#F6F8FA;font:600 11.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--tx-3);display:flex;align-items:flex-end}
 .pv-gmonths,.pv-gweeks{position:relative;height:24px}
 .pv-gmonths{border-bottom:1px solid var(--pp-line)}
 .pv-gmonths div,.pv-gweeks div{position:absolute;top:0;height:100%;font-size:11px;color:var(--tx-3);padding:5px 6px;border-left:1px solid var(--pp-line);white-space:nowrap;overflow:hidden}
 .pv-gmonths div{color:var(--tx);font-weight:700}
-.pv-gweeks div.hoy{color:#7cc8f8;font-weight:700}
+.pv-gweeks div.hoy{color:#2A8FCF;font-weight:700}
 .pv-gvl{position:absolute;top:48px;bottom:0;left:440px;right:0;pointer-events:none;z-index:1}
-.pv-gvl div{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(255,255,255,.07)}
+.pv-gvl div{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(15,27,36,.042)}
 .pv-gvl .hoy{border-left:2px solid var(--pp-atr);z-index:3}
 .pv-gvl .hoy span{position:absolute;top:2px;left:4px;background:var(--pp-atr);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px}
 @media (max-width:820px){.pv-grow{grid-template-columns:260px minmax(0,1fr)}.pv-gvl{left:260px}}
@@ -151,7 +151,7 @@ const CSS = `
 .pv-leg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
 .pv-eqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:12px}
 .pv-ec{text-align:left;color:var(--tx);cursor:pointer;padding:14px 16px;border-radius:14px;background:var(--pp-card);border:1px solid var(--pp-line);transition:border-color .2s,transform .2s}
-.pv-ec:hover{border-color:rgba(59,180,229,.5);transform:translateY(-2px)}
+.pv-ec:hover{border-color:rgba(27,134,196,.5);transform:translateY(-2px)}
 .pv-ec b{font-family:var(--f-mono);font-size:12.5px;color:var(--mint-2);font-weight:500}
 .pv-ec h4{margin:3px 0 8px;font-family:var(--f-display);font-weight:600;font-size:15px}
 .pv-ec .n{display:flex;gap:14px;font-size:12px;color:var(--tx-3)}
@@ -165,7 +165,7 @@ const CSS = `
 .pv-car{display:grid;gap:12px}
 .pv-bar{display:grid;grid-template-columns:120px minmax(0,1fr) 80px;gap:10px;align-items:center;font-size:12.5px}
 .pv-bars{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;align-items:end;height:90px}
-.pv-bars div{background:linear-gradient(180deg,#3bb4e5,#1e5aa8);border-radius:4px 4px 0 0;position:relative;min-height:2px}
+.pv-bars div{background:linear-gradient(180deg,#1B86C4,#1e5aa8);border-radius:4px 4px 0 0;position:relative;min-height:2px}
 .pv-bars div span{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:10px;color:var(--tx-3)}
 .pv-bars div.sobre{background:linear-gradient(180deg,#ff6b6b,#b4232c)}
 .pv-mes{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;font-size:10.5px;color:var(--tx-3);text-align:center;margin-top:4px}
@@ -173,7 +173,7 @@ const CSS = `
 .pv-cap .ln{position:absolute;left:0;right:0;border-top:1.5px dashed #ff6b6b}
 .pv-vacio{padding:42px 26px;text-align:center}
 .pv-rr{display:grid;grid-template-columns:minmax(0,1fr) 90px 36px;gap:8px;margin-bottom:8px}
-.pv-man{display:inline-block;font:600 10px var(--f-mono);letter-spacing:.06em;color:#c9a7ff;border:1px solid rgba(201,167,255,.45);border-radius:6px;padding:1px 5px;margin-left:6px;vertical-align:1px}
+.pv-man{display:inline-block;font:600 10px var(--f-mono);letter-spacing:.06em;color:#8A5BD6;border:1px solid rgba(138,91,214,.4);border-radius:6px;padding:1px 5px;margin-left:6px;vertical-align:1px}
 .pv-vacio h2{font-family:var(--f-display);font-weight:600;font-size:22px;margin:0 0 10px}
 @media (max-width:820px){.pv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-it{grid-template-columns:34px minmax(0,1fr)}.pv-acc{grid-column:1/-1;justify-content:flex-start}.pv-meta{text-align:left}}
 `;
@@ -373,7 +373,7 @@ function itemHtml(o, conSemana = false) {
     acc.push(`<span class="pv-st" style="color:${st.hex};background:${st.hex}22">${st.l}</span>`);
     if (gestiona()) acc.push(`<button class="btn" data-a="undo" title="Deshacer">${IC.undo}</button>`);
   } else if (ejecuta()) {
-    acc.push(`<button class="btn" data-a="ok" style="color:#8ff0de">${IC.ok}Ejecutado</button>`);
+    acc.push(`<button class="btn" data-a="ok" style="color:#0B8C80">${IC.ok}Ejecutado</button>`);
     if (gestiona()) acc.push(`<button class="btn" data-a="rep" title="Reprogramar">${IC.rep}</button><button class="btn" data-a="no" title="No ejecutado">${IC.no}</button>`);
   } else acc.push(`<span class="pv-st" style="color:${st.hex};background:${st.hex}22">${st.l}</span>`);
   const meta = o.e?.estado === 'hecho' || o.e?.estado === 'no' ? `${o.e.estado === 'hecho' ? corto(o.e.fecha) : ''} · ${esc(o.e.por || '')}${o.e.obs ? ' · ' + esc(o.e.obs) : ''}`
@@ -411,7 +411,7 @@ function vSemana(box) {
       `<div class="pv-blk der"><span class="lb">Acciones</span><div class="fila"><button class="btn pp-btn" id="pvOT" ${sem.length ? '' : 'disabled'}>${IC.print}Orden de trabajo</button></div></div>`)}
     ${Object.keys(hh).length ? `<div class="pp-resp" style="margin-bottom:6px">${Object.entries(hh).map(([r, v]) => `<div><b>${v.toFixed(1).replace('.', ',')}</b><span>HH ${esc(r)}</span></div>`).join('')}</div>` : ''}
     ${ev.map(x => `<div class="alert warn" style="margin-top:10px"><b>${esc(x.eq)}</b> · ${esc(x.texto)}</div>`).join('')}
-    ${atr.length ? `<div class="pv-sec" style="color:#ffb3b3">Atrasadas <span>${atr.length}</span></div>${grupoEquipos(atr, true)}` : ''}
+    ${atr.length ? `<div class="pv-sec" style="color:#C23B3B">Atrasadas <span>${atr.length}</span></div>${grupoEquipos(atr, true)}` : ''}
     <div class="pv-sec">Programadas para la semana <span>${sem.length}</span></div>
     ${sem.length ? grupoEquipos(sem) : '<div class="pp-card muted" style="text-align:center;padding:24px">No hay tareas programadas con este filtro.</div>'}`;
   box.querySelector('#pvAnt').onclick = () => { SEL = masSem(SEL, -1); vSemana(box); };
@@ -503,10 +503,10 @@ function ordenTrabajo(lista) {
     .cab .t b{font-size:13pt;text-transform:uppercase;color:#1E3A5C;display:block}.cab .d{font-size:8.5pt;line-height:1.6}
     h3{background:#1E3A5C;color:#fff;font-size:9.5pt;padding:1.6mm 2.5mm;margin:5mm 0 0;text-transform:uppercase;letter-spacing:.5pt}
     h3 span{float:right;font-weight:400;text-transform:none}
-    table{width:100%;border-collapse:collapse}th{background:#EEF2F6;color:#1E3A5C;font-size:8pt;border:.6pt solid #9AA8B6;padding:1.3mm}
-    td{border:.6pt solid #9AA8B6;padding:1.3mm 1.6mm;vertical-align:top;font-size:8.4pt}td.c{text-align:center}small{color:#4A5866;font-size:7.4pt}
-    tr{break-inside:avoid}.bx{display:inline-block;width:4mm;height:4mm;border:.8pt solid #33414F}
-    .fir{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-top:10mm}.fir div{border-top:.8pt solid #33414F;padding-top:1.5mm;text-align:center;font-size:8.5pt}
+    table{width:100%;border-collapse:collapse}th{background:#EEF2F6;color:#1E3A5C;font-size:8pt;border:.6pt solid #6B7A88;padding:1.3mm}
+    td{border:.6pt solid #6B7A88;padding:1.3mm 1.6mm;vertical-align:top;font-size:8.4pt}td.c{text-align:center}small{color:#4A5866;font-size:7.4pt}
+    tr{break-inside:avoid}.bx{display:inline-block;width:4mm;height:4mm;border:.8pt solid #FFFFFF}
+    .fir{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-top:10mm}.fir div{border-top:.8pt solid #FFFFFF;padding-top:1.5mm;text-align:center;font-size:8.5pt}
   </style></head><body>
     <div class="cab"><div><img src="${logo}" alt=""></div><div class="t"><b>Orden de trabajo preventiva</b>Departamento de Mantenimiento · Planta Paita</div>
       <div class="d"><b>Semana:</b> ${numSem(SEL)} · ${rango(SEL)}<br><b>Tareas:</b> ${lista.length}<br><b>Emitida:</b> ${corto(hoyIso())} · ${esc(usuario())}</div></div>
@@ -569,7 +569,7 @@ function vCalendario(box) {
   const txtEst = (o, orig) => orig ? 'Reprogramada' : o.est === 'hecho' ? 'Ejecutada' : o.est === 'atrasada' ? 'Atrasada' : o.est === 'no' ? 'No ejecutada' : 'Programada';
   const barra = (t, m) => {
     const f = FREC[t.frec], o = m.o, est = m.orig ? 'orig' : o.est;
-    const bg = est === 'hecho' ? '#2ec4a6' : est === 'atrasada' ? '#ff6b6b' : est === 'no' ? '#5d6b79' : f.hex;
+    const bg = est === 'hecho' ? '#2ec4a6' : est === 'atrasada' ? '#D64545' : est === 'no' ? '#5d6b79' : f.hex;
     const lbl = !etiqueta ? (o.est === 'hecho' && !m.orig ? '✓' : f.c)
       : o.est === 'hecho' && !m.orig ? `✓ ${f.c}${o.e?.fecha ? ' · ' + corto(o.e.fecha) : ''}` : `${f.c} · ${txtEst(o, m.orig)}`;
     return `<div class="pv-gb ${est}" ${m.orig ? '' : `data-t="${t.id}" data-s="${o.s}"`} style="left:calc(${pos(m.s)}% + 2px);width:calc(${100 / n}% - 4px);background:${est === 'orig' ? 'transparent' : bg}" title="${esc(f.l)} · ${txtEst(o, m.orig)} · semana del ${corto(m.s)}${o.reprog && !m.orig ? ` (reprogramada desde ${corto(o.s)})` : ''}">${lbl}</div>`;

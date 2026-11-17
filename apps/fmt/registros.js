@@ -14,33 +14,33 @@ const CSS = `
 .rg-f .field{height:42px;font-size:14px;border-radius:10px;padding:0 12px}
 .rg-f select.field{padding-right:32px;background-position:right 10px center}
 .rg-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:14px}
-.rg-tabs button{flex-shrink:0;height:40px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#D5DDE5;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:8px}
+.rg-tabs button{flex-shrink:0;height:40px;padding:0 16px;border-radius:999px;border:1px solid rgba(15,27,36,.119);background:rgba(15,27,36,.03);color:#3A4955;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:8px}
 .rg-tabs button.on{background:var(--mint);border-color:var(--mint);color:var(--mint-ink)}
-.rg-tabs button i{font-style:normal;font-size:12px;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.18)}
+.rg-tabs button i{font-style:normal;font-size:12px;padding:1px 8px;border-radius:999px;background:rgba(15,27,36,.08)}
 .rg-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:12px}
-.rg-c{display:flex;flex-direction:column;gap:8px;text-align:left;padding:16px 18px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);color:var(--tx);transition:transform .2s var(--ease),border-color .2s;animation:rise .5s var(--ease) both}
-.rg-c:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.26)}
+.rg-c{display:flex;flex-direction:column;gap:8px;text-align:left;padding:16px 18px;border-radius:18px;background:#FFFFFF;border:1px solid var(--line);box-shadow:var(--sombra);color:var(--tx);transition:transform .2s var(--ease),border-color .2s;animation:rise .5s var(--ease) both}
+.rg-c:hover{transform:translateY(-2px);border-color:rgba(15,27,36,.221)}
 .rg-c .r1{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .rg-c .nro{font-family:var(--f-mono);font-size:12.5px;color:var(--mint-2)}
 .rg-c b{font-weight:500;font-size:15px;line-height:1.3}
 .rg-c .mt{font-size:13px;color:var(--tx-2);line-height:1.45}
 .rg-c .eqs{display:flex;flex-wrap:wrap;gap:6px}
-.rg-c .eqs span{font-family:var(--f-mono);font-size:11.5px;padding:3px 8px;border-radius:7px;background:rgba(255,255,255,.08);color:var(--tx-2)}
-.al-b{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(255,143,143,.15);color:#FFB3B3}
+.rg-c .eqs span{font-family:var(--f-mono);font-size:11.5px;padding:3px 8px;border-radius:7px;background:rgba(15,27,36,.068);color:var(--tx-2)}
+.al-b{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(255,143,143,.15);color:#C23B3B}
 .rg-d{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:22px;align-items:start}
-.rg-d .panel{padding:20px;border-radius:20px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);margin-bottom:14px}
+.rg-d .panel{padding:20px;border-radius:20px;background:#FFFFFF;border:1px solid var(--line);box-shadow:var(--sombra);margin-bottom:14px}
 .rg-d .panel h3{margin:0 0 12px;font-family:var(--f-display);font-weight:600;font-size:15px}
 .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;font-size:14px}
 .kv span{color:var(--tx-3)}
-.rg-prev{border-radius:18px;background:#56626F;border:1px solid rgba(255,255,255,.12);padding:14px;overflow:hidden;position:sticky;top:16px}
+.rg-prev{border-radius:18px;background:#DDE3E9;border:1px solid rgba(15,27,36,.102);padding:14px;overflow:hidden;position:sticky;top:16px}
 .hist{list-style:none;margin:0;padding:0}
 .hist li{position:relative;padding:0 0 14px 22px;font-size:13.5px;line-height:1.45}
 .hist li::before{content:"";position:absolute;left:5px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--mint)}
-.hist li::after{content:"";position:absolute;left:8.5px;top:16px;bottom:0;width:1px;background:rgba(255,255,255,.15)}
+.hist li::after{content:"";position:absolute;left:8.5px;top:16px;bottom:0;width:1px;background:rgba(15,27,36,.128)}
 .hist li:last-child::after{display:none}
-.hist li.obs::before{background:#FF8F8F}
+.hist li.obs::before{background:#D64545}
 .hist small{display:block;color:var(--tx-3);font-size:12px}
-.rel{display:block;padding:12px 14px;border-radius:12px;background:rgba(14,22,30,.28);text-decoration:none;color:inherit;font-size:13.5px;margin-bottom:8px;line-height:1.45}
+.rel{display:block;padding:12px 14px;border-radius:12px;background:rgba(15,27,36,.028);text-decoration:none;color:inherit;font-size:13.5px;margin-bottom:8px;line-height:1.45}
 .rel b{font-family:var(--f-mono);font-size:12.5px;color:var(--mint-2);font-weight:500}
 .acc{display:flex;gap:10px;flex-wrap:wrap}
 @media (max-width:1100px){.rg-d{grid-template-columns:minmax(0,1fr)}.rg-prev{position:static}}
@@ -48,11 +48,11 @@ const CSS = `
 `;
 
 const EST = {
-  enviado:   { label: 'Por revisar', bg: 'rgba(245,185,74,.16)', fg: '#FFCF73' },
-  observado: { label: 'Observado',   bg: 'rgba(255,143,143,.14)', fg: '#FFB3B3' },
-  aprobado:  { label: 'Aprobado',    bg: 'rgba(111,227,207,.16)', fg: '#8FF0DE' }
+  enviado:   { label: 'Por revisar', bg: 'rgba(245,185,74,.16)', fg: '#A8710A' },
+  observado: { label: 'Observado',   bg: 'rgba(255,143,143,.14)', fg: '#C23B3B' },
+  aprobado:  { label: 'Aprobado',    bg: 'rgba(111,227,207,.16)', fg: '#0B8C80' }
 };
-const pill = (e) => { const x = EST[e] || { label: e, bg: 'rgba(255,255,255,.08)', fg: '#DDE4EB' }; return `<span class="pill" style="background:${x.bg};color:${x.fg}">${x.label}</span>`; };
+const pill = (e) => { const x = EST[e] || { label: e, bg: 'rgba(15,27,36,.068)', fg: '#3A4955' }; return `<span class="pill" style="background:${x.bg};color:${x.fg}">${x.label}</span>`; };
 
 let A = null, MAIN = null;
 let S = { tab: null, mes: fechaISO(new Date()).slice(0, 7), formato: '', q: '', mios: null };
@@ -216,7 +216,7 @@ function pintarDetalle() {
           ${durs.map(c => `<span>${esc(c.etiqueta)}</span><div>${esc(duracionTxt(r.dur[c.id]))}</div>`).join('')}
           ${r.estado === 'aprobado' ? `<span>Aprobado por</span><div>${esc(r.aprobadoPorNombre || '')}</div>` : ''}
         </div></div>
-        ${(r.alertas || []).length ? `<div class="panel"><h3>Alertas</h3><ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.55;color:#FFD0D0">${r.alertas.map(a => `<li>${esc(a)}</li>`).join('')}</ul>${r.observaciones ? `<div style="margin-top:10px;font-size:13.5px;color:var(--tx-2)"><b style="color:var(--tx)">Acción correctiva:</b> ${esc(r.observaciones)}</div>` : ''}</div>` : ''}
+        ${(r.alertas || []).length ? `<div class="panel"><h3>Alertas</h3><ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.55;color:#B03030">${r.alertas.map(a => `<li>${esc(a)}</li>`).join('')}</ul>${r.observaciones ? `<div style="margin-top:10px;font-size:13.5px;color:var(--tx-2)"><b style="color:var(--tx)">Acción correctiva:</b> ${esc(r.observaciones)}</div>` : ''}</div>` : ''}
         ${relacionadosHtml(r)}
         <div class="panel"><h3>Historial</h3><ul class="hist">${(r.historial || []).map(h => `<li class="${h.estado === 'observado' ? 'obs' : ''}"><b>${esc((EST[h.estado] || {}).label === 'Por revisar' ? 'Enviado' : (EST[h.estado] || {}).label || h.estado)}</b> · ${esc(h.usuario || '')}<small>${esc(new Date(h.fechaHora).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }))}${h.comentario ? ' · ' + esc(h.comentario) : ''}</small></li>`).join('')}</ul></div>
       </div>

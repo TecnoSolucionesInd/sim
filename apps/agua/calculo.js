@@ -96,7 +96,9 @@ export function trasvase(a, b, prod, cons, P) {
   const exceso = sube + (ok(cons) ? cons : 0) - Math.max(0, ok(prod) ? prod : 0);   // lo que entró al pozo de producción sin venir de la ósmosis
   const bajan = otros.map(p => ({ id: p.id, nombre: p.nombre, baja: a.pozos[p.id].vol - b.pozos[p.id].vol, queda: b.pozos[p.id].vol, vacio: b.pozos[p.id].pct <= 0.1 }));
   const totalBaja = suma(bajan, x => Math.max(0, x.baja));
-  if (!(exceso > Math.max(3, capacidad(pp) * 0.03)) || !(totalBaja > 2 || bajan.every(x => x.vacio))) return null;
+  const umbral = Math.max(3, capacidad(pp) * 0.03);
+  // debe SUBIR de verdad: si solo baja menos de lo esperado no se considera trasvase
+  if (!(sube > umbral) || !(exceso > umbral) || !(totalBaja > 2 || bajan.every(x => x.vacio))) return null;
   return { pozo: pp.nombre, sube, exceso, desde: bajan.filter(x => x.baja > 0.5 || x.vacio), totalBaja, vacios: bajan.every(x => x.vacio) };
 }
 

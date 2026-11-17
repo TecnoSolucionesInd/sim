@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Carga de datos · Costos · SIM</title>
 <link rel="stylesheet" href="../../core/sim.css">
+<link rel="stylesheet" href="../../core/tema-claro.css">
 <style>
   .wrap{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:48px 20px 80px}
-  .drop{margin-top:26px;padding:36px 24px;border-radius:22px;border:1.5px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.04);text-align:center;transition:border-color .25s,background .25s;cursor:pointer}
+  .drop{margin-top:26px;padding:36px 24px;border-radius:22px;border:1.5px dashed rgba(15,27,36,.212);background:rgba(15,27,36,.024);text-align:center;transition:border-color .25s,background .25s;cursor:pointer}
   .drop:hover,.drop.over{border-color:var(--mint);background:rgba(111,227,207,.06)}
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-top:22px}
-  .k{padding:16px 18px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+  .k{padding:16px 18px;border-radius:16px;background:#FFFFFF;border:1px solid var(--line);box-shadow:var(--sombra)}
   .k b{display:block;font-family:var(--f-display);font-size:24px;font-weight:600}
   .k span{font-size:12.5px;color:var(--tx-3)}
 </style>
@@ -26,7 +27,7 @@
   <div id="gate" class="glass" style="padding:28px;margin-top:26px"><div class="spinner"></div></div>
   <div id="panel" hidden>
     <label class="drop rise d2" id="drop" for="file">
-      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#8FF0DE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0B8C80" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
       <div style="font-family:var(--f-display);font-weight:600;font-size:18px;margin-top:12px">Seleccionar archivo</div>
       <div class="muted" style="font-size:14px;margin-top:6px">.html del aplicativo de Costos o .json de datos</div>
       <input type="file" id="file" accept=".html,.htm,.json" class="sr">

@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Equipos · SIM</title>
 <link rel="stylesheet" href="../../core/sim.css">
+<link rel="stylesheet" href="../../core/tema-claro.css">
 <style>
   .pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
   .pagehead h1{font-size:36px;margin-top:12px}
   .acciones{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
-  .kpi{padding:18px 20px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1)}
+  .kpi{padding:18px 20px;border-radius:18px;background:#FFFFFF;border:1px solid var(--line);box-shadow:var(--sombra)}
   .kpi span{display:block;font-size:12.5px;color:var(--tx-3)}
   .kpi b{display:block;font-family:var(--f-display);font-weight:600;font-size:28px;margin-top:6px}
   .filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
@@ -18,16 +19,16 @@
   .field.sm{height:40px;font-size:14px;padding:0 12px;border-radius:10px}
   select.field.sm{padding-right:32px;background-position:right 10px center}
   .btn.sm{height:38px;padding:0 14px;font-size:13px;border-radius:10px}
-  .lista{border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);overflow:hidden}
-  .fila{display:grid;grid-template-columns:130px minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 60px 150px;gap:14px;align-items:center;padding:13px 20px;border-bottom:1px solid rgba(255,255,255,.06);text-align:left;width:100%;background:transparent;border-left:0;border-right:0;border-top:0;color:var(--tx);font-size:14px;transition:background .2s}
-  .fila:hover{background:rgba(255,255,255,.04)}
+  .lista{border-radius:20px;background:#FFFFFF;border:1px solid var(--line);box-shadow:var(--sombra);overflow:hidden}
+  .fila{display:grid;grid-template-columns:130px minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 60px 150px;gap:14px;align-items:center;padding:13px 20px;border-bottom:1px solid rgba(15,27,36,.036);text-align:left;width:100%;background:transparent;border-left:0;border-right:0;border-top:0;color:var(--tx);font-size:14px;transition:background .2s}
+  .fila:hover{background:rgba(15,27,36,.024)}
   .fila.hd{font-family:var(--f-mono);font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--tx-3);cursor:default;padding:14px 20px}
   .fila.hd:hover{background:transparent}
   .fila .c{font-family:var(--f-mono);font-size:13px;color:var(--mint-2)}
   .fila .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .fila .s{color:var(--tx-2);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .crit{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;font-family:var(--f-mono);font-size:13px;font-weight:600}
-  .crit.A{background:rgba(255,143,143,.16);color:#FFB3B3}.crit.B{background:rgba(245,185,74,.16);color:#FFCF73}.crit.C{background:rgba(255,255,255,.08);color:#C3CDD8}
+  .crit.A{background:rgba(255,143,143,.16);color:#C23B3B}.crit.B{background:rgba(245,185,74,.16);color:#A8710A}.crit.C{background:rgba(15,27,36,.068);color:#465662}
   .mas{display:flex;justify-content:center;padding:16px}
   .vacio{padding:48px 28px;text-align:center}
   .vacio h2{font-family:var(--f-display);font-weight:600;font-size:22px;margin:0 0 10px}
@@ -35,29 +36,29 @@
   .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
   .ficha{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:22px}
   .lado h4{margin:0 0 10px;font-family:var(--f-display);font-weight:600;font-size:14px}
-  .lado .it{padding:10px 12px;border-radius:12px;background:rgba(14,22,30,.28);margin-bottom:8px;font-size:13px;line-height:1.45}
+  .lado .it{padding:10px 12px;border-radius:12px;background:rgba(15,27,36,.028);margin-bottom:8px;font-size:13px;line-height:1.45}
   .lado .it b{font-family:var(--f-mono);font-size:12px;color:var(--mint-2);font-weight:500}
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));gap:18px}
-  .panel{padding:22px;border-radius:20px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1)}
+  .panel{padding:22px;border-radius:20px;background:#FFFFFF;border:1px solid var(--line);box-shadow:var(--sombra)}
   .panel h3{margin:0 0 6px;font-family:var(--f-display);font-weight:600;font-size:17px}
   .panel p{margin:0 0 16px;color:var(--tx-2);font-size:13.5px;line-height:1.55}
-  .prev{max-height:420px;overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.1)}
+  .prev{max-height:420px;overflow:auto;border-radius:14px;border:1px solid rgba(15,27,36,.085)}
   .prev table{width:100%;border-collapse:collapse;font-size:13px}
-  .prev th{position:sticky;top:0;background:#3A4757;font-family:var(--f-mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tx-3);text-align:left;padding:10px 12px;font-weight:500}
-  .prev td{padding:9px 12px;border-top:1px solid rgba(255,255,255,.06);vertical-align:top}
+  .prev th{position:sticky;top:0;background:#FFFFFF;font-family:var(--f-mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--tx-3);text-align:left;padding:10px 12px;font-weight:500}
+  .prev td{padding:9px 12px;border-top:1px solid rgba(15,27,36,.036);vertical-align:top}
   .st{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
-  .st.n{background:rgba(111,227,207,.16);color:#8FF0DE}.st.u{background:rgba(169,180,255,.16);color:#C5CCFF}.st.e{background:rgba(255,143,143,.14);color:#FFB3B3}.st.o{background:rgba(255,255,255,.08);color:#C3CDD8}
+  .st.n{background:rgba(111,227,207,.16);color:#0B8C80}.st.u{background:rgba(169,180,255,.16);color:#4753C4}.st.e{background:rgba(255,143,143,.14);color:#C23B3B}.st.o{background:rgba(15,27,36,.068);color:#465662}
   .resumen{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0;font-size:13.5px}
-  .codbox{display:flex;align-items:center;font-family:var(--f-mono);font-size:17px;letter-spacing:.5px;color:var(--mint-2);background:rgba(14,22,30,.22);cursor:default}
+  .codbox{display:flex;align-items:center;font-family:var(--f-mono);font-size:17px;letter-spacing:.5px;color:var(--mint-2);background:rgba(15,27,36,.022);cursor:default}
   .codbox.vac{color:var(--tx-3);font-size:14px;letter-spacing:0}
   .hint{font-size:12px;color:var(--tx-3);margin-top:6px;line-height:1.45}
   .sigrow{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--amber-2)}
   .sigrow input{width:86px;height:36px;font-size:14px;padding:0 10px;border-radius:9px;text-transform:uppercase}
-  details.motor{border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px 16px;background:rgba(14,22,30,.14)}
+  details.motor{border:1px solid rgba(15,27,36,.085);border-radius:14px;padding:12px 16px;background:rgba(15,27,36,.014)}
   details.motor summary{cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:14px}
   .tabla{width:100%;border-collapse:collapse;font-size:14px}
   .tabla th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--tx-3);text-align:left;padding:12px 16px;font-weight:500}
-  .tabla td{padding:11px 16px;border-top:1px solid rgba(255,255,255,.06)}
+  .tabla td{padding:11px 16px;border-top:1px solid rgba(15,27,36,.036)}
   .tabla td.mono{font-family:var(--f-mono);color:var(--mint-2)}
   .tabla tr.sin td{color:var(--amber-2)}
   @media (max-width:1100px){
@@ -223,7 +224,7 @@ function vistaBase(main) {
       <div class="kpi"><span>Equipos activos</span><b>${act.length}</b></div>
       <div class="kpi"><span>Operativos</span><b style="color:var(--mint-2)">${act.filter(e => (e.estado || 'operativo') === 'operativo').length}</b></div>
       <div class="kpi"><span>Fuera de servicio</span><b style="color:var(--amber-2)">${act.filter(e => e.estado === 'fuera').length}</b></div>
-      <div class="kpi"><span>Criticidad A</span><b style="color:#FFB3B3">${act.filter(e => e.criticidad === 'A').length}</b></div>
+      <div class="kpi"><span>Criticidad A</span><b style="color:#C23B3B">${act.filter(e => e.criticidad === 'A').length}</b></div>
     </div>
     <div class="filtros rise d3">
       <button class="chip ${FIL.sistema === 'all' ? 'on' : ''}" data-s="all">Todos</button>
@@ -573,7 +574,7 @@ function recodificar(box) {
     <div class="alert warn" style="margin-bottom:14px">Los registros de formatos e informes ya vinculados conservan el código anterior. Conviene hacerlo antes de empezar a usar los códigos en el plan y en las placas.</div>
     <div class="prev"><table>
       <thead><tr><th>Código actual</th><th>Nuevo código</th><th>Descripción</th><th>Sistema</th><th>Tipo</th></tr></thead>
-      <tbody>${items.map(x => `<tr><td class="mono">${esc(x.e.codigo)}</td><td class="mono">${x.p ? `<span style="color:var(--mint-2)">${esc(x.nuevo)}</span>` : `<span style="color:#FFB3B3;font-family:var(--f-body);font-size:12px">${esc(x.motivo)}</span>`}</td><td>${esc(x.e.descripcion)}</td><td>${esc(sisNom(x.e.sistema))}</td><td>${esc(x.e.tipo || '—')}</td></tr>`).join('')}</tbody></table></div>
+      <tbody>${items.map(x => `<tr><td class="mono">${esc(x.e.codigo)}</td><td class="mono">${x.p ? `<span style="color:var(--mint-2)">${esc(x.nuevo)}</span>` : `<span style="color:#C23B3B;font-family:var(--f-body);font-size:12px">${esc(x.motivo)}</span>`}</td><td>${esc(x.e.descripcion)}</td><td>${esc(sisNom(x.e.sistema))}</td><td>${esc(x.e.tipo || '—')}</td></tr>`).join('')}</tbody></table></div>
     <div class="acciones" style="margin-top:16px;justify-content:flex-end">
       <button class="btn" id="rCan">Cancelar</button>
       <button class="btn btn-primary" id="rOk" ${ok.length ? '' : 'disabled'}>Asignar ${ok.length} código${ok.length === 1 ? '' : 's'}</button>
@@ -760,7 +761,7 @@ function previa(box, items, origen, pl, nuevosT) {
       <thead><tr><th>${origen === 'costos' ? 'N°' : 'Fila'}</th><th>Resultado</th><th>Código</th><th>Descripción</th><th>Sistema</th><th>Ubicación</th><th>Tipo</th></tr></thead>
       <tbody>${items.map(x => `<tr>
         <td class="mono" style="color:var(--tx-3)">${x.fila}</td>
-        <td>${x.errs.length ? `<span class="st e">Error</span><div style="font-size:12px;color:#FFB3B3;margin-top:4px">${esc(x.errs.join('; '))}</div>` : x.omitir ? '<span class="st o">Ya existe</span>' : x.ex ? '<span class="st u">Actualiza</span>' : '<span class="st n">Nuevo</span>'}</td>
+        <td>${x.errs.length ? `<span class="st e">Error</span><div style="font-size:12px;color:#C23B3B;margin-top:4px">${esc(x.errs.join('; '))}</div>` : x.omitir ? '<span class="st o">Ya existe</span>' : x.ex ? '<span class="st u">Actualiza</span>' : '<span class="st n">Nuevo</span>'}</td>
         <td class="mono">${esc(x.d.codigo)}</td><td>${esc(x.d.descripcion || x.ex?.descripcion || '')}</td><td>${esc(x.d.sistema != null ? sisNom(x.d.sistema) : x.d.sistemaTxt)}</td><td>${esc(x.d.ubicacion)}${x.d.ubicNueva && !x.errs.length ? ' <span class="st u" title="Se agrega a la lista de ubicaciones">nueva</span>' : ''}</td><td>${esc(x.d.tipo)}${x.d.tipoNuevo && !x.errs.length ? ` <span class="st u" title="Tipo nuevo: se agrega al catálogo">nuevo · ${esc(x.d.tipoNuevo.sigla)}</span>` : ''}</td>
       </tr>`).join('')}</tbody></table></div>
     ${[...nuevosT.values()].length ? `<p class="hint" style="margin-top:10px">Los tipos marcados "nuevo" se agregan al catálogo con la sigla indicada. Si prefiere otra sigla, créelo antes en Tipos de equipo y vuelva a revisar.</p>` : ''}

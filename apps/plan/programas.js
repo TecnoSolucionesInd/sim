@@ -10,16 +10,16 @@ const FASES = ['Obra civil', 'Desmontaje', 'Mantenimiento', 'Pintado', 'Montaje'
 const PLANTAS = ['Planta de hielo', 'Congelado', 'Refrigeración', 'Calderos', 'Ósmosis', 'Eléctrico', 'Infraestructura', 'General de Mantenimiento'];
 const ETAPAS = ['Antes', 'Durante', 'Después'];
 export const TIPOS = [
-  { id: 'parada', label: 'Parada de planta', c: '#3bb4e5' },
+  { id: 'parada', label: 'Parada de planta', c: '#1B86C4' },
   { id: 'mprog', label: 'Mantenimiento programado', c: '#2ec4a6' },
   { id: 'auditoria', label: 'Auditoría', c: '#f5b54a' },
-  { id: 'proyecto', label: 'Proyecto de mejora', c: '#a9b4ff' },
-  { id: 'otro', label: 'Otro', c: '#8b9bb0' }
+  { id: 'proyecto', label: 'Proyecto de mejora', c: '#5564D8' },
+  { id: 'otro', label: 'Otro', c: '#6B7A88' }
 ];
 const tipoDe = (id) => TIPOS.find(t => t.id === id) || TIPOS[TIPOS.length - 1];
 const TIPOS_COSTO = ['Servicio externo', 'Materiales y repuestos', 'Mano de obra propia', 'Alquiler de equipos', 'Otros'];
 const EST_COSTO = {
-  presupuestado: { label: 'Presupuestado', hex: '#8b9bb0' },
+  presupuestado: { label: 'Presupuestado', hex: '#6B7A88' },
   comprometido: { label: 'Comprometido', hex: '#f5b54a' },
   ejecutado: { label: 'Ejecutado', hex: '#2ec4a6' }
 };
@@ -27,10 +27,10 @@ const sol = (n) => 'S/ ' + (+n || 0).toLocaleString('es-PE', { minimumFractionDi
 const ETC = { 'Antes': 'var(--pp-pro)', 'Durante': 'var(--pp-cur)', 'Después': 'var(--pp-fin)' };
 const ST = {
   fin: { label: 'Finalizado', c: 'var(--pp-fin)', hex: '#2ec4a6' },
-  cur: { label: 'En curso', c: 'var(--pp-cur)', hex: '#4aa3ff' },
+  cur: { label: 'En curso', c: 'var(--pp-cur)', hex: '#2F7FE0' },
   atr: { label: 'Atrasado', c: 'var(--pp-atr)', hex: '#ff6b6b' },
   pro: { label: 'Programado', c: 'var(--pp-pro)', hex: '#f5b54a' },
-  def: { label: 'Por definir', c: 'var(--pp-def)', hex: '#8b9bb0' }
+  def: { label: 'Por definir', c: 'var(--pp-def)', hex: '#6B7A88' }
 };
 const I = (d, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 const CAM = I('M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 13);
@@ -130,7 +130,7 @@ async function lista() {
         <svg class="pp-ring" viewBox="0 0 100 100" style="width:72px;height:72px"><circle class="bgc" cx="50" cy="50" r="42"/><circle class="fgc" cx="50" cy="50" r="42" transform="rotate(-90 50 50)" stroke-dasharray="263.9" stroke-dashoffset="${263.9 * (1 - av / 100)}"/><text x="50" y="50">${av.toFixed(0)}%</text></svg>
         <div style="min-width:0;flex:1"><div class="tag" style="color:${tp.c}">${esc(tp.label)}${p.planta ? ' · ' + esc(p.planta) : ''}</div><h2>${esc(p.nombre)}</h2>
           <div class="meta">${p.desde || p.hasta ? `${esc(mesA(p.desde))} – ${esc(mesA(p.hasta))} ${p.hasta ? D(p.hasta).getFullYear() : ''} · ` : ''}${fin}/${n} actividades finalizadas</div>
-          <div style="margin-top:8px">${cer ? '<span class="pill" style="background:rgba(255,255,255,.09);color:#DDE4EB">Cerrado</span>' : '<span class="pill" style="background:rgba(74,163,255,.16);color:#9fcbff">En ejecución</span>'}</div></div></button>`;
+          <div style="margin-top:8px">${cer ? '<span class="pill" style="background:rgba(15,27,36,.076);color:#3A4955">Cerrado</span>' : '<span class="pill" style="background:rgba(74,163,255,.16);color:#1F6FC0">En ejecución</span>'}</div></div></button>`;
     }).join('')}</div>` : '<div class="pp-empty">Sin programas de este tipo.</div>';
     document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => abrir(b.dataset.p));
   };
@@ -243,11 +243,11 @@ function marco() {
         <div class="pp-kpi" style="--c:var(--pp-cur)"><div class="l">En curso</div><div class="v" id="kCur">0</div><div class="s">Actividades activas</div></div>
         <div class="pp-kpi" style="--c:var(--pp-pro)"><div class="l">Programadas</div><div class="v" id="kPro">0</div><div class="s">Con fecha por iniciar</div></div>
         <div class="pp-kpi" style="--c:var(--pp-def)"><div class="l">Por definir</div><div class="v" id="kDef">0</div><div class="s">Fecha por programar</div></div>
-        <div class="pp-kpi" style="--c:#a9b4ff"><div class="l">Días transcurridos</div><div class="v" id="kDias">0</div><div class="s" id="kDiasS"></div></div>
+        <div class="pp-kpi" style="--c:#5564D8"><div class="l">Días transcurridos</div><div class="v" id="kDias">0</div><div class="s" id="kDiasS"></div></div>
       </div>
       <div class="pp-g2">
         <div class="pp-card"><div class="pp-ch"><h3>Curva S — Avance programado vs. real</h3>
-          <div class="pp-legend"><span><i style="background:#8b9bb0"></i>Programado</span><span><i style="background:var(--pp-fin)"></i>Real</span><span><i style="background:var(--pp-atr)"></i>Hoy</span></div></div>
+          <div class="pp-legend"><span><i style="background:#6B7A88"></i>Programado</span><span><i style="background:var(--pp-fin)"></i>Real</span><span><i style="background:var(--pp-atr)"></i>Hoy</span></div></div>
           <div class="pp-chart"><canvas id="ppS"></canvas></div><div class="pp-foot" id="ppSNote"></div></div>
         <div class="pp-card"><div class="pp-ch"><h3>Avance por fase</h3></div><div id="ppFases"></div>
           <div class="pp-ch" style="margin-top:16px"><h3>Por responsable</h3></div><div class="pp-resp" id="ppResp"></div></div>
@@ -259,7 +259,7 @@ function marco() {
       </div>
     </section>
     <section class="pp-view" id="v-gantt"><div class="pp-card"><div class="pp-ch"><h3>Línea de tiempo del programa</h3>
-      <div class="pp-legend"><span><i style="background:var(--pp-fin)"></i>Finalizado</span><span><i style="background:var(--pp-cur)"></i>En curso</span><span><i style="background:var(--pp-pro)"></i>Programado</span><span><i style="background:transparent;border:1.5px dashed var(--pp-def)"></i>Por definir</span><span><i style="background:rgba(255,255,255,.55);height:3px;vertical-align:3px"></i>Línea base</span><span><i style="background:var(--pp-atr)"></i>Atrasado / Hoy</span></div></div>
+      <div class="pp-legend"><span><i style="background:var(--pp-fin)"></i>Finalizado</span><span><i style="background:var(--pp-cur)"></i>En curso</span><span><i style="background:var(--pp-pro)"></i>Programado</span><span><i style="background:transparent;border:1.5px dashed var(--pp-def)"></i>Por definir</span><span><i style="background:rgba(15,27,36,.55);height:3px;vertical-align:3px"></i>Línea base</span><span><i style="background:var(--pp-atr)"></i>Atrasado / Hoy</span></div></div>
       <div class="pp-gwrap"><div class="pp-gantt" id="ppGantt"></div></div></div></section>
     <section class="pp-view" id="v-list"><div class="pp-card"><div class="pp-tools" id="ppFil"></div><div class="pp-tblw"><table class="pp-tbl">
       <thead><tr><th>#</th><th>Actividad</th><th>Fase</th><th>Responsable</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Avance</th><th>Evid.</th><th>Estado</th></tr></thead><tbody id="ppTb"></tbody></table></div></div></section>
@@ -276,7 +276,7 @@ function marco() {
     </section>
     <section class="pp-view" id="v-costos">
       <div class="pp-kpis pp-kc">
-        <div class="pp-kpi" style="--c:#8b9bb0"><div class="l">Presupuesto</div><div class="v pp-money" id="cPre">S/ 0</div><div class="s" id="cPreS"></div></div>
+        <div class="pp-kpi" style="--c:#6B7A88"><div class="l">Presupuesto</div><div class="v pp-money" id="cPre">S/ 0</div><div class="s" id="cPreS"></div></div>
         <div class="pp-kpi" style="--c:var(--pp-pro)"><div class="l">Comprometido</div><div class="v pp-money" id="cCom">S/ 0</div><div class="s" id="cComS"></div></div>
         <div class="pp-kpi" style="--c:var(--pp-fin)"><div class="l">Ejecutado</div><div class="v pp-money" id="cEje">S/ 0</div><div class="s" id="cEjeS"></div></div>
         <div class="pp-kpi" style="--c:var(--pp-acc)"><div class="l">Por comprometer</div><div class="v pp-money" id="cSal">S/ 0</div><div class="s">Presupuesto sin orden emitida</div></div>
@@ -342,7 +342,7 @@ function cabecera() {
 function modalInformes(l) {
   const bg = document.createElement('div'); bg.className = 'modal-bg';
   bg.innerHTML = `<div class="modal" style="max-width:640px"><div class="modal-h"><div class="h-display" style="font-size:20px">Informes vinculados</div><button class="btn btn-icon" data-x>×</button></div>
-    <div class="modal-b">${l.length ? l.map(x => { const st = ESTADOS_INF[x.estado] || ESTADOS_INF.borrador; return `<a href="../inf/?i=${encodeURIComponent(x.id)}#informes" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);color:inherit;text-decoration:none">
+    <div class="modal-b">${l.length ? l.map(x => { const st = ESTADOS_INF[x.estado] || ESTADOS_INF.borrador; return `<a href="../inf/?i=${encodeURIComponent(x.id)}#informes" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(15,27,36,.042);color:inherit;text-decoration:none">
       <div style="min-width:0"><div class="mono" style="font-size:12px;color:var(--tx-3)">${esc(x.codigo)}</div><div style="font-weight:500">${esc(x.titulo)}</div></div>
       <span class="pill" style="background:${st.bg};color:${st.fg}">${st.label}</span></a>`; }).join('')
       : '<p class="muted" style="margin:0;line-height:1.6">Ningún informe técnico está vinculado a este programa. Se vinculan desde la ficha del informe, en el aplicativo Informes técnicos.</p>'}</div>
@@ -411,12 +411,12 @@ function renderDash() {
     chS = new Chart($('ppS'), {
       type: 'line', plugins: [hoyL],
       data: { labels, datasets: [
-        { label: 'Programado', data: plan, borderColor: '#9fb0c4', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: .35, fill: false },
+        { label: 'Programado', data: plan, borderColor: '#5E6D79', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: .35, fill: false },
         { label: 'Real', data: real, borderColor: '#2ec4a6', backgroundColor: 'rgba(46,196,166,.16)', borderWidth: 3, pointRadius: 0, tension: .35, fill: true }] },
       options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.raw == null ? null : `${c.dataset.label}: ${c.raw}%` } } },
-        scales: { x: { ticks: { color: '#C3CDD8', maxTicksLimit: 10, font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.05)' } },
-          y: { min: 0, max: 100, ticks: { color: '#C3CDD8', callback: v => v + '%', stepSize: 25 }, grid: { color: 'rgba(255,255,255,.07)' } } } }
+        scales: { x: { ticks: { color: '#465662', maxTicksLimit: 10, font: { size: 11 } }, grid: { color: 'rgba(15,27,36,.03)' } },
+          y: { min: 0, max: 100, ticks: { color: '#465662', callback: v => v + '%', stepSize: 25 }, grid: { color: 'rgba(15,27,36,.042)' } } } }
     });
   }
   const fases = [...new Set([...FASES, ...A.map(t => t.fase)])];
@@ -429,7 +429,7 @@ function renderDash() {
   const ks = ['fin', 'cur', 'atr', 'pro', 'def'];
   $('ppEstSub').textContent = `${n} actividades`; $('ppDcN').textContent = n;
   if (chB) chB.destroy();
-  if (window.Chart) chB = new Chart($('ppB'), { type: 'doughnut', data: { labels: ks.map(k => ST[k].label), datasets: [{ data: ks.map(k => c[k]), backgroundColor: ks.map(k => ST[k].hex), borderColor: '#3d4a5a', borderWidth: 3, hoverOffset: 6 }] },
+  if (window.Chart) chB = new Chart($('ppB'), { type: 'doughnut', data: { labels: ks.map(k => ST[k].label), datasets: [{ data: ks.map(k => c[k]), backgroundColor: ks.map(k => ST[k].hex), borderColor: '#FFFFFF', borderWidth: 3, hoverOffset: 6 }] },
     options: { cutout: '70%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
   $('ppDleg').innerHTML = ks.map(k => `<div><i style="background:${ST[k].hex}"></i>${ST[k].label}<b>${c[k]}</b><span>${n ? (c[k] / n * 100).toFixed(0) : 0}%</span></div>`).join('');
   const lim = new Date(+HOY + 15 * DAY);
