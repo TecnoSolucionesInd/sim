@@ -286,7 +286,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 
 ## Rediseño claro de los aplicativos (EN CURSO)
 Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y cómo probar). Resumen: hechos portada, menú lateral
-común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Pendientes: Costos, Congelamiento y la plantilla.
+común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Pendiente: Congelamiento.
 
 ## Bitácora
 - 2026-11-16: Rediseño claro — migrados Equipos, Plan de mantenimiento, Informes técnicos, Registro de formatos, Agua de planta y Materiales; `core/tema-panel.css`; herramientas de prueba en `herramientas/tema/`; archivo de continuación REDISENO.md. Agua: el trasvase manual solo se informa si el pozo de producción sube de verdad.

@@ -16,6 +16,8 @@ F={'geist.woff2':lee(LIB+'@fontsource-variable/geist/files/geist-latin-wght-norm
 CSS="@font-face{font-family:'Geist';font-weight:100 900;src:url(https://fonts.gstatic.com/geist.woff2) format('woff2')}@font-face{font-family:'Geist Mono';font-weight:100 900;src:url(https://fonts.gstatic.com/mono.woff2) format('woff2')}"
 LIBS={'three':LIB+'three/build/three.min.js','jspdf':LIB+'jspdf/dist/jspdf.umd.min.js','chart':LIB+'chart.js/dist/chart.umd.js'}
 AUD=lee(AQUI+'contraste.js')
+# Firebase 'compat' simulado mínimo (Costos): sesión de administrador y datos vacíos
+COMPAT="window.firebase=window.firebase||(function(){const D={'datos/cost/fuente/meta':{partes:0,extra:'{}',cat:'[]'}};\nconst doc=(p)=>({get:async()=>({exists:p in D,data:()=>D[p]}),set:async()=>{},collection:(c)=>col(p+'/'+c),onSnapshot:()=>()=>{}});\nconst col=(p)=>({doc:(d)=>doc(p+'/'+d),get:async()=>({docs:[],empty:true,forEach(){}})});\nconst fs=()=>({collection:col});fs.FieldValue={serverTimestamp:()=>0};\nreturn {initializeApp(){},auth:()=>({onAuthStateChanged(cb){setTimeout(()=>cb({uid:'u1',email:'emiranda@santamonicafishing.com',emailVerified:true}),5)},signOut:async()=>{}}),firestore:fs};})();"
 async def main():
   async with async_playwright() as p:
     b=await p.chromium.launch(args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'])
@@ -25,7 +27,7 @@ async def main():
       pg.on('dialog',lambda d: asyncio.create_task(d.accept()))
       errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)[:200])); pg.on('console',lambda m: m.type=='error' and errs.append(m.text[:200]))
       async def gst(r):
-        k=r.request.url.split('/')[-1]; await r.fulfill(status=200,content_type='application/javascript',body=M.get(k,''))
+        k=r.request.url.split('/')[-1]; await r.fulfill(status=200,content_type='application/javascript',body=(COMPAT if 'compat' in k else M.get(k,'')))
       async def cdn(r):
         u=r.request.url.lower(); f=next((v for k,v in LIBS.items() if k in u),None)
         await r.fulfill(status=200,content_type='application/javascript',body=lee(f) if f else '')
