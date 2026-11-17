@@ -54,10 +54,11 @@ archivo no cargara, el aplicativo sigue funcionando con su aspecto anterior.
       reemplazaron los nombres `'Syne'`, `'DM Sans'`, `'DM Mono'` en el archivo), menú lateral como el de la portada con el
       logo en negativo, barra superior translúcida, `color-scheme:dark` (ahora se ven los íconos de calendario y reloj),
       textos secundarios con mejor contraste, correo largo ya no se sale de su caja, Pantalla de Sala ya no se desborda en celular.
-- [ ] **Fase 2 — gráficas**: dentro del JavaScript quedan colores de base del tema anterior (azul marino): `#1e3352` (×22,
-      rejillas y bordes), `#8aaac8` (×42, textos de ejes), `#e8f4ff`, `#4a6a8a`, `#0d1c2e`, `#2a4a6e`. Pasarlos a
-      `#1B2730`, `#A7B4BF`, `#EEF3F6`, `#7C8A96`, `#0C1216`, `#2B3B46`. Ojo con las formas con transparencia pegada
-      (`#1e335288`): conservar el sufijo. No tocar los colores de estado.
+- [x] **Fase 2 — gráficas** (subida): los colores de base escritos dentro del JavaScript pasaron a la paleta nueva
+      (`#1e3352`→`#1B2730` rejillas y bordes, `#8aaac8`→`#A7B4BF` textos de ejes y leyendas, `#e8f4ff`→`#EEF3F6`,
+      `#0d1c2e`→`#0C1216`, `#2a4a6e`→`#2B3B46`, pista y marca de "Meta" a gris neutro, pantalla de carga).
+      **Se dejaron a propósito** porque son colores de dato/estado: `fin_proceso:'#8aaac8'`, `#4a6a8a` (Descongelamiento),
+      `#1e3a5f` (barras "Bachadas"), `#2A4466` (Inactivo en la dona), las paletas `prodColors`/`tiposColors` y todo el informe claro.
 - [ ] **Fase 3 — detalle** (con Elvis mirando en la planta): tarjetas, tablas, formularios, Pantalla de Sala en el televisor.
       Decidir si el celeste de acento se queda o se acerca al turquesa de la marca (implica cambiar también el JavaScript).
 
@@ -68,7 +69,7 @@ Resultado esperado hoy: 0 errores, 0 desbordes; quedan solo 2 avisos de contrast
 (textos grises del informe claro y la cifra blanca sobre barra verde en Sala).
 
 ## Pendiente (en este orden)
-1. **Congelamiento**: seguir con la fase 2 y luego la 3 (ver arriba).
+1. **Congelamiento**: fases 1 y 2 hechas; falta la fase 3 (detalle, con Elvis revisando en la planta y en el televisor de Sala).
 2. **Costos con datos reales**: revisar los 11 módulos con las órdenes cargadas y el PDF (se genera con html2canvas:
    no usar funciones de color modernas como `color-mix` dentro del contenido).
 3. Revisión fina de todos los aplicativos con datos reales de la planta (lo probado es con datos de ejemplo).
