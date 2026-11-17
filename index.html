@@ -196,6 +196,22 @@ footer img{height:20px;opacity:.7}
 .toasts{position:fixed;z-index:60;bottom:calc(22px + env(safe-area-inset-bottom, 0px));right:max(22px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 44px)}
 .toast{padding:12px 16px;border-radius:12px;background:rgba(16,24,29,.92);border:1px solid rgba(111,227,207,.4);backdrop-filter:blur(12px);font-size:13.5px;box-shadow:0 20px 40px -20px #000;animation:rise .4s var(--ease) both;transition:opacity .4s}
 
+/* pantallas táctiles: sin cursor, la luz la lleva la tarjeta que pasa por el centro de la pantalla */
+@keyframes barrido{from{transform:translateX(-38%)}to{transform:translateX(38%)}}
+@keyframes latido{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--c) 0%,transparent),0 10px 26px -8px var(--c)}}
+@keyframes subir{from{opacity:0;transform:translateY(26px) scale(.97)}to{opacity:1;transform:none}}
+@media (hover:none){
+  .card.ver{animation:subir .7s var(--ease) both}
+  .card.foco{border-color:color-mix(in srgb,var(--c) 60%,transparent);box-shadow:0 22px 44px -26px #000,0 16px 40px -24px var(--c);transform:translateY(-2px)}
+  .card.foco::before{opacity:1;background:radial-gradient(300px circle at 50% 20%,color-mix(in srgb,var(--c) 30%,transparent),transparent 64%);animation:barrido 2.8s ease-in-out infinite alternate}
+  .card.foco::after{opacity:1}
+  .card.foco .ico{background:color-mix(in srgb,var(--c) 26%,transparent);animation:latido 2.2s ease-in-out infinite}
+  .card.foco .go svg{animation:empuje 1.1s var(--ease) infinite alternate}
+  .card.off.foco{transform:none;box-shadow:none;border-color:var(--line-3)}
+  .card.off.foco::before{opacity:.45}
+}
+@keyframes empuje{to{transform:translateX(5px)}}
+
 /* entrada */
 .in-a{animation:rise .8s var(--ease) both}
 .d1{animation-delay:.06s}.d2{animation-delay:.14s}.d3{animation-delay:.22s}.d4{animation-delay:.3s}
@@ -224,7 +240,7 @@ footer img{height:20px;opacity:.7}
   .kpi .s span{display:none}
   .seg{display:flex;width:100%}
   .seg button{flex:1 1 0;justify-content:center;padding:0 6px;font-size:13px;gap:6px}
-  .dial{display:none}
+  .dial{display:block;width:460px;height:460px;margin:-230px 0 0 -230px;opacity:.75}
   .tools{gap:12px;padding-bottom:18px}
   .msearch{display:block;max-width:none}
   .msearch input{padding-right:14px}
@@ -239,10 +255,15 @@ footer img{height:20px;opacity:.7}
   .c-sb{grid-column:2 / 4;grid-row:2;margin-top:3px;font-size:13px}
   .mods{grid-column:1 / 4;grid-row:3;margin-top:12px}
   .go span{opacity:1;transform:none}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));border-color:rgba(255,255,255,.17);box-shadow:0 14px 30px -22px #000}
+  .card::after{opacity:.55}
+  .ico{background:color-mix(in srgb,var(--c) 20%,transparent);border-color:color-mix(in srgb,var(--c) 50%,transparent)}
+  .c-sb{color:#BCC8D2}
+  .mods span{color:#93A2AE;background:rgba(255,255,255,.07)}
+  .go{color:color-mix(in srgb,var(--c) 75%,#fff)}
+  .card.off{background:transparent;box-shadow:none}
+  .card.off::after{opacity:0}
   footer{margin-top:48px}
-}
-@media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}
 }
 
 /* ---------- utilidades (propias de la portada; no dependen de core/sim.css) ---------- */
@@ -321,8 +342,8 @@ a{color:var(--mint-2)}
   .lg-brand{display:none}
   .lg-side{padding:28px var(--gr) 28px var(--gl);min-height:100dvh}
   .lc-logo{display:block}
-  .lcard{padding:30px 22px 24px;border-radius:22px}
-  .lg-veil{background:linear-gradient(180deg,rgba(5,8,10,.3),rgba(5,8,10,.2) 60%,rgba(5,8,10,.5))}
+  .lcard{padding:30px 22px 24px;border-radius:22px;background:linear-gradient(180deg,rgba(18,26,32,.6),rgba(10,15,19,.5));backdrop-filter:blur(7px) saturate(1.3);-webkit-backdrop-filter:blur(7px) saturate(1.3)}
+  .lg-veil{background:linear-gradient(180deg,rgba(5,8,10,.15),rgba(5,8,10,.05) 60%,rgba(5,8,10,.3))}
 }
 </style>
 </head>
@@ -500,7 +521,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const norm = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const state = { user: null, perfil: null, filtro: 'all', q: '', vis: [] };
-const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reducido = false;   // las animaciones de la portada van siempre activas
 // Colores de estado propios de la portada (los aplicativos usan los de core/catalogo.js)
 const EST = {
   prod: { label: 'En producción', c: '#6FE3CF' },
@@ -700,6 +721,7 @@ function tarjetas() {
     </button>`;
   }).join('');
   $('grid').querySelectorAll('[data-app]').forEach(b => b.onclick = () => abrir(b.dataset.app));
+  observar();
   $('count').innerHTML = `<b>${lista.length}</b> de ${vis.length} aplicativos`;
   const vacio = !lista.length; $('empty').hidden = !vacio;
   if (vacio) $('empty').innerHTML = vis.length ? '<b>Sin resultados</b>Ningún aplicativo o módulo coincide con la búsqueda.' : '<b>Sin aplicativos asignados</b>Solicite acceso al administrador del sistema.';
@@ -708,6 +730,17 @@ function tarjetas() {
 function cambiar() {
   $('grid').classList.remove('intro');
   if (document.startViewTransition && !reducido) document.startViewTransition(tarjetas); else tarjetas();
+}
+// táctil: las tarjetas aparecen al entrar en pantalla y la que cruza el centro se ilumina sola
+const tactil = matchMedia('(hover: none)').matches;
+let obsVer = null, obsFoco = null;
+function observar() {
+  if (!tactil || !('IntersectionObserver' in window)) return;
+  obsVer?.disconnect(); obsFoco?.disconnect();
+  $('grid').classList.remove('intro');
+  obsVer = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('ver'); obsVer.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  obsFoco = new IntersectionObserver((es) => es.forEach(e => e.target.classList.toggle('foco', e.isIntersecting)), { rootMargin: '-38% 0px -38% 0px' });
+  $('grid').querySelectorAll('.card').forEach(c => { c.style.opacity = '0'; c.addEventListener('animationstart', () => c.style.opacity = '', { once: true }); obsVer.observe(c); obsFoco.observe(c); });
 }
 // luz que sigue al cursor dentro de cada tarjeta
 $('grid').addEventListener('pointermove', (e) => {

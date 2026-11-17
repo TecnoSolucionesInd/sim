@@ -285,6 +285,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
 ## Bitácora
+- 2026-11-16: Portada en celular — animaciones siempre activas (no se apagan con la preferencia de movimiento reducido del equipo), tarjetas que aparecen al desplazarse y se iluminan solas al cruzar el centro de la pantalla, más contraste, y engranajes del inicio de sesión más visibles y rápidos en vertical.
 - 2026-11-16: Portada rediseñada (inicio de sesión y lanzador de aplicativos): tema oscuro propio, logo de la empresa como marca (core/marca/logo-negativo.png e isotipo.png como ícono de pestaña), indicadores con contadores, filtros con indicador deslizante, tarjetas con luz al cursor y módulos, buscador con Ctrl K. Inicio de sesión con fondo 3D de engranajes (core/marca/escena.js, Three.js bajo demanda). index.html ya no usa core/sim.css: los aplicativos internos no cambian.
 - 2026-11-14: Agua de planta — reconoce el trasvase manual de los pozos 1 y 3 al pozo 2 (ya no se marca como balance que no cuadra); parámetro del pozo que abastece a producción.
 - 2026-11-14: Agua de planta — vista pública sin login (?publico) para el grupo de WhatsApp, copia pública del R-303 y botón al emitirlo. Reglas actualizadas: publico/agua (volver a publicar firestore.rules).

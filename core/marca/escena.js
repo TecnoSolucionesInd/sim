@@ -32,7 +32,8 @@ export async function iniciarEscena(canvas) {
   try { T = await cargarThree(); } catch (e) { return null; }
   let ren;
   try { ren = new T.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' }); } catch (e) { return null; }
-  const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const quieto = false;   // siempre animado
+  let vel = 0.11;
   ren.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
   const sc = new T.Scene(); sc.fog = new T.Fog(0x05080a, 34, 78);
   const cam = new T.PerspectiveCamera(32, 1, 0.1, 200); cam.position.set(0, 0, 46);
@@ -80,8 +81,8 @@ export async function iniciarEscena(canvas) {
   const ajustar = () => {
     const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight, asp = w / h;
     ren.setSize(w, h, false); cam.aspect = asp; cam.updateProjectionMatrix();
-    if (asp >= 1.1) { grupo.position.set(0.6, -9.4, -6); grupo.scale.setScalar(0.9); }   // entre el texto y el formulario
-    else { grupo.position.set(1.5, -7.5, -14); grupo.scale.setScalar(0.7); }             // pantalla vertical: más lejos, asoma arriba y abajo del formulario
+    if (asp >= 1.1) { grupo.position.set(0.6, -9.4, -6); grupo.scale.setScalar(0.9); vel = 0.11; }   // entre el texto y el formulario
+    else { grupo.position.set(2.2, -3.2, -9); grupo.scale.setScalar(0.74); vel = 0.3; }               // pantalla vertical: centrado tras el formulario y más rápido
   };
   ajustar(); addEventListener('resize', ajustar);
 
@@ -89,8 +90,10 @@ export async function iniciarEscena(canvas) {
   const mover = (e) => { mx = e.clientX / innerWidth - 0.5; my = e.clientY / innerHeight - 0.5; };
   addEventListener('pointermove', mover);
 
+  let giro = 2.2, tPrev = 0;
   const cuadro = (t) => {
-    const a0 = t * 0.11;   // giro del engranaje principal (rad)
+    const dt = Math.min(0.1, Math.max(0, t - tPrev)); tPrev = t;
+    const a0 = (giro += vel * dt);   // giro del engranaje principal (rad)
     piezas.forEach((p, i) => {
       if (p.padre == null) p.rot = a0;
       else { const q = piezas[p.padre]; p.rot = -(q.rot - p.ang) * q.z / p.z + p.ang + Math.PI + Math.PI / p.z; }   // acople diente con hueco
