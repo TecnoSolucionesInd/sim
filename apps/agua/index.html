@@ -122,7 +122,7 @@ input[type=number],input[type=text]{font:inherit;font-size:13px;border:1px solid
 .toast{position:fixed;right:18px;bottom:18px;background:var(--nav);color:#fff;padding:11px 16px;border-radius:10px;z-index:50;font-size:13px}
 .toast.err{background:var(--bad)}
 @media (max-width:1100px){.hmi{grid-template-columns:1fr}.scene{height:440px}}
-@media (max-width:600px){.scene .tag.mod,.scene .tag.cons{display:none!important}.scene{height:420px!important}}
+@media (max-width:600px){.scene .tag.cons{display:none!important}.scene{height:420px!important}}
 @media (max-width:900px){.play{flex-wrap:wrap}.play .when{width:100%;text-align:left}.scene .hud{display:none}.scene .tag{font-size:9.5px}.scene .tag b{padding:1px 7px;font-size:10px}.scene .tag .cu{padding:1px 7px 3px}.scene .tag .big{font-size:12.5px}.grid>*{grid-column:span 12!important}#view{padding:14px 16px 90px}#hd{padding:12px 16px 0}#hd .meta{display:none}.scene{height:380px}.play .when{min-width:0}}
 </style>
 <style>
@@ -139,6 +139,118 @@ input[type=number],input[type=text]{font:inherit;font-size:13px;border:1px solid
 .gauge u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
 .gauge-l{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
 @media (max-width:600px){.scene .tag.med{display:none!important}}
+</style>
+<style>
+/* ══ HMI tipo SCADA: mímico de niveles y flujo, visor 3D y transiciones ══ */
+@keyframes aguaSube{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes aguaFlujo{to{transform:translateX(18px)}}
+@keyframes aguaOla{to{transform:translateX(-50%)}}
+@keyframes aguaLatido{0%{box-shadow:0 0 0 0 rgba(11,154,139,.55)}70%{box-shadow:0 0 0 7px rgba(11,154,139,0)}100%{box-shadow:0 0 0 0 rgba(11,154,139,0)}}
+#view>*{animation:aguaSube .42s cubic-bezier(.2,.7,.2,1) both}
+#view>*:nth-child(2){animation-delay:.04s}#view>*:nth-child(3){animation-delay:.08s}#view>*:nth-child(4){animation-delay:.12s}#view>*:nth-child(n+5){animation-delay:.16s}
+
+.mim{display:grid;grid-template-columns:minmax(200px,1fr) auto minmax(0,2.6fr) auto minmax(200px,1fr);align-items:stretch;margin-bottom:14px;
+  background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:14px 16px;position:relative;overflow:hidden}
+.mim::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,rgba(11,154,139,.75) 18%,rgba(46,143,208,.75) 62%,transparent)}
+.mb{display:flex;flex-direction:column;justify-content:center;gap:5px;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--line);min-width:0}
+.mb small{font-family:var(--pm,ui-monospace,monospace);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.mb .v{font-size:28px;font-weight:600;letter-spacing:-.03em;line-height:1.05;color:var(--ink)}
+.mb .v em{font-style:normal;font-size:12.5px;font-weight:500;color:var(--ink2);margin-left:5px;letter-spacing:0}
+.mb .s{font-size:12px;color:var(--ink2);line-height:1.35}
+.mb .leds{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;font-weight:600;color:var(--ink2)}
+.mb .leds i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0;box-shadow:0 0 0 3px rgba(15,27,36,.06)}
+.mf{align-self:center;width:52px;height:10px;margin:0 5px;border-radius:5px;background:#D5DEE5;position:relative;overflow:hidden;box-shadow:inset 0 1px 2px rgba(15,27,36,.14)}
+.mf.on{background:#2E8FD0}
+.mf.on::after{content:"";position:absolute;top:0;bottom:0;left:-18px;right:0;background:repeating-linear-gradient(90deg,transparent 0 11px,rgba(255,255,255,.75) 11px 18px);animation:aguaFlujo .9s linear infinite}
+.tks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;min-width:0}
+.tk{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto 1fr;gap:8px 12px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#FFFFFF;min-width:0;transition:border-color .3s,box-shadow .3s,transform .25s cubic-bezier(.2,.7,.2,1)}
+.tk.in{border-color:rgba(11,154,139,.6);box-shadow:0 0 0 3px rgba(11,154,139,.10)}
+.tk-h{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0}
+.tk-h b{font-size:13.5px;font-weight:650;color:var(--ink)}
+.tk-h span{font-family:var(--pm,ui-monospace,monospace);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;white-space:nowrap;padding:2px 7px;border-radius:20px}
+.tk-h span.en{color:#076C63;background:rgba(11,154,139,.13)}
+.tk-h span.sa{color:#1B5E96;background:rgba(46,143,208,.14)}
+.tk-v{position:relative;width:50px;height:96px;border-radius:7px 7px 10px 10px;border:1.5px solid #8FA1B0;overflow:hidden;
+  background:linear-gradient(90deg,#DDE4EA,#F6F8FA 42%,#E3E9EE)}
+.tk-v i{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(180deg,#4FB0EA,#1E74BC);transition:height .75s cubic-bezier(.2,.7,.2,1)}
+.tk-v i{box-shadow:inset 0 2px 0 #A9DDFA,inset 0 10px 14px -8px rgba(255,255,255,.55)}
+.tk-v i::before{content:"";position:absolute;left:0;top:0;width:200%;height:100%;animation:aguaOla 5s linear infinite;opacity:.5;
+  background:linear-gradient(100deg,transparent 0 20%,rgba(255,255,255,.28) 25%,transparent 30% 70%,rgba(255,255,255,.28) 75%,transparent 80%)}
+.tk-v u{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(15,27,36,.34) 0 1.5px,transparent 1.5px 25%);-webkit-mask-image:linear-gradient(90deg,#000 0 30%,transparent 30%);mask-image:linear-gradient(90deg,#000 0 30%,transparent 30%)}
+.tk-d{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
+.tk-d .p{font-size:26px;font-weight:600;letter-spacing:-.03em;line-height:1;color:var(--ink)}
+.tk-d .p small{font-size:13px;font-weight:500;color:var(--ink2);margin-left:2px}
+.tk-d .m{font-size:13px;font-weight:650;color:var(--ink);margin-top:4px}
+.tk-d .c{font-size:11.5px;color:var(--ink2);line-height:1.35}
+
+/* visor 3D */
+.scene{border-radius:16px;background:radial-gradient(120% 90% at 50% 0%,#F4F6F9 0%,#E4E8EC 55%,#E4E8EC 100%)}
+.scene::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.6),inset 0 -40px 60px -40px rgba(15,27,36,.16)}
+.scene .vivo{position:absolute;left:12px;top:12px;z-index:3;display:inline-flex;align-items:center;gap:7px;font-family:var(--pm,ui-monospace,monospace);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:#0F1B24;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:20px;padding:5px 11px 5px 9px;box-shadow:0 2px 8px rgba(15,27,36,.08)}
+.scene .vivo i{width:8px;height:8px;border-radius:50%;background:#0B9A8B;animation:aguaLatido 2.2s ease-out infinite}
+.scene .vivo.hist i{background:#B77908;animation:none}
+.scene .hud{left:auto;right:12px;top:auto;bottom:12px;z-index:3}
+.scene .vw{z-index:3;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.94);box-shadow:0 2px 8px rgba(15,27,36,.08)}
+.scene .vw button{border:0;border-radius:0;background:transparent;padding:6px 11px;font-size:12px;font-weight:500;color:var(--ink2);transition:background .2s,color .2s}
+.scene .vw button+button{border-left:1px solid var(--line)}
+.scene .vw button.on{background:#0F1B24;color:#FFFFFF}
+.scene .tag{transition:opacity .25s;border-radius:8px}
+.scene .tag .pc{display:none}
+.play{border-radius:14px}
+.play input[type=range]{height:22px}
+
+/* tarjetas laterales */
+.k{border-radius:14px;padding:14px 16px 14px 18px;transition:transform .22s cubic-bezier(.2,.7,.2,1),box-shadow .22s,border-color .2s}
+.k::before{top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0}
+.k small{font-family:var(--pm,ui-monospace,monospace);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:500}
+.k .v{font-size:27px;font-weight:600;letter-spacing:-.03em}
+.lv i,.gauge i,.mrow .tr i{transition:width .7s cubic-bezier(.2,.7,.2,1),background .3s}
+.lv u,.gauge u{transition:left .7s cubic-bezier(.2,.7,.2,1)}
+.tbl tbody tr td{transition:background .18s}
+@media (hover:hover){
+  .k:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(15,27,36,.06),0 22px 44px -24px rgba(15,27,36,.34)}
+  .tk:hover{transform:translateY(-2px);box-shadow:0 14px 26px -20px rgba(15,27,36,.4)}
+  .tbl tbody tr:hover td{background:#F1F6F7}
+  .scene .vw button:not(.on):hover{background:#EEF2F5;color:var(--ink)}
+}
+
+/* celular en vertical */
+@media (max-width:900px){
+  .mim{grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+  .mim .mf{display:none}
+  .mim .tks{grid-column:1 / -1;order:3;gap:8px}
+  .mb{padding:10px 12px}
+  .mb .v{font-size:23px}
+  .tk{grid-template-columns:1fr;grid-template-rows:auto auto auto;gap:7px;padding:9px 9px 10px}
+  .tk-h{flex-direction:column;align-items:flex-start;gap:3px;min-height:38px}
+  .tk-v{width:100%;height:84px}
+  .tk-d .p{font-size:22px}
+  .tk-d .m{font-size:12.5px;margin-top:3px}
+  .tk-d .c{font-size:10.5px}
+}
+@media (max-width:600px){
+  #hd{padding:10px 14px 0}
+  #hd .row{gap:10px}
+  #hd .ico{width:32px;height:32px;flex-basis:32px;border-radius:9px}
+  #hd h1{font-size:16.5px}
+  #hd .sub{display:none}
+  #hd .tt{min-width:0}
+  #hd .meta{font-size:11px}
+  #tabs{margin-top:8px}
+  #tabs button{padding:9px 13px;font-size:13px}
+  #view{padding:14px 12px 90px}
+  .hmi-top{gap:8px}
+  .hmi-top h2{width:100%;font-size:17px}
+  .hmi-top .when{order:2;width:100%;margin-top:-6px}
+  .hmi-top .sp{display:none}
+  .hmi-top .btn{order:3;flex:1 1 auto;justify-content:center;padding:8px 10px;font-size:12px}
+  .scene{height:min(66vh,540px)!important}
+  .scene .tag .cu{display:none}
+  .scene .tag b{padding:3px 9px;font-size:11px;border-radius:6px}
+  .scene .tag .pc{display:inline;margin-left:5px;font-weight:800;color:#9FE3FF}
+  .scene .vw button{padding:7px 12px}
+}
 </style>
 <link rel="stylesheet" href="../../core/tema-panel.css">
 </head>
@@ -274,6 +386,20 @@ function estadoEn(C, i) {
   return { x, prod, cons, esp: x.esp, ef: x.ef, teo: K.caudalEsperado(Object.fromEntries(P.modulos.map(m => [m.id, 'Produciendo'])), P) };
 }
 
+// Transición de niveles: como el panel se vuelve a dibujar en cada muestra, cada barra arranca en su valor anterior
+// y en el siguiente cuadro pasa al nuevo (la transición la hace el CSS).
+const NIV_ANT = {};
+function animarNiveles() {
+  const tk = [...document.querySelectorAll('.tk-v i[data-k]')];
+  tk.forEach(e => { e.style.height = (NIV_ANT[e.dataset.k] ?? 0) + '%'; });
+  const br = [...document.querySelectorAll('#side .lv>i, #side .gauge>i, #tPoz .lv>i')];
+  const fin = br.map((e, n) => { const k = 'b' + n, w = e.style.width; e.style.width = NIV_ANT[k] ?? '0%'; NIV_ANT[k] = w; return w; });
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    tk.forEach(e => { e.style.height = e.dataset.h + '%'; NIV_ANT[e.dataset.k] = e.dataset.h; });
+    br.forEach((e, n) => { e.style.width = fin[n]; });
+  }));
+}
+
 // ---------- PANEL HMI ----------
 function vistaHMI(v, C) {
   const P = C.P, L = C.L;
@@ -286,10 +412,11 @@ function vistaHMI(v, C) {
     ${PUB ? '' : '<button class="btn" id="bLink" title="Enlace para el grupo de WhatsApp: se ve sin iniciar sesión"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>Enlace público</button>'}
     <button class="btn" id="bPng"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.5"/></svg>Descargar imagen</button>
     <button class="btn pri" id="bPdf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>Descargar PDF</button></div>
+  <div class="mim" id="mim"></div>
   <div class="hmi">
     <div>
-      <div class="scene" id="scene"><div class="hud">Arrastre para girar · rueda o pellizco para acercar</div>
-        <div class="vw"><button data-cam="iso">3D</button><button data-cam="frente">Frente</button><button data-cam="planta">Planta</button></div></div>
+      <div class="scene" id="scene"><div class="vivo" id="sVivo"><i></i><span>En vivo</span></div><div class="hud">Arrastre para girar · rueda o pellizco para acercar</div>
+        <div class="vw"><button data-cam="iso" class="on">3D</button><button data-cam="frente">Frente</button><button data-cam="planta">Planta</button></div></div>
       <div class="play">
         <button class="btn" id="pPlay"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg><span>Reproducir</span></button>
         <input type="range" id="pRng" min="0" max="${L.length - 1}" value="${ST.idx}" aria-label="Muestra">
@@ -307,6 +434,24 @@ function vistaHMI(v, C) {
     const E = estadoEn(C, i), x = E.x, ultimo = i === L.length - 1;
     const pct = x.stock / cap, h = C.aut.horas, res = cap * (P.reservaPct || 0) / 100;
     const nEf = nivelEf(E.ef, P);
+    const a3 = x.destino === 'Pozo 3', sale = P.pozoProduccion || 'p2', bal = E.prod - E.cons;
+    const orden = ['p3', 'p1', 'p2'].map(id => P.pozos.find(p => p.id === id)).filter(Boolean);
+    const tanques = (orden.length === P.pozos.length ? orden : P.pozos).map(p => {
+      const z = x.pozos[p.id], entra = E.prod > 0 && (a3 ? p.id === 'p3' : p.id !== 'p3');
+      return `<div class="tk ${entra ? 'in' : ''}"><div class="tk-h"><b>${esc(p.nombre)}</b>${entra ? '<span class="en">▲ Llenando</span>' : p.id === sale ? '<span class="sa">A producción ▶</span>' : ''}</div>
+        <div class="tk-v"><i data-k="tk${p.id}" data-h="${z ? Math.max(0, Math.min(100, z.pct * 100)).toFixed(1) : 0}"></i><u></u></div>
+        <div class="tk-d"><div class="p num">${z ? nf(z.pct * 100, 0) : '—'}<small>%</small></div><div class="m num">${z ? nf(z.vol, 0) : '—'} m³</div><div class="c num">de ${nf(capacidad(p), 0)}&nbsp;m³${z ? ` · ${nf(z.h, 2)}&nbsp;m` : ''}</div></div></div>`; }).join('');
+    $('#mim').innerHTML = `
+      <div class="mb"><small>Ósmosis · producción</small><div class="v num">${nf(E.prod, 1)}<em>m³/h</em></div>
+        <div class="leds">${P.modulos.map(m => `<span><i style="background:${COLOR_EST[x.est[m.id]] || '#9AA8B6'}"></i>${esc(m.nombre)}</span>`).join('')}</div>
+        <div class="s">${E.prod > 0 ? `Llenando ${esc(x.destino || 'pozos')}` : 'Sin producción en esta muestra'}</div></div>
+      <div class="mf ${E.prod > 0 ? 'on' : ''}"></div>
+      <div class="tks">${tanques}</div>
+      <div class="mf ${E.cons > 0 ? 'on' : ''}"></div>
+      <div class="mb"><small>Producción congelado · consumo</small><div class="v num">${nf(E.cons, 1)}<em>m³/h</em></div>
+        <div class="s">Balance <b style="color:${bal >= 0 ? 'var(--ok)' : 'var(--bad)'}">${bal >= 0 ? '+' : ''}${nf(bal, 1)} m³/h</b></div>
+        <div class="s">${bal >= 0 ? 'Los pozos suben' : 'Los pozos bajan'}</div></div>`;
+    const sv = $('#sVivo'); if (sv) { sv.classList.toggle('hist', !ultimo); sv.querySelector('span').textContent = ultimo ? (PUB ? 'Última muestra' : 'En vivo') : 'Histórico'; }
     $('#side').innerHTML = `
       <div class="k"><small>Agua disponible en pozos</small><div class="v num">${nf(x.stock, 0)}<em>m³ de ${nf(cap, 0)}</em></div>
         <div class="s">${nf(pct * 100, 0)} % de la capacidad total</div><div class="lv"><i style="width:${Math.min(100, pct * 100)}%"></i><u style="left:${P.reservaPct || 0}%" title="Reserva mínima"></u></div></div>
@@ -326,6 +471,7 @@ function vistaHMI(v, C) {
       return `<tr><td><b>${esc(p.nombre)}</b></td><td class="num">${nf(p.largo, 2)} × ${nf(p.ancho, 2)} × ${nf(p.alto, 3)} m</td><td class="r num">${nf(area(p), 2)} m²</td><td class="r num">${nf(capacidad(p), 1)} m³</td>
         <td class="r num">${z ? nf(z.h, 2) + ' m' : '—'}</td><td class="r num"><b>${z ? nf(z.vol, 1) + ' m³' : '—'}</b></td>
         <td><div class="lv" style="margin:0"><i style="width:${z ? z.pct * 100 : 0}%"></i></div><span style="font-size:11.5px;color:var(--muted)">${z ? nf(z.pct * 100, 0) + ' %' : ''}</span></td></tr>`; }).join('');
+    animarNiveles();
     $('#pWhen').innerHTML = `<b>${fh(x.t)}</b> · ${esc(x.turno)}${x.numero ? ` · ${esc(x.numero)}` : ''}`;
     $('#hWhen').textContent = `${fh(x.t)}${ultimo ? ' · última muestra' : ''}`;
     return E;
@@ -343,7 +489,7 @@ function vistaHMI(v, C) {
     lbl().textContent = 'Pausar';
     tim = setInterval(() => { const n = Number(rng.value) + 1; if (n > L.length - 1) { clearInterval(tim); tim = null; lbl().textContent = 'Reproducir'; return; } rng.value = n; aplicar(n); }, 700);
   };
-  v.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => ESC.camara(b.dataset.cam));
+  v.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => { ESC.camara(b.dataset.cam); v.querySelectorAll('[data-cam]').forEach(o => o.classList.toggle('on', o === b)); });
   ESC.alParar = () => { if (tim) clearInterval(tim); };
   $('#bPng').onclick = async () => { const cv = await reporte(C); descargar(cv.toDataURL('image/png'), nombreArchivo('png')); };
   $('#bPdf').onclick = async () => {
@@ -697,9 +843,13 @@ function escena3D(box, P) {
   });
   const ubicar = (a, b, r) => { cam.position.set(tgt.x + r * Math.sin(b) * Math.sin(a), tgt.y + r * Math.cos(b), tgt.z + r * Math.sin(b) * Math.cos(a)); cam.lookAt(tgt); cam.updateMatrixWorld(); };
   // distancia mínima para que toda la planta entre en el cuadro, dejando arriba espacio para las tarjetas
-  const centro = tgt.clone(), Y0 = -0.92, Y1 = 0.62, tgFin = tgt.clone();
+  const centro = tgt.clone(), Y0 = -0.92, tgFin = tgt.clone();
+  // visor más alto que ancho (celular en vertical): la planta se mira de costado para que ocupe el alto del cuadro
+  const vertical = () => cam.aspect < 0.9;
+  let Y1 = 0.62;
   const proy = () => esquinas.map(v => v.clone().project(cam));
   const encuadre = (a, b) => {
+    Y1 = vertical() ? 0.8 : 0.62;
     const guardado = tgt.clone(); tgt.copy(centro);
     let r = 60;
     for (let pasada = 0; pasada < 3; pasada++) {
@@ -717,10 +867,12 @@ function escena3D(box, P) {
     tgFin.copy(tgt); tgt.copy(guardado);
     return r;
   };
-  let th = 0.22, ph = 0.92, rad = 50;
-  const VISTA = { iso: [0.22, 0.92], frente: [0, 1.12], planta: [0, 0.04] };
+  const VISTA_H = { iso: [0.22, 0.92], frente: [0, 1.12], planta: [0, 0.04] };
+  const VISTA_V = { iso: [-1.22, 0.86], frente: [-Math.PI / 2, 1.12], planta: [-Math.PI / 2, 0.04] };
+  const vistas = () => vertical() ? VISTA_V : VISTA_H;
+  let th = 0.22, ph = 0.92, rad = 50, eraVertical = false;
   let anim = null;
-  const camara = (k) => { const [a, b] = VISTA[k] || VISTA.iso; const r1 = encuadre(a, b); anim = { th0: th, ph0: ph, r0: rad, th1: a, ph1: b, r1, g0: tgt.clone(), g1: tgFin.clone(), t: 0 }; };
+  const camara = (k) => { const V = vistas(), [a, b] = V[k] || V.iso; const r1 = encuadre(a, b); anim = { th0: th, ph0: ph, r0: rad, th1: a, ph1: b, r1, g0: tgt.clone(), g1: tgFin.clone(), t: 0 }; };
   const poner = () => ubicar(th, ph, rad);
   const cv = ren.domElement; let drag = null, pinch = null;
   cv.addEventListener('pointerdown', (ev) => { drag = { x: ev.clientX, y: ev.clientY }; cv.setPointerCapture(ev.pointerId); });
@@ -729,8 +881,9 @@ function escena3D(box, P) {
   cv.addEventListener('wheel', (ev) => { ev.preventDefault(); rad = Math.min(140, Math.max(16, rad * (1 + Math.sign(ev.deltaY) * 0.08))); anim = null; }, { passive: false });
   cv.addEventListener('touchmove', (ev) => { if (ev.touches.length === 2) { const d = Math.hypot(ev.touches[0].clientX - ev.touches[1].clientX, ev.touches[0].clientY - ev.touches[1].clientY); if (pinch) rad = Math.min(140, Math.max(16, rad * pinch / d)); pinch = d; ev.preventDefault(); } }, { passive: false });
   cv.addEventListener('touchend', () => pinch = null);
-  const ro = new ResizeObserver(() => { ren.setSize(W(), H()); cam.aspect = W() / H(); cam.updateProjectionMatrix(); rad = encuadre(th, ph); tgt.copy(tgFin); }); ro.observe(box);
-  cam.aspect = W() / H(); cam.updateProjectionMatrix(); rad = encuadre(th, ph); tgt.copy(tgFin);
+  const orientar = () => { if (vertical() !== eraVertical) { eraVertical = vertical(); [th, ph] = vistas().iso; anim = null; } };
+  const ro = new ResizeObserver(() => { ren.setSize(W(), H()); cam.aspect = W() / H(); cam.updateProjectionMatrix(); orientar(); rad = encuadre(th, ph); tgt.copy(tgFin); }); ro.observe(box);
+  cam.aspect = W() / H(); cam.updateProjectionMatrix(); orientar(); rad = encuadre(th, ph); tgt.copy(tgFin);
 
   const m4 = new T.Matrix4(), qa = new T.Quaternion(), pa = new T.Vector3(), sa = new T.Vector3(), adelante = new T.Vector3(0, 0, 1);
   let vivo = true, t0 = performance.now(), tAhora = 0;
@@ -779,7 +932,7 @@ function escena3D(box, P) {
       ULT = E; const x = E.x;
       P.pozos.forEach(p => { const z = POZ[p.id], d = x.pozos[p.id];
         z.meta = d ? Math.min(d.h, p.alto) : 0;
-        z.tag.innerHTML = `<b>${esc(p.nombre)}</b><div class="cu"><div class="big num">${d ? nf(d.vol, 0) : '—'} m³</div>${d ? `de ${nf(capacidad(p), 0)} m³ · ${nf(d.pct * 100, 0)} %` : 'sin lectura'}<div class="bar"><i style="width:${d ? d.pct * 100 : 0}%"></i></div></div>`;
+        z.tag.innerHTML = `<b>${esc(p.nombre)}${d ? `<span class="pc num">${nf(d.pct * 100, 0)} %</span>` : ''}</b><div class="cu"><div class="big num">${d ? nf(d.vol, 0) : '—'} m³</div>${d ? `de ${nf(capacidad(p), 0)} m³ · ${nf(d.pct * 100, 0)} %` : 'sin lectura'}<div class="bar"><i style="width:${d ? d.pct * 100 : 0}%"></i></div></div>`;
       });
       P.modulos.forEach(m => { const z = MOD[m.id], s = x.est[m.id], c = COLOR_EST[s] || '#9AA8B6';
         z.tag.innerHTML = `<b>${esc(m.nombre)} <i class="led" style="background:${c}"></i></b><div class="cu">${esc(s || '—')}</div>`;
@@ -798,7 +951,8 @@ function escena3D(box, P) {
     // imagen de la escena con sus etiquetas dibujadas, para el reporte
     foto(w, h) {
       const w0 = W(), h0 = H();
-      const radAnt = rad, tgAnt = tgt.clone();
+      const radAnt = rad, tgAnt = tgt.clone(), thAnt = th, phAnt = ph, animAnt = anim; anim = null;
+      if (vertical()) [th, ph] = VISTA_H.iso;   // el reporte es apaisado: no usar la vista de costado del celular
       ren.setPixelRatio(1); ren.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); rad = encuadre(th, ph); tgt.copy(tgFin); poner();
       Object.values(POZ).forEach(z => z.nivel = z.meta); paso(tAhora); ren.render(sc, cam);
       const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d');
@@ -840,7 +994,7 @@ function escena3D(box, P) {
         c.lineas.forEach(([l, k]) => { const lh = (k === 'g' ? 20 : 14) * s; g.font = F(k); g.fillStyle = c.led ? '#DFE7EF' : k === 'g' ? '#13263D' : '#2B3A4A'; g.fillText(l, c.cx, yy + lh / 2); yy += lh; });
         g.textAlign = 'left'; g.textBaseline = 'alphabetic';
       });
-      rad = radAnt; tgt.copy(tgAnt); ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); ren.setSize(w0, h0); cam.aspect = w0 / h0; cam.updateProjectionMatrix();
+      rad = radAnt; th = thAnt; ph = phAnt; anim = animAnt; tgt.copy(tgAnt); ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); ren.setSize(w0, h0); cam.aspect = w0 / h0; cam.updateProjectionMatrix(); Y1 = vertical() ? 0.8 : 0.62;
       return out;
     },
     parar() { vivo = false; ro.disconnect(); ren.dispose(); API.alParar?.(); }

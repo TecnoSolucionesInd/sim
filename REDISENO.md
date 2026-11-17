@@ -86,6 +86,19 @@ moderno ligero y **sin exagerar**; pequeña respuesta al pasar el cursor.
 - Probado con datos de ejemplo en computadora y celular: Administración, Equipos, Informes, Formatos (recorrido completo),
   Agua, Materiales, Costos (datos vacíos), Congelamiento. **Plan** solo se abrió sin plan cargado (sin errores).
 
+## Agua de planta — HMI tipo SCADA (17-nov, subido)
+Pedido: diseño más moderno tipo SCADA para ver niveles; en celular vertical no se veía bien el 3D; transiciones ligeras.
+- **Mímico de niveles y flujo** (`#mim`, se pinta en `pintarLado`): Ósmosis (m³/h, estado de módulos, a qué pozos llena) →
+  tanques Pozo 3 / 1 / 2 con nivel animado, %, m³ y altura → Producción congelado (consumo y balance). Los tanques que
+  reciben agua se marcan "Llenando". Sin umbrales de alarma inventados: el color del agua es siempre el mismo.
+- **3D en celular vertical**: cuando el visor es más alto que ancho (`vertical()`), la planta se mira de costado
+  (`VISTA_V`) y ocupa todo el alto; las tarjetas de pozo van compactas (nombre + %) y vuelven las de los módulos.
+  El reporte PNG/PDF se sigue generando apaisado (`foto()` usa `VISTA_H` y pausa la animación de cámara).
+- Insignia "En vivo / Histórico", selector de vista con estado activo, cabecera compacta en celular.
+- Transiciones: `animarNiveles()` hace que barras y tanques partan del valor anterior (el panel se redibuja en cada muestra).
+- Probado con `ver.py apps/agua/ x --seed mocks/seed_agua.txt --mods hmi,analisis,parametros` y la vista `?publico` (sin
+  muestras en la prueba): 0 errores. Falta verlo con las muestras reales.
+
 ## Pendiente (en este orden)
 1. **Congelamiento**: fases 1 y 2 hechas; falta la fase 3 (detalle, con Elvis revisando en la planta y en el televisor de Sala).
 2. **Costos con datos reales**: revisar los 11 módulos con las órdenes cargadas y el PDF (se genera con html2canvas:
