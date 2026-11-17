@@ -124,10 +124,15 @@ export const APPS = [
     modulos: []
   },
   {
-    id: 'rep', nombre: 'Reporte de mantenimiento', sub: 'Formato de reporte de trabajos',
-    grupo: 'op', estado: 'plan', fase: 'F6', color: '#E7A9F0', url: null,
-    icon: 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M8 13h8M8 17h5',
-    modulos: []
+    id: 'ot', nombre: 'Órdenes de trabajo', sub: 'Registro y control de trabajos de mantenimiento',
+    grupo: 'op', estado: 'dev', fase: 'F6', color: '#E7A9F0', url: 'apps/ot/',
+    icon: 'M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M9 13l2 2 4-4',
+    modulos: [
+      { id: 'mis', nombre: 'Mis trabajos' },
+      { id: 'ordenes', nombre: 'Órdenes de trabajo' },
+      { id: 'personal', nombre: 'Personal' },
+      { id: 'config', nombre: 'Configuración' }
+    ]
   },
   {
     id: 'inf', nombre: 'Informes técnicos', sub: 'Solicitudes de aprobación, fallas y evaluaciones',

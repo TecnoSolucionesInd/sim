@@ -30,6 +30,6 @@ export async function setDoc(r,d,opt){chk(d);DB[r.path]=apply(opt&&opt.merge?DB[
 export async function updateDoc(r,d){chk(d);DB[r.path]=apply(DB[r.path],d);notify()}
 export async function deleteDoc(r){delete DB[r.path];notify()}
 export function writeBatch(){const ops=[];return{set:(r,d,o)=>ops.push(()=>setDoc(r,d,o)),update:(r,d)=>ops.push(()=>updateDoc(r,d)),delete:(r)=>ops.push(()=>deleteDoc(r)),commit:async()=>{for(const o of ops)await o()}}}
-export async function runTransaction(db,fn){return fn({get:getDoc,set:(r,d,o)=>{DB[r.path]=apply(o&&o.merge?DB[r.path]:{},d)},update:(r,d)=>{DB[r.path]=apply(DB[r.path],d)}})}
+export async function runTransaction(db,fn){const r=await fn({get:getDoc,set:(r,d,o)=>{DB[r.path]=apply(o&&o.merge?DB[r.path]:{},d)},update:(r,d)=>{DB[r.path]=apply(DB[r.path],d)}});notify();return r}
 export function onSnapshot(q,cb){const f=()=>{ if(q.type==='doc') cb(snapDoc(q.path)); else cb({docs:colDocs(q)}); }; subs.push(f); setTimeout(f,5); return ()=>{}}
 export async function addDoc(c,d){const r=doc(c);await setDoc(r,d);return r}

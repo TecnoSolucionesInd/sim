@@ -71,7 +71,8 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 | F3 | Equipos (maestro) | Construido (pruebas) |
 | F5 | Agua de planta | Panel HMI 3D, análisis y parámetros desde el R-303 en pruebas |
 | F5 | Materiales e inventario (maestro) | Químicos e insumos de ósmosis en pruebas (Análisis, kardex, catálogo) · pendiente: almacén general |
-| F6 | Conformidades · Reporte de mantenimiento | Planificado |
+| F6 | Órdenes de trabajo | Etapa 1 (registro, bandeja, Mis trabajos, personal) en pruebas · siguen solicitudes + PMP, capacidad y dashboard |
+| F6 | Conformidades | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Programas de trabajo (paradas, auditorías, proyectos) con costos en pruebas · pendiente: plan preventivo, programación quincenal, OT |
 | F9 | Informes técnicos | Construido (pruebas) · archivos en Firestore por partes (sin Blaze) |
 | F8 | Registro de formatos | Plantillas, llenado en celular, registros y revisión en pruebas · pendiente: indicadores |
@@ -279,6 +280,29 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   creados por la API): se fija el enlace en el grupo y se comparte la imagen con el botón Compartir.
 - Reglas: Agua de planta puede leer datos/fmt/registros, plantillas y config (volver a publicar firestore.rules).
 
+## Órdenes de trabajo (F6, EN CURSO)
+Registro, medición y control de todos los trabajos de mantenimiento. Propuesta aprobada (documento "Propuesta — Gestión de
+trabajos de mantenimiento (SIM)" en Claude Docs). Aplicativo independiente `apps/ot/`, ocupa el lugar del antiguo
+"Reporte de mantenimiento" del catálogo (id `ot`). Escribe solo en `datos/ot/…`; lee Equipos (equipos y ubicaciones).
+- Archivos: `modelo.js` (catálogos, plazos, estados, validaciones, HH frente a duración), `datos.js` (Firestore),
+  `ordenes.js` (bandeja, formulario de 5 bloques, cambios de estado), `mis.js` (Mis trabajos en celular y reporte rápido),
+  `ajustes.js` (Personal y Configuración), `ui.js`.
+- Colecciones: `datos/ot/ordenes/{id}` (+ `fotos/`), `datos/ot/personal/{id}`, `datos/ot/config/general`, `datos/ot/contadores/OT-AA`.
+  Campos de búsqueda en cada OT: `mes`, `anio`, `tecnicoIds`, `abierta`. La app escucha las abiertas y las de los 2 últimos meses.
+- Estados: pendiente → programada → ejecucion (⇄ espera) → ejecutada ("Por verificar") → cerrada; anulada. "Retrasada" se
+  calcula (fecha límite vencida). En espera corre la fecha límite lo que duró la espera.
+- Decisiones confirmadas (17-nov): turnos de 12 h, 6 turnos/semana por persona (editable); capacidad = 1 electricista,
+  3 mecánicos frigoristas, 1 mecánico, 1 soldador al 100 % (432 HH/semana); operación (congelamiento 4, calderos 2,
+  planta de hielo 2, ósmosis 2) al 0 %, sus HH van aparte como apoyo; plazos P1 4 h · P2 24 h · P3 7 d · P4 30 d;
+  toda OT pasa por supervisor; el cierre de una OT del PMP marcará la ocurrencia en Plan preventivo (etapa 2);
+  numeración OT-26-00001 / SOL-26-00001.
+- Etapas: [x] 1 base y registro · [ ] 2 solicitudes con usuarios de otras áreas + PMP en la bandeja y cierre de la
+  ocurrencia (requiere ajustar `firestore.rules` para que `ot` escriba `ejec` en `datos/plan/pmp_tareas`) · [ ] 3 capacidad
+  · [ ] 4 dashboard gerencial (resúmenes mensuales, PDF horizontal, Excel) · [ ] 5 R-001 prellenado, ausencias, materiales.
+- Pendiente en reglas: hoy `datos/ot` usa la regla general (todo usuario con escritura en `ot` puede escribir Personal y
+  Configuración; la interfaz lo limita a admin). Endurecer en la etapa 2.
+- Prueba: `herramientas/tema/ver.py apps/ot/ x --seed <seed_eq + seed_ot> --mods mis,ordenes,personal,config` (datos de ejemplo en `mocks/seed_ot.txt`).
+
 ## Pasos de configuración pendientes en la consola
 1. Firestore → Reglas: pegar `firestore.rules` y Publicar.
 2. Authentication → Configuración → Dominios autorizados: agregar `tecnosolucionesind.github.io`.
@@ -289,6 +313,7 @@ Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y c�
 común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fases 1 (base) y 2 (gráficas) hechas; falta el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-17: Órdenes de trabajo, etapa 1: aplicativo nuevo `apps/ot/` (bandeja, formulario, estados, Mis trabajos en celular, reporte rápido, Personal con capacidad, Configuración). Reemplaza en el catálogo al "Reporte de mantenimiento" planificado. El mock de pruebas ahora avisa a los oyentes tras una transacción.
 - 2026-11-17: Agua de planta — HMI tipo SCADA: mímico de niveles y flujo con tanques animados, visor 3D reencuadrado para celular en vertical (vista de costado, tarjetas compactas), insignia En vivo/Histórico y transiciones ligeras. El reporte PNG/PDF no cambia.
 - 2026-11-16: Tono intermedio (fondo gris azulado con brillos de la portada) y efectos ligeros en todos los aplicativos claros; Registros de formatos con franja de estado; efectos en tarjetas de Congelamiento; corregida la cabecera de Costos en celular. Detalle en REDISENO.md.
 - 2026-11-16: Congelamiento, fase 2: rejillas, ejes, leyendas y fondos de las gráficas con la paleta nueva (colores de estado y de dato intactos).
