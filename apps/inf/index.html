@@ -287,7 +287,7 @@ function vistaInformes(main) {
       <div class="kpi"><b>${L.length}</b><span>Informes registrados</span></div>
       <div class="kpi d1"><b style="color:#1F79B8">${pend.length}</b><span>Presentados, en espera de respuesta</span></div>
       <div class="kpi d2"><b style="color:#0B8C80">${n('aprobado')}</b><span>Aprobados</span></div>
-      <div class="kpi d3"><b style="color:#A8710A">${n('observado')}</b><span>Observados</span></div>
+      <div class="kpi d3"><b style="color:#8A5C05">${n('observado')}</b><span>Observados</span></div>
     </div>
     <div class="tools rise d2">
       <label class="sr" for="fQ">Buscar</label><input class="field" id="fQ" placeholder="Buscar por código, título, proveedor…" style="flex:1;min-width:220px" value="${esc(FIL.q)}">
@@ -310,7 +310,7 @@ function pintarTabla(main) {
   tb.innerHTML = lista.map((x, i) => `<tr class="rowbtn slide" data-id="${x.id}" style="animation-delay:${Math.min(i * 0.04, .6).toFixed(2)}s">
     <td><div class="cod">${esc(x.codigo)}${x.version > 1 ? ` · v${x.version}` : ''}</div><div class="ttl">${esc(x.titulo)}</div>${x.proveedor ? `<div class="sub">${esc(x.proveedor)}</div>` : ''}</td>
     <td style="font-size:13.5px">${esc(tipoLbl(x.tipo))}</td><td style="font-size:13.5px">${esc(x.dirigido || '—')}</td>
-    <td style="white-space:nowrap;font-size:13.5px">${fmtF(x.fecha)}</td><td class="num">${money(x.monto, x.moneda)}</td><td>${pill(x.estado)}${x.estado === 'aprobado' ? (x.aprobacion?.correo?.enviado ? '<div class="sub" style="color:#0B8C80">✓ Correo enviado</div>' : '<div class="sub" style="color:#A8710A">Correo pendiente</div>') : ''}</td></tr>`).join('')
+    <td style="white-space:nowrap;font-size:13.5px">${fmtF(x.fecha)}</td><td class="num">${money(x.monto, x.moneda)}</td><td>${pill(x.estado)}${x.estado === 'aprobado' ? (x.aprobacion?.correo?.enviado ? '<div class="sub" style="color:#0B8C80">✓ Correo enviado</div>' : '<div class="sub" style="color:#8A5C05">Correo pendiente</div>') : ''}</td></tr>`).join('')
     || `<tr><td colspan="6" class="muted" style="padding:28px 20px">${L.length ? 'No hay informes que coincidan con el filtro.' : 'Aún no hay informes registrados.'}</td></tr>`;
   tb.querySelectorAll('[data-id]').forEach(r => r.onclick = () => ficha(r.dataset.id));
 }
@@ -716,7 +716,7 @@ function bloqueCorreo(ap) {
       ${(c.adjuntos || []).length ? `<div class="sub">Adjuntos: ${c.adjuntos.map(esc).join(' · ')}</div>` : ''}</div>
     ${enlace('bMail', 'Preparar nuevamente (reenvío)')}`;
   if (c.preparado) return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(245,185,74,.10);border:1px solid rgba(245,185,74,.35)">
-      <div style="color:#A8710A;font-weight:600">Correo preparado · envío por registrar</div>
+      <div style="color:#8A5C05;font-weight:600">Correo preparado · envío por registrar</div>
       <div class="sub" style="margin-top:2px">Preparado el ${fmtFH(c.preparado)}${c.para ? ' para ' + esc(c.para) : ''}</div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${btn('bEnv', 'Registrar envío', true)}${btn('bMail', 'Preparar nuevamente')}</div>`;
   return `<div style="display:flex;gap:8px;flex-wrap:wrap">${btn('bMail', 'Preparar correo de aprobación', true)}</div>${enlace('bEnv', 'Ya lo envié por otro medio: registrar envío')}`;

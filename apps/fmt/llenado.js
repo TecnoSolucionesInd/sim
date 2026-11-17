@@ -71,7 +71,7 @@ const CSS = `
 .num:focus-within{border-color:var(--mint);box-shadow:0 0 0 4px rgba(111,227,207,.15)}
 .num input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:var(--tx);font-size:19px;font-family:var(--f-mono);padding:0 14px;outline:none}
 .est-f select.field{height:46px;font-weight:600;color:var(--mint)}
-.est-f select.field.no-op{color:#A8710A;border-color:rgba(255,195,107,.45)}
+.est-f select.field.no-op{color:#8A5C05;border-color:rgba(255,195,107,.45)}
 .num.calc{background:rgba(111,227,207,.06);border-style:dashed}
 .num.calc input{color:var(--mint)}
 .num .u{padding:0 14px;color:var(--tx-3);font-size:14px;white-space:nowrap}

@@ -162,7 +162,7 @@ const sistemaNombre = (id) => (SISTEMAS.find(s => s.id === id) || {}).nombre || 
 const ordenar = (a) => a.sort((x, y) => numCodigo(x.codigo) - numCodigo(y.codigo));
 
 const ESTADO_UI = {
-  borrador: { label: 'Borrador', bg: 'rgba(245,185,74,.16)', fg: '#A8710A' },
+  borrador: { label: 'Borrador', bg: 'rgba(245,185,74,.16)', fg: '#8A5C05' },
   vigente:  { label: 'Vigente', bg: 'rgba(111,227,207,.16)', fg: '#0B8C80' },
   cambios:  { label: 'Vigente · cambios sin emitir', bg: 'rgba(169,180,255,.16)', fg: '#4753C4' },
   obsoleto: { label: 'Obsoleto', bg: 'rgba(255,143,143,.14)', fg: '#C23B3B' }

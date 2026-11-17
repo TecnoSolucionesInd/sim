@@ -12,7 +12,7 @@ export const MAX_ARCHIVO = 15 * 1024 ** 2;     // 15 MB por archivo
 export const ESTADOS_INF = {
   borrador:   { label: 'Borrador',   bg: 'rgba(15,27,36,.076)', fg: '#3A4955' },
   presentado: { label: 'Presentado', bg: 'rgba(124,200,248,.16)', fg: '#1F79B8' },
-  observado:  { label: 'Observado',  bg: 'rgba(245,185,74,.16)',  fg: '#A8710A' },
+  observado:  { label: 'Observado',  bg: 'rgba(245,185,74,.16)',  fg: '#8A5C05' },
   aprobado:   { label: 'Aprobado',   bg: 'rgba(111,227,207,.16)', fg: '#0B8C80' },
   rechazado:  { label: 'Rechazado',  bg: 'rgba(255,143,143,.14)', fg: '#C23B3B' }
 };

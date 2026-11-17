@@ -289,6 +289,7 @@ Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y c�
 común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fases 1 (base) y 2 (gráficas) hechas; falta el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-16: Tono intermedio (fondo gris azulado con brillos de la portada) y efectos ligeros en todos los aplicativos claros; Registros de formatos con franja de estado; efectos en tarjetas de Congelamiento; corregida la cabecera de Costos en celular. Detalle en REDISENO.md.
 - 2026-11-16: Congelamiento, fase 2: rejillas, ejes, leyendas y fondos de las gráficas con la paleta nueva (colores de estado y de dato intactos).
 - 2026-11-16: Congelamiento, fase 1 del tema oscuro de la portada: `apps/cong/tema.css` (fondos, bordes, textos, menú lateral con logo, barra superior), tipografía Geist, íconos de fecha/hora visibles, Pantalla de Sala sin desborde en celular. Sin cambios de lógica. Prueba completa en `herramientas/tema/cong.py`.
 - 2026-11-16: Rediseño claro — migrados Equipos, Plan de mantenimiento, Informes técnicos, Registro de formatos, Agua de planta y Materiales; `core/tema-panel.css`; herramientas de prueba en `herramientas/tema/`; archivo de continuación REDISENO.md. Agua: el trasvase manual solo se informa si el pozo de producción sube de verdad.

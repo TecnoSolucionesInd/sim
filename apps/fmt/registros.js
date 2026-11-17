@@ -20,6 +20,12 @@ const CSS = `
 .rg-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:12px}
 .rg-c{display:flex;flex-direction:column;gap:8px;text-align:left;padding:16px 18px;border-radius:18px;background:#FFFFFF;border:1px solid var(--line);box-shadow:var(--sombra);color:var(--tx);transition:transform .2s var(--ease),border-color .2s;animation:rise .5s var(--ease) both}
 .rg-c:hover{transform:translateY(-2px);border-color:rgba(15,27,36,.221)}
+.rg-c{position:relative;overflow:hidden;padding-left:22px}
+.rg-c::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--ec,#9AA7B2);transition:top .25s var(--ease),bottom .25s var(--ease),width .2s}
+.rg-c:hover::before{top:0;bottom:0;width:4px}
+.rg-c[data-est=enviado]{--ec:#D69A1C}.rg-c[data-est=observado]{--ec:#D65050}.rg-c[data-est=aprobado]{--ec:#0B9A8B}.rg-c[data-est=borrador]{--ec:#9AA7B2}
+.rg-tabs button{transition:background .2s,color .2s,border-color .2s,transform .2s}
+.rg-tabs button:not(.on):hover{transform:translateY(-1px);border-color:rgba(15,27,36,.3)}
 .rg-c .r1{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .rg-c .nro{font-family:var(--f-mono);font-size:12.5px;color:var(--mint-2)}
 .rg-c b{font-weight:500;font-size:15px;line-height:1.3}
@@ -48,7 +54,7 @@ const CSS = `
 `;
 
 const EST = {
-  enviado:   { label: 'Por revisar', bg: 'rgba(245,185,74,.16)', fg: '#A8710A' },
+  enviado:   { label: 'Por revisar', bg: 'rgba(245,185,74,.16)', fg: '#8A5C05' },
   observado: { label: 'Observado',   bg: 'rgba(255,143,143,.14)', fg: '#C23B3B' },
   aprobado:  { label: 'Aprobado',    bg: 'rgba(111,227,207,.16)', fg: '#0B8C80' }
 };
@@ -143,7 +149,7 @@ function pintarItems() {
   const box = MAIN.querySelector('#rgL');
   if (!box) return;
   const l = filtrados();
-  box.innerHTML = l.slice(0, 300).map((r, i) => `<button class="rg-c" data-id="${r.id}" style="animation-delay:${Math.min(i, 12) * .03}s">
+  box.innerHTML = l.slice(0, 300).map((r, i) => `<button class="rg-c" data-id="${r.id}" data-est="${esc(r.estado || '')}" style="animation-delay:${Math.min(i, 12) * .03}s">
       <div class="r1"><span class="nro">${esc(r.numero || r.codigo)}</span>${pill(r.estado)}</div>
       <b>${esc(r.nombre)}</b>
       <div class="mt">${esc(fechaTxt(r.fechaOp))}${r.turno ? ' · Turno ' + esc(r.turno) : ''}${r.ubicacion ? ' · ' + esc(r.ubicacion) : ''}<br>${esc(r.creadoPorNombre || '')}</div>

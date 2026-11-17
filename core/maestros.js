@@ -17,7 +17,7 @@ export const sistemaPorId = (id) => SISTEMAS.find(s => s.id === Number(id)) || n
 // Estado de un equipo en la base maestra
 export const ESTADOS_EQUIPO = [
   { id: 'operativo', label: 'Operativo',         bg: 'rgba(111,227,207,.16)', fg: '#0B8C80' },
-  { id: 'fuera',     label: 'Fuera de servicio', bg: 'rgba(245,185,74,.16)',  fg: '#A8710A' },
+  { id: 'fuera',     label: 'Fuera de servicio', bg: 'rgba(245,185,74,.16)',  fg: '#8A5C05' },
   { id: 'baja',      label: 'De baja',           bg: 'rgba(255,143,143,.14)', fg: '#C23B3B' }
 ];
 
