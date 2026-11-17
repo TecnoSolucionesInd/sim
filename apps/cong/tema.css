@@ -102,3 +102,54 @@ body{
   .sl-kc-w{font-size:16px}
   .sl-clock{font-size:22px}
 }
+
+/* ══ Efectos ligeros (fase 3) ═══════════════════════════════════════════════
+   Nada de animaciones de entrada en las tarjetas de "En proceso": se vuelven a dibujar cada minuto. */
+@keyframes cgLatido{0%{box-shadow:0 0 0 0 currentColor;opacity:1}70%{box-shadow:0 0 0 6px transparent;opacity:.75}100%{box-shadow:0 0 0 0 transparent;opacity:1}}
+@keyframes cgAparece{from{opacity:0}to{opacity:1}}
+@keyframes cgSube{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* cambio de pestaña: aparición suave (solo opacidad, para no afectar la pantalla completa) */
+.tab-content.active{animation:cgAparece .32s ease both}
+.tab{transition:color .18s,border-color .18s,background .25s}
+.tab.active{background:linear-gradient(180deg,transparent 35%,rgba(0,200,255,.08))}
+
+/* tarjetas de equipos en proceso: tinte y brillo del color de su estado */
+.bc-card{--c:0,200,255;
+  background:linear-gradient(100deg,rgba(var(--c),.075),rgba(var(--c),0) 46%),var(--surface);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),-8px 0 24px -14px rgba(var(--c),.6);
+  transition:transform .22s cubic-bezier(.2,.7,.2,1),box-shadow .22s,border-color .2s}
+.bc-card.bc-warn{--c:250,204,21}
+.bc-card.bc-ev{--c:255,149,0}
+.bc-card:active{transform:scale(.992)}
+.bc-nombre{letter-spacing:-.01em}
+.bc-pill-ok::before,.bc-pill-evst::before,.bc-pill-warnst::before{
+  content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;
+  margin-right:6px;vertical-align:1px;animation:cgLatido 2.2s ease-out infinite}
+.bc-btn,.rc-btn{transition:background .15s,border-color .15s,color .15s,transform .12s}
+.bc-btn:hover,.rc-btn:hover{border-color:var(--border2);color:var(--text)}
+
+/* tarjetas de Registros y Eventos (celular): el color de la barra lateral se difumina hacia adentro */
+.rc{transition:transform .22s cubic-bezier(.2,.7,.2,1),box-shadow .22s,border-color .2s;animation:cgSube .34s cubic-bezier(.2,.7,.2,1) both}
+.rc:nth-child(2){animation-delay:.04s}.rc:nth-child(3){animation-delay:.08s}.rc:nth-child(4){animation-delay:.12s}.rc:nth-child(5){animation-delay:.16s}
+.rc-bar::after{content:"";position:absolute;left:0;top:0;bottom:0;width:170px;background:inherit;opacity:.085;pointer-events:none;
+  -webkit-mask-image:linear-gradient(90deg,#000,transparent);mask-image:linear-gradient(90deg,#000,transparent)}
+.rc-bar{box-shadow:0 0 14px 0 rgba(255,255,255,.06)}
+.rc:active{transform:scale(.992)}
+
+/* indicadores y paneles */
+.pbi-card,.card,.sl-panel{transition:border-color .2s,box-shadow .25s}
+.kpi,.mant-kpi,.sl-eq{transition:transform .2s cubic-bezier(.2,.7,.2,1),border-color .2s,box-shadow .2s}
+tbody tr{transition:background .15s}
+
+/* solo con ratón: pequeña respuesta al pasar el cursor */
+@media (hover:hover){
+  .bc-card:hover{transform:translateY(-2px);border-top-color:var(--border2);border-right-color:var(--border2);border-bottom-color:var(--border2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05),-8px 0 26px -12px rgba(var(--c),.75),0 18px 34px -24px rgba(0,0,0,.9)}
+  .rc:hover{transform:translateY(-2px);border-color:var(--border2);box-shadow:0 16px 30px -22px rgba(0,0,0,.9)}
+  .pbi-card:hover,.card:hover,.sl-panel:hover{border-color:var(--border2)}
+  .kpi:hover,.mant-kpi:hover{transform:translateY(-2px);box-shadow:0 14px 26px -20px rgba(0,0,0,.9)}
+  .nav-item{transition:background .18s,color .18s,transform .18s}
+  .nav-item:hover{transform:translateX(2px)}
+}
+@media print{.rc,.tab-content.active{animation:none}}
