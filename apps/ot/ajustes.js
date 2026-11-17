@@ -46,12 +46,27 @@ function fichaPersona(S, p) {
       <div><label class="label" for="pH">Horas por turno</label><input class="field" type="number" min="1" max="24" step="0.5" id="pH" value="${v.horasTurno ?? 12}"></div>
       <div><label class="label" for="pS">Turnos por semana</label><input class="field" type="number" min="0" max="7" step="1" id="pS" value="${v.turnosSemana ?? 6}"></div>
       <div class="ot-span2"><label class="label" for="pM">Correo de su usuario en el SIM</label><input class="field" type="email" id="pM" value="${esc(v.email)}" placeholder="Para que vea sus trabajos en Mis trabajos"></div>
+      <div class="ot-span2"><label class="label">Ausencias (vacaciones, descanso médico, permisos)</label><div id="pAus" class="ot-rows"></div>
+        <button type="button" class="btn" id="pAusA">${IC.mas} Agregar ausencia</button>
+        <div class="ot-hint" style="margin-top:6px">Los días de ausencia se descuentan de su capacidad en esa semana.</div></div>
       <div class="ot-span2"><label class="check"><input type="checkbox" id="pA" ${v.activo !== false ? 'checked' : ''}> Activo</label></div>
       <div class="ot-span2 ot-hint" id="pCap"></div>
     </div></div>`,
     pie: `<button class="btn" data-no>Cancelar</button><button class="btn btn-primary" data-si>Guardar</button>`
   });
-  const leer = () => ({ id: p?.id, nombre: m.$('#pN').value.trim().replace(/\s+/g, ' '), especialidad: m.$('#pE').value, tipo: m.$('#pT').value, grupo: m.$('#pG').value,
+  const aus = (v.ausencias || []).map(a => ({ ...a }));
+  const pintarAus = () => {
+    m.$('#pAus').innerHTML = aus.map((a, i) => `<div class="ot-row ot-ausrow">
+      <input class="field" type="date" data-a="${i}" data-k="desde" value="${esc(a.desde)}" aria-label="Desde">
+      <input class="field" type="date" data-a="${i}" data-k="hasta" value="${esc(a.hasta)}" aria-label="Hasta">
+      <select class="field" data-a="${i}" data-k="motivo">${M.MOTIVOS_AUSENCIA.map(x => `<option ${a.motivo === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
+      <button type="button" class="btn btn-icon" data-aq="${i}" aria-label="Quitar">${IC.x}</button></div>`).join('');
+    m.$$('#pAus [data-a]').forEach(x => x.onchange = () => { aus[+x.dataset.a][x.dataset.k] = x.value; });
+    m.$$('#pAus [data-aq]').forEach(b => b.onclick = () => { aus.splice(+b.dataset.aq, 1); pintarAus(); });
+  };
+  m.$('#pAusA').onclick = () => { const h = M.ahoraLocal().slice(0, 10); aus.push({ desde: h, hasta: h, motivo: 'Vacaciones' }); pintarAus(); };
+  pintarAus();
+  const leer = () => ({ id: p?.id, ausencias: aus.filter(a => a.desde).map(a => ({ desde: a.desde, hasta: a.hasta && a.hasta >= a.desde ? a.hasta : a.desde, motivo: a.motivo || 'Otro' })), nombre: m.$('#pN').value.trim().replace(/\s+/g, ' '), especialidad: m.$('#pE').value, tipo: m.$('#pT').value, grupo: m.$('#pG').value,
     dedicacion: +m.$('#pD').value, horasTurno: +m.$('#pH').value, turnosSemana: +m.$('#pS').value, email: m.$('#pM').value.trim().toLowerCase(), activo: m.$('#pA').checked });
   const cap = () => { m.$('#pCap').textContent = `Capacidad: ${M.nf(M.hhSemana(leer(), S.cfg), 1)} HH por semana.`; };
   m.$$('input,select').forEach(x => x.addEventListener('input', cap));

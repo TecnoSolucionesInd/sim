@@ -160,7 +160,8 @@ fieldset[disabled] .ot-tog button{cursor:default}
 .ot-cfg .glass{padding:18px 20px}
 .ot-cfg h3{margin:0 0 4px;font-size:15px;font-weight:600}
 .ot-cfg .ot-hint{margin:0 0 12px}
-.ot-exrow .field:first-child{flex:1}.ot-exrow select.field{width:200px}
+.ot-exrow .field:first-child{flex:1}
+.ot-ausrow .field{height:40px!important}.ot-ausrow .field[type=date]{width:150px}.ot-ausrow select.field{flex:1}.ot-exrow select.field{width:200px}
 
 
 /* etapa 2: preventivo de la semana y solicitudes */
@@ -189,6 +190,35 @@ fieldset[disabled] .ot-tog button{cursor:default}
   .ot-nav{width:100%}
   .ot-nav .btn-primary{flex:1}
 }
+
+/* etapa 3: capacidad */
+.cp-alertas{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.cp-al{display:flex;gap:10px;align-items:flex-start;padding:11px 14px;border-radius:12px;font-size:13.5px;line-height:1.45;
+  background:color-mix(in srgb,var(--c) 8%,#fff);border:1px solid color-mix(in srgb,var(--c) 30%,transparent);color:color-mix(in srgb,var(--c) 70%,#0F1B24)}
+.cp-al svg{flex:none;margin-top:1px;color:var(--c)}
+.cp-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px}
+.cp-card{padding:18px 20px;min-width:0}
+.cp-card h3{margin:0 0 6px;font-size:15px;font-weight:600}
+.cp-ley{display:flex;gap:14px;font-size:12px;color:var(--tx-2);margin:4px 0 12px}
+.cp-ley i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
+.cp-ley .d{background:#D5DEE5}.cp-ley .r{background:#5564D8}.cp-ley .u{background:#0F1B24;height:3px;vertical-align:2px}
+.cp-bars{display:flex;flex-direction:column;gap:10px}
+.cp-row{display:grid;grid-template-columns:150px minmax(0,1fr) 78px 44px;align-items:center;gap:10px;font-size:13px}
+.cp-l{color:var(--tx);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cp-bar{position:relative;height:22px;border-radius:6px;background:#F1F5F7}
+.cp-bar i{position:absolute;left:0;border-radius:5px;transition:width .6s var(--ease)}
+.cp-d{top:0;bottom:0;background:#D5DEE5}
+.cp-r{top:6px;bottom:6px;background:var(--c)}
+.cp-u{bottom:1px;height:3px;background:#0F1B24;opacity:.75}
+.cp-v{text-align:right;color:var(--tx-2)}.cp-h{text-align:right;font-weight:600}
+.cp-heat td,.cp-heat th{padding:9px 8px!important;font-size:12.5px}
+.cp-heat th.c,.cp-heat td.c{text-align:center}
+.cp-cel{display:inline-block;min-width:58px;padding:4px 6px;border-radius:7px;font-weight:600;font-size:12px;
+  color:color-mix(in srgb,var(--c) 80%,#0F1B24);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.cp-mini{display:inline-block;width:calc(100% - 52px);height:8px;border-radius:4px;background:#E9EEF2;vertical-align:middle;margin-right:8px;overflow:hidden}
+.cp-mini i{display:block;height:100%;background:var(--c);border-radius:4px;transition:width .6s var(--ease)}
+@media (max-width:1000px){.cp-grid{grid-template-columns:1fr}}
+@media (max-width:760px){.cp-row{grid-template-columns:96px minmax(0,1fr) 64px 34px;gap:6px;font-size:12px}.cp-card{padding:14px}}
 @media (max-width:1100px){.ot-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:760px){
   .ot-h1{font-size:23px}
@@ -219,13 +249,14 @@ import { vMis } from './mis.js';
 import { vPersonal, vConfig } from './ajustes.js';
 import { vPMP } from './pmp.js';
 import { vSolicitudes } from './solicitudes.js';
+import { vCapacidad } from './capacidad.js';
 
 const S = { ctx: null, api: null, cfg: { ...CONFIG_BASE }, eq: [], ubic: [], per: new Map(), ords: new Map(), sols: new Map(), pmp: new Map(), pmpError: false, yo: null, listo: false };
 S.solicitudes = () => [...S.sols.values()];
 S.lista = () => [...S.ords.values()];
 S.personas = () => [...S.per.values()];
 
-const VISTAS = { mis: vMis, solicitudes: vSolicitudes, ordenes: vOrdenes, pmp: vPMP, personal: vPersonal, config: vConfig };
+const VISTAS = { mis: vMis, solicitudes: vSolicitudes, ordenes: vOrdenes, pmp: vPMP, capacidad: vCapacidad, personal: vPersonal, config: vConfig };
 let modActual = null, tPint = null;
 const pintar = () => {
   if (!S.ctx || !modActual) return;

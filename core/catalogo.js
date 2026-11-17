@@ -132,6 +132,7 @@ export const APPS = [
       { id: 'solicitudes', nombre: 'Solicitudes' },
       { id: 'ordenes', nombre: 'Órdenes de trabajo' },
       { id: 'pmp', nombre: 'Preventivo de la semana' },
+      { id: 'capacidad', nombre: 'Capacidad' },
       { id: 'personal', nombre: 'Personal' },
       { id: 'config', nombre: 'Configuración' }
     ]

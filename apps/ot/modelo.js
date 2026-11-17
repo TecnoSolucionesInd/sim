@@ -245,3 +245,98 @@ export const EST_SOL = [
 export const estSolDe = (id) => EST_SOL.find(e => e.id === id) || EST_SOL[0];
 // Estado que ve el solicitante: si su OT ya se cerró, la solicitud está atendida
 export const estadoSolicitud = (sol, ot) => sol.estado === 'aceptada' && ot?.estado === 'cerrada' ? 'atendida' : sol.estado;
+
+// ---------- Capacidad ----------
+// Disponibles: por persona, horas de turno × turnos por semana × dedicación, menos los días de ausencia de esa semana.
+// Requeridas: HH de OT abiertas (lo estimado menos lo ya registrado) + tareas del PMP sin OT; lo vencido se carga a la
+// semana actual (backlog). Utilizadas: HH registradas por técnico en trabajos iniciados en la semana.
+export const MOTIVOS_AUSENCIA = ['Vacaciones', 'Descanso médico', 'Permiso', 'Capacitación', 'Otro'];
+export const HH_DEFECTO = 2; // por especialidad, cuando una OT no tiene estimación ni hay historial parecido
+export const HORIZONTE = 4;  // semanas que mira la planificación
+
+export function diasAusente(p, sem) {
+  const ini = deLocal(sem), dias = new Set();
+  (p.ausencias || []).forEach(a => {
+    const d0 = deLocal(a.desde), d1 = deLocal(a.hasta || a.desde);
+    if (!d0 || !d1) return;
+    for (let i = 0; i < 7; i++) { const d = new Date(ini); d.setDate(d.getDate() + i); if (d >= d0 && d <= d1) dias.add(i); }
+  });
+  return dias.size;
+}
+export const hhDispSemana = (p, sem, cfg) => hhSemana(p, cfg) * (7 - diasAusente(p, sem)) / 7;
+export const semanasDesde = (s, n) => Array.from({ length: n }, (_, i) => masSemanas(s, i));
+
+// Estimación de HH de una OT: la del formulario; si no hay, el promedio real de OT cerradas con la misma especialidad
+// principal y tipo (mínimo 2); si tampoco, 2 HH por especialidad.
+export function estimador(cerradas) {
+  const acc = {};
+  cerradas.forEach(o => { if (+o.hhTotal > 0) (acc[`${(o.especialidades || [])[0]}|${o.tipo}`] ||= []).push(+o.hhTotal); });
+  const prom = {};
+  Object.entries(acc).forEach(([k, v]) => { if (v.length >= 2) prom[k] = v.reduce((a, b) => a + b, 0) / v.length; });
+  return (o) => {
+    if (+o.hhEstimadas > 0) return { hh: +o.hhEstimadas, fuente: 'estimada' };
+    const p = prom[`${(o.especialidades || [])[0]}|${o.tipo}`];
+    if (p) return { hh: Math.round(p * 10) / 10, fuente: 'promedio' };
+    return { hh: HH_DEFECTO * Math.max(1, (o.especialidades || []).length), fuente: 'defecto' };
+  };
+}
+
+// Carga pendiente: un elemento por OT abierta y por ocurrencia del PMP sin OT, con sus HH por especialidad
+export function cargaPendiente({ ords, tareas, semActual, est }) {
+  const items = [], conOT = new Set(), tmap = new Map(tareas.map(t => [t.id, t]));
+  ords.forEach(o => { if (o.pmp && o.estado !== 'anulada') conOT.add(clavePMP(o.pmp.tareaId, o.pmp.semana)); });
+  ords.filter(o => ['pendiente', 'programada', 'ejecucion', 'espera'].includes(o.estado)).forEach(o => {
+    const t = o.pmp ? tmap.get(o.pmp.tareaId) : null;
+    let rep, fuente;
+    if (t && hhTarea(t)) { rep = { ...t.resp }; fuente = 'pmp'; }
+    else {
+      const e = est(o), esps = (o.especialidades || []).length ? o.especialidades : ['Tercero'];
+      fuente = e.fuente; rep = Object.fromEntries(esps.map(x => [x, e.hh / esps.length]));
+    }
+    const hecho = {};
+    (o.tecnicos || []).forEach(tc => { hecho[tc.especialidad] = (hecho[tc.especialidad] || 0) + (+tc.hh || 0); });
+    Object.keys(rep).forEach(k => { rep[k] = Math.max(0, (+rep[k] || 0) - (hecho[k] || 0)); });
+    const obj = lunesDe(deLocal(o.fechaProg || o.fechaLimite || o.fecha));
+    items.push({ tipo: 'ot', id: o.id, numero: o.numero, desc: o.descripcion, equipo: o.equipoCod || o.areaTrabajo, rep, fuente,
+      prioridad: o.prioridad, criticidad: o.criticidad, fechaLimite: o.fechaLimite, semana: obj < semActual ? semActual : obj,
+      atrasada: obj < semActual || retrasada(o), asignados: o.asignados || [], estado: o.estado });
+  });
+  tareas.forEach(t => (t.semanas || []).forEach(s => {
+    const e = (t.ejec || {})[s], ef = e?.a || s;
+    if (e?.estado === 'hecho' || e?.estado === 'no' || conOT.has(clavePMP(t.id, s))) return;
+    items.push({ tipo: 'pmp', id: clavePMP(t.id, s), numero: t.rutina || 'PMP', desc: t.tarea, equipo: t.eq, rep: { ...(t.resp || {}) }, fuente: 'pmp',
+      prioridad: 'P3', criticidad: { A: 'alto', B: 'medio', C: 'bajo' }[t.crit] || 'medio', fechaLimite: finSemana(ef),
+      semana: ef < semActual ? semActual : ef, atrasada: ef < semActual, asignados: [] });
+  }));
+  return items;
+}
+
+// Asignación semana a semana: por especialidad, en orden de semana, prioridad, criticidad y fecha límite, cada trabajo toma
+// horas libres desde su semana objetivo; lo que no entra en el horizonte queda "sin capacidad". Tercero no consume capacidad.
+const ORD_P = { P1: 0, P2: 1, P3: 2, P4: 3 }, ORD_C = { mc: 0, alto: 1, medio: 2, bajo: 3 };
+export function planificar(items, semanas, dispEsp) {
+  const libre = {}, k = (e, s) => { const x = `${e}|${s}`; if (!(x in libre)) libre[x] = dispEsp(e, s); return x; };
+  const fin = semanas.at(-1);
+  const orden = items.filter(i => i.semana <= fin).sort((a, b) => a.semana.localeCompare(b.semana) || ORD_P[a.prioridad] - ORD_P[b.prioridad]
+    || ORD_C[a.criticidad] - ORD_C[b.criticidad] || String(a.fechaLimite).localeCompare(String(b.fechaLimite)));
+  orden.forEach(it => {
+    it.asignacion = {}; it.sinCapacidad = {};
+    Object.entries(it.rep).forEach(([e, hh]) => {
+      if (!(hh > 0)) return;
+      if (e === 'Tercero') { it.asignacion[e] = it.semana; return; }
+      let resto = hh;
+      for (const s of semanas) {
+        if (s < it.semana) continue;
+        const x = k(e, s), u = Math.min(resto, libre[x]);
+        if (u > 1e-9) { libre[x] -= u; resto -= u; it.asignacion[e] = s; }
+        if (resto <= 1e-9) break;
+      }
+      if (resto > 1e-6) it.sinCapacidad[e] = resto;
+    });
+    const ult = Object.values(it.asignacion).sort().at(-1) || null;
+    it.semanaFin = ult;
+    it.sinCap = Object.values(it.sinCapacidad).reduce((a, b) => a + b, 0);
+    it.seAtrasa = it.sinCap > 0 || (!!ult && !!it.fechaLimite && ult > lunesDe(deLocal(it.fechaLimite)));
+  });
+  return { items: orden, libre };
+}

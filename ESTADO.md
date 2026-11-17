@@ -71,7 +71,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 | F3 | Equipos (maestro) | Construido (pruebas) |
 | F5 | Agua de planta | Panel HMI 3D, análisis y parámetros desde el R-303 en pruebas |
 | F5 | Materiales e inventario (maestro) | Químicos e insumos de ósmosis en pruebas (Análisis, kardex, catálogo) · pendiente: almacén general |
-| F6 | Órdenes de trabajo | Etapas 1 y 2 en pruebas (registro, bandeja, Mis trabajos, personal, solicitudes, preventivo de la semana) · siguen capacidad y dashboard |
+| F6 | Órdenes de trabajo | Etapas 1 a 3 en pruebas (registro, bandeja, Mis trabajos, personal, solicitudes, preventivo de la semana, capacidad) · sigue el dashboard gerencial |
 | F6 | Conformidades | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Programas de trabajo (paradas, auditorías, proyectos) con costos en pruebas · pendiente: plan preventivo, programación quincenal, OT |
 | F9 | Informes técnicos | Construido (pruebas) · archivos en Firestore por partes (sin Blaze) |
@@ -296,7 +296,7 @@ trabajos de mantenimiento (SIM)" en Claude Docs). Aplicativo independiente `apps
   planta de hielo 2, ósmosis 2) al 0 %, sus HH van aparte como apoyo; plazos P1 4 h · P2 24 h · P3 7 d · P4 30 d;
   toda OT pasa por supervisor; el cierre de una OT del PMP marcará la ocurrencia en Plan preventivo (etapa 2);
   numeración OT-26-00001 / SOL-26-00001.
-- Etapas: [x] 1 base y registro · [x] 2 solicitudes + PMP · [ ] 3 capacidad · [ ] 4 dashboard gerencial (resúmenes
+- Etapas: [x] 1 base y registro · [x] 2 solicitudes + PMP · [x] 3 capacidad · [ ] 4 dashboard gerencial (resúmenes
   mensuales, PDF horizontal, Excel) · [ ] 5 R-001 prellenado, ausencias, materiales.
 - Etapa 2 (17-nov): módulo **Solicitudes** (`solicitudes.js`, `datos/ot/solicitudes`, correlativo SOL-AA): el área registra y
   ve las suyas (`creadoUid`); el supervisor acepta (abre la OT prellenada; al registrarla la solicitud queda `aceptada` con
@@ -306,6 +306,15 @@ trabajos de mantenimiento (SIM)" en Claude Docs). Aplicativo independiente `apps
   semana. **Mis trabajos** muestra el preventivo de la especialidad del técnico con botón Iniciar. Al **verificar y cerrar**
   una OT del PMP se escribe `ejec.<semana>` = {estado:'hecho', fecha, por, obs, ot} (misma forma que usa Plan preventivo;
   `pmpMarcado` true/false en la OT). Una ocurrencia no admite dos OT vigentes.
+- Etapa 3 (17-nov): módulo **Capacidad** (`capacidad.js`; cálculos puros en `modelo.js`: `hhDispSemana`, `estimador`,
+  `cargaPendiente`, `planificar`). Disponibles = h/turno × turnos/sem × dedicación × (7 − días de ausencia)/7 por persona
+  (ausencias en la ficha de Personal). Requeridas = OT abiertas (HH estimadas − registradas; sin estimación: promedio real de
+  OT cerradas de igual especialidad principal y tipo con ≥2 casos, si no 2 HH por especialidad; OT del PMP usan las HH de
+  la tarea) + ocurrencias del PMP sin OT; lo vencido se carga a la semana actual. Utilizadas = HH por técnico de OT
+  iniciadas en la semana (operación aparte como apoyo). `planificar` reparte por especialidad, semana, prioridad,
+  criticidad y fecha límite en un horizonte de 4 semanas; lo que no entra = "sin capacidad". Tercero no consume capacidad.
+  Vista: indicadores, alertas (déficit por especialidad, especialidad sin personal, técnico sobrecargado, trabajos sin
+  capacidad), barras por especialidad, mapa de 4 semanas, carga por técnico y lista de trabajos sin capacidad.
 - Regla nueva en `firestore.rules`: `match /datos/plan/pmp_tareas/{id}` — lectura con acceso a `ot`; actualización por
   admin/supervisor de `ot` solo de los campos `ejec` y `actualizado`. **Debe publicarse en la consola.**
 - Para dar acceso a un área solicitante: rol operador en `ot` con solo el módulo Solicitudes.
@@ -324,6 +333,7 @@ Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y c�
 común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fases 1 (base) y 2 (gráficas) hechas; falta el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-17: Órdenes de trabajo, etapa 3: módulo Capacidad (disponibles, requeridas, utilizadas, holgura o déficit, backlog, asignación de 4 semanas, trabajos sin capacidad, carga por técnico) y ausencias en Personal.
 - 2026-11-17: Órdenes de trabajo, etapa 2: Solicitudes de las áreas (registro, aceptación que crea la OT, rechazo con motivo), Preventivo de la semana desde el Plan preventivo (OT por tarea o todas), preventivo en Mis trabajos y marca automática de ejecución en el PMP al cerrar la OT. Regla nueva para `pmp_tareas`.
 - 2026-11-17: Órdenes de trabajo, etapa 1: aplicativo nuevo `apps/ot/` (bandeja, formulario, estados, Mis trabajos en celular, reporte rápido, Personal con capacidad, Configuración). Reemplaza en el catálogo al "Reporte de mantenimiento" planificado. El mock de pruebas ahora avisa a los oyentes tras una transacción.
 - 2026-11-17: Agua de planta — HMI tipo SCADA: mímico de niveles y flujo con tanques animados, visor 3D reencuadrado para celular en vertical (vista de costado, tarjetas compactas), insignia En vivo/Histórico y transiciones ligeras. El reporte PNG/PDF no cambia.
