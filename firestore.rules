@@ -48,6 +48,14 @@ service cloud.firestore {
       allow write: if app != 'fmt' && puedeEscribir(app);
     }
 
+    // Órdenes de trabajo: lee el Plan preventivo y, al cerrar una OT del PMP, marca solo la ejecución de esa semana
+    // (campos ejec y actualizado de la tarea; nada más del plan).
+    match /datos/plan/pmp_tareas/{id} {
+      allow read: if puedeLeer('ot');
+      allow update: if esAdmin() || (activo() && permiso('ot').get('rol', '') in ['admin', 'supervisor']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ejec', 'actualizado']));
+    }
+
     function esRevisorFmt() {
       return esAdmin() || (activo() && permiso('fmt').get('rol', '') in ['admin', 'supervisor']);
     }

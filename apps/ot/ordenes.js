@@ -102,7 +102,7 @@ const nuevaOT = (S, base = {}) => {
   };
 };
 
-export async function abrirOT(S, ot, base = {}) {
+export async function abrirOT(S, ot, base = {}, opts = {}) {
   const nuevo = !ot;
   const o = nuevo ? nuevaOT(S, base) : JSON.parse(JSON.stringify(ot));
   const g = S.gestiona;
@@ -341,10 +341,14 @@ export async function abrirOT(S, ot, base = {}) {
   on('registrar', async () => {
     const x = leer();
     if (errores(M.erroresRegistro(x))) return;
+    if (o.pmp) { x.pmp = o.pmp; x.fechaLimite = o.fechaLimite || x.fechaLimite; }
+    if (o.solicitudId) { x.solicitudId = o.solicitudId; x.solicitudNumero = o.solicitudNumero; }
+    if (x.pmp && S.lista().some(y => y.pmp && y.estado !== 'anulada' && M.clavePMP(y.pmp.tareaId, y.pmp.semana) === M.clavePMP(x.pmp.tareaId, x.pmp.semana))) return errores(['Esta tarea del PMP ya tiene una OT para esa semana.']);
     let estado = x.asignados.length && x.fechaProg ? 'programada' : 'pendiente';
     if (ya?.checked) { if (errores(M.erroresCierre(x))) return; estado = 'ejecutada'; }
     const r = await S.api.crear({ ...x, estado, nFotos: fotosNuevas.length }, ya?.checked ? 'Registró el trabajo ya ejecutado' : 'Registró la OT');
     for (const f of fotosNuevas) await S.api.agregarFoto(r.id, f);
+    if (opts.alRegistrar) await opts.alRegistrar(r);
     S.ctx.toast(`${r.numero} registrada.`); m.cerrar();
   });
   on('guardar', async () => {
@@ -393,6 +397,7 @@ export async function abrirOT(S, ot, base = {}) {
     const x = leer();
     if (errores([...M.erroresRegistro(x), ...M.erroresCierre(x)])) return;
     await S.api.actualizar(o, { ...x, estado: 'cerrada', verificadoPor: S.usuario, verificado: M.ahoraLocal() }, 'Verificó y cerró la OT');
+    if (o.pmp) await marcarEnPMP(S, { ...o, ...x });
     S.ctx.toast('OT cerrada.'); m.cerrar();
   });
   on('devolver', async () => {
@@ -408,6 +413,21 @@ export async function abrirOT(S, ot, base = {}) {
     S.ctx.toast('OT anulada.'); m.cerrar();
   });
   return m;
+}
+
+// Al cerrar una OT del PMP se marca la ocurrencia como ejecutada en Plan preventivo (misma forma que usa ese módulo)
+export async function marcarEnPMP(S, o) {
+  const t = S.pmp?.get(o.pmp.tareaId), prev = t?.ejec?.[o.pmp.semana] || {};
+  const valor = { estado: 'hecho', fecha: String(o.fin || M.ahoraLocal()).slice(0, 10), por: S.usuario, obs: [o.numero, o.observaciones].filter(Boolean).join(' · '), ot: o.numero, ...(prev.a ? { a: prev.a } : {}) };
+  try {
+    await S.api.marcarPMP(o.pmp.tareaId, o.pmp.semana, valor);
+    if (t) t.ejec = { ...(t.ejec || {}), [o.pmp.semana]: valor };
+    await S.api.actualizar(o, { pmpMarcado: true });
+  } catch (e) {
+    console.error(e);
+    await S.api.actualizar(o, { pmpMarcado: false }).catch(() => {});
+    S.ctx.toast('La OT se cerró, pero no se pudo marcar la tarea en Plan preventivo (revise las reglas de Firebase).', 'err');
+  }
 }
 
 const plazoTxt = (h) => h < 48 ? `${h} h` : `${Math.round(h / 24)} días`;

@@ -129,7 +129,9 @@ export const APPS = [
     icon: 'M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M9 13l2 2 4-4',
     modulos: [
       { id: 'mis', nombre: 'Mis trabajos' },
+      { id: 'solicitudes', nombre: 'Solicitudes' },
       { id: 'ordenes', nombre: 'Órdenes de trabajo' },
+      { id: 'pmp', nombre: 'Preventivo de la semana' },
       { id: 'personal', nombre: 'Personal' },
       { id: 'config', nombre: 'Configuración' }
     ]

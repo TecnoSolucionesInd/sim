@@ -162,6 +162,33 @@ fieldset[disabled] .ot-tog button{cursor:default}
 .ot-cfg .ot-hint{margin:0 0 12px}
 .ot-exrow .field:first-child{flex:1}.ot-exrow select.field{width:200px}
 
+
+/* etapa 2: preventivo de la semana y solicitudes */
+.ot-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ot-pmp td{vertical-align:top}
+.ot-pmp td small{display:block;color:var(--tx-3);font-size:12px;margin-top:2px}
+.ot-pmp td .ot-pill+small{margin-top:4px}
+.ot-pmp tr.late td:first-child{box-shadow:inset 3px 0 0 #B91C1C}
+.ot-rut{font-family:var(--f-mono);font-size:11.5px;color:var(--mint-2);background:#E3F6F3;border-radius:5px;padding:1px 5px}
+.ot-rojo{color:#A61B1B!important}
+.ot-lnk{all:unset;cursor:pointer;font-family:var(--f-mono);font-size:12.5px;color:var(--mint-2);text-decoration:underline;text-underline-offset:3px;margin-right:6px}
+.ot-mini{height:34px;padding:0 12px;font-size:13px}
+.ot-cnt{font-family:var(--f-mono);font-size:11px;opacity:.7;margin-left:4px}
+.ot-dl{display:grid;grid-template-columns:150px 1fr;gap:10px 16px;margin:0;font-size:14px;line-height:1.5}
+.ot-dl dt{color:var(--tx-3);font-size:12.5px;padding-top:2px}
+.ot-dl dd{margin:0}.ot-dl small{color:var(--tx-3)}
+@media (max-width:760px){
+  .ot-dl{grid-template-columns:1fr;gap:2px}.ot-dl dd{margin-bottom:10px}
+  .ot-pmp thead{display:none}
+  .ot-pmp tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .ot-pmp td{padding:0!important;border:0!important}
+  .ot-pmp td:nth-child(2){grid-column:1 / -1}
+  .ot-pmp td:nth-child(4){display:none}
+  .ot-pmp tr.late{box-shadow:inset 3px 0 0 #B91C1C}
+  .ot-pmp tr.late td:first-child{box-shadow:none}
+  .ot-nav{width:100%}
+  .ot-nav .btn-primary{flex:1}
+}
 @media (max-width:1100px){.ot-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:760px){
   .ot-h1{font-size:23px}
@@ -190,12 +217,15 @@ import { CONFIG_BASE, mesDe, ahoraLocal } from './modelo.js';
 import { vOrdenes } from './ordenes.js';
 import { vMis } from './mis.js';
 import { vPersonal, vConfig } from './ajustes.js';
+import { vPMP } from './pmp.js';
+import { vSolicitudes } from './solicitudes.js';
 
-const S = { ctx: null, api: null, cfg: { ...CONFIG_BASE }, eq: [], ubic: [], per: new Map(), ords: new Map(), yo: null, listo: false };
+const S = { ctx: null, api: null, cfg: { ...CONFIG_BASE }, eq: [], ubic: [], per: new Map(), ords: new Map(), sols: new Map(), pmp: new Map(), pmpError: false, yo: null, listo: false };
+S.solicitudes = () => [...S.sols.values()];
 S.lista = () => [...S.ords.values()];
 S.personas = () => [...S.per.values()];
 
-const VISTAS = { mis: vMis, ordenes: vOrdenes, personal: vPersonal, config: vConfig };
+const VISTAS = { mis: vMis, solicitudes: vSolicitudes, ordenes: vOrdenes, pmp: vPMP, personal: vPersonal, config: vConfig };
 let modActual = null, tPint = null;
 const pintar = () => {
   if (!S.ctx || !modActual) return;
@@ -210,8 +240,9 @@ S.gestiona = S.ctx.esAdmin || ['admin', 'supervisor'].includes(S.ctx.rol);
 S.admin = S.ctx.esAdmin || S.ctx.rol === 'admin';
 S.api = crearApi(S.usuario);
 
-const [cfg, eq, ubic] = await Promise.all([S.api.config(), S.api.equipos(), S.api.ubicaciones()]);
-S.cfg = cfg; S.eq = eq; S.ubic = ubic;
+const [cfg, eq, ubic, pmp] = await Promise.all([S.api.config(), S.api.equipos(), S.api.ubicaciones(),
+  S.api.pmpTareas().catch(e => { console.warn('Plan preventivo no disponible', e); S.pmpError = true; return []; })]);
+S.cfg = cfg; S.eq = eq; S.ubic = ubic; S.pmp = new Map(pmp.map(t => [t.id, t]));
 
 // Órdenes: todas las abiertas + las del mes actual y el anterior
 const abiertas = new Map(), recientes = new Map();
@@ -220,6 +251,7 @@ const fallo = (e) => { console.error(e); S.ctx.toast('No se pudieron leer las ó
 S.api.escucharAbiertas(l => { abiertas.clear(); l.forEach(o => abiertas.set(o.id, o)); unir(); }, fallo);
 const hoy = ahoraLocal(), d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
 S.api.escucharMeses([mesDe(hoy), mesDe(d.toISOString())], l => { recientes.clear(); l.forEach(o => recientes.set(o.id, o)); unir(); }, fallo);
+S.api.escucharSolicitudes([mesDe(hoy), mesDe(d.toISOString())], l => { S.sols = new Map(l.map(x => [x.id, x])); repintar(); }, (e) => console.warn(e));
 S.api.escucharPersonal(l => {
   S.per = new Map(l.map(p => [p.id, p]));
   const correo = String(S.ctx.user.email || '').toLowerCase();

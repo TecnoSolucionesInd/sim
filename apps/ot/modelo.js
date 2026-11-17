@@ -188,3 +188,60 @@ export function cruces(ot, otras) {
 // Capacidad semanal de una persona (HH)
 export const hhSemana = (p, cfg = CONFIG_BASE) => p.activo === false ? 0
   : (+p.horasTurno || cfg.horasTurno) * (+p.turnosSemana || cfg.turnosSemana) * ((p.dedicacion ?? (p.tipo === 'oper' ? 0 : 100)) / 100);
+
+// ---------- Plan preventivo (PMP) ----------
+// Una ocurrencia es una semana programada (lunes ISO) de una tarea de datos/plan/pmp_tareas; si se reprogramó
+// (ejec[s].a) cuenta en su semana nueva. Al cerrar su OT se marca ejec[s] = { estado:'hecho', fecha, por, obs }.
+const isoD = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+export const lunesDe = (d = new Date()) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return isoD(x); };
+export const masSemanas = (s, n) => { const d = deLocal(s); d.setDate(d.getDate() + 7 * n); return isoD(d); };
+export const finSemana = (s) => { const d = deLocal(s); d.setDate(d.getDate() + 6); return `${isoD(d)}T23:59`; };
+export function rangoSemana(s) {
+  const a = deLocal(s), b = deLocal(s); b.setDate(b.getDate() + 6);
+  return `${a.getDate()}${a.getMonth() !== b.getMonth() ? ' ' + MES[a.getMonth()] : ''} al ${b.getDate()} ${MES[b.getMonth()]}`;
+}
+export const hhTarea = (t) => Object.values(t.resp || {}).reduce((a, v) => a + (+v || 0), 0);
+export const espTarea = (t) => { const k = Object.keys(t.resp || {}).filter(r => r !== 'Tercero'); return k.length ? k : ['Tercero']; };
+
+// Ocurrencias que caen en la semana `sem` (y las atrasadas de semanas anteriores, si `conAtrasadas`)
+export function ocurrenciasSemana(tareas, sem, conAtrasadas = true) {
+  const out = [];
+  tareas.forEach(t => (t.semanas || []).forEach(s => {
+    const e = (t.ejec || {})[s] || null, ef = e?.a || s;
+    const hecha = e?.estado === 'hecho', no = e?.estado === 'no';
+    if (ef === sem || (conAtrasadas && ef < sem && !hecha && !no && sem === lunesDe())) out.push({ t, s, ef, e, hecha, no, atrasada: ef < sem && !hecha && !no });
+  }));
+  return out;
+}
+export const clavePMP = (tareaId, s) => `${tareaId}|${s}`;
+
+// Borrador de OT a partir de una ocurrencia del PMP
+export function otDesdePMP(o, sistemas = []) {
+  const t = o.t, crit = { A: 'alto', B: 'medio', C: 'bajo' }[t.crit] || 'medio';
+  const zona = sistemas.find(x => x.id === Number(t.sistema))?.nombre || '';
+  return {
+    fecha: ahoraLocal(), origen: 'pmp', tipo: 'preventivo', ref: `${t.rutina || ''} · semana del ${rangoSemana(o.ef)}`.trim(),
+    pmp: { tareaId: t.id, semana: o.s, efectiva: o.ef }, zona, sistema: t.sistema === '' || t.sistema == null ? null : Number(t.sistema),
+    areaTrabajo: t.ubicacion || '', equipoId: t.eqId || null, equipoCod: t.eq || '', equipoDesc: t.eqDesc || '',
+    solicitante: { area: 'Mantenimiento', nombre: 'Plan preventivo' }, descripcion: t.tarea || '',
+    especialidades: espTarea(t), hhEstimadas: hhTarea(t) || null, prioridad: 'P3', criticidad: crit,
+    fechaProg: o.ef, fechaLimite: finSemana(o.ef), observaciones: t.mat ? `Materiales previstos: ${t.mat}` : ''
+  };
+}
+
+// ---------- Solicitudes ----------
+export const URGENCIAS = [
+  { id: 'normal', l: 'Normal', prio: 'P3', c: '#1B86C4' },
+  { id: 'urgente', l: 'Urgente', prio: 'P2', c: '#C2410C' },
+  { id: 'emergencia', l: 'Emergencia', prio: 'P1', c: '#B91C1C' }
+];
+export const urgDe = (id) => URGENCIAS.find(u => u.id === id) || URGENCIAS[0];
+export const EST_SOL = [
+  { id: 'nueva', l: 'Por evaluar', c: '#B77908' },
+  { id: 'aceptada', l: 'Aceptada', c: '#1B86C4' },
+  { id: 'atendida', l: 'Atendida', c: '#087F74' },
+  { id: 'rechazada', l: 'Rechazada', c: '#8A96A2' }
+];
+export const estSolDe = (id) => EST_SOL.find(e => e.id === id) || EST_SOL[0];
+// Estado que ve el solicitante: si su OT ya se cerró, la solicitud está atendida
+export const estadoSolicitud = (sol, ot) => sol.estado === 'aceptada' && ot?.estado === 'cerrada' ? 'atendida' : sol.estado;

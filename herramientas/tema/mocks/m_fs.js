@@ -27,7 +27,9 @@ export async function getDoc(r){return snapDoc(r.path)}
 export async function getDocs(q){const docs=colDocs(q);return {docs,empty:!docs.length,size:docs.length,forEach:(f)=>docs.forEach(f)}}
 function notify(){subs.forEach(f=>f())}
 export async function setDoc(r,d,opt){chk(d);DB[r.path]=apply(opt&&opt.merge?DB[r.path]:{},d);notify()}
-export async function updateDoc(r,d){chk(d);DB[r.path]=apply(DB[r.path],d);notify()}
+// update: una clave con puntos ('ejec.2026-11-16') es una ruta anidada, como en Firestore
+function expandir(base,d){const o=base?clone(base):{};const planos={};for(const [k,v] of Object.entries(d)){if(!k.includes('.')){planos[k]=v;continue}const ps=k.split('.');let x=o;ps.slice(0,-1).forEach(p=>{if(!x[p]||typeof x[p]!=='object')x[p]={};x=x[p]});x[ps.at(-1)]=apply({v:x[ps.at(-1)]},{v}).v}return apply(o,planos)}
+export async function updateDoc(r,d){chk(d);DB[r.path]=expandir(DB[r.path],d);notify()}
 export async function deleteDoc(r){delete DB[r.path];notify()}
 export function writeBatch(){const ops=[];return{set:(r,d,o)=>ops.push(()=>setDoc(r,d,o)),update:(r,d)=>ops.push(()=>updateDoc(r,d)),delete:(r)=>ops.push(()=>deleteDoc(r)),commit:async()=>{for(const o of ops)await o()}}}
 export async function runTransaction(db,fn){const r=await fn({get:getDoc,set:(r,d,o)=>{DB[r.path]=apply(o&&o.merge?DB[r.path]:{},d)},update:(r,d)=>{DB[r.path]=apply(DB[r.path],d)}});notify();return r}

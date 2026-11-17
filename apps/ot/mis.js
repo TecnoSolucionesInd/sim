@@ -3,6 +3,7 @@ import { SISTEMAS, sistemaPorId } from '../../core/maestros.js';
 import * as M from './modelo.js';
 import { esc, IC, modal, buscadorEquipos } from './ui.js';
 import { abrirOT, ordenar } from './ordenes.js';
+import { otsPorOcurrencia, base } from './pmp.js';
 
 export function vMis(S) {
   const main = S.ctx.main, yo = S.yo;
@@ -14,6 +15,11 @@ export function vMis(S) {
     { t: `Pendientes de ${M.espDe(yo.especialidad).l.toLowerCase()} sin asignar`, l: todas.filter(o => o.estado === 'pendiente' && !(o.asignados || []).length && (o.especialidades || []).includes(yo.especialidad)) },
     { t: 'Esperando verificación', l: todas.filter(o => o.estado === 'ejecutada' && mio(o)) }
   ] : [];
+  // Preventivo de esta semana de mi especialidad que aún no tiene OT
+  const porOcc = otsPorOcurrencia(S);
+  const prev = yo && S.pmp ? M.ocurrenciasSemana([...S.pmp.values()], M.lunesDe())
+    .filter(o => !o.hecha && !o.no && !porOcc.has(M.clavePMP(o.t.id, o.s)) && M.espTarea(o.t).includes(yo.especialidad))
+    .sort((a, b) => (b.atrasada - a.atrasada) || String(a.t.eq).localeCompare(b.t.eq)) : [];
   const hoy = M.ahoraLocal().slice(0, 10);
   const hhHoy = yo ? todas.filter(o => String(o.inicio || '').startsWith(hoy)).reduce((a, o) => a + (+(o.tecnicos || []).find(t => t.id === yo.id)?.hh || 0), 0) : 0;
 
@@ -28,7 +34,13 @@ export function vMis(S) {
     </div>` : ''}
     ${yo ? '' : `<div class="ot-aviso">Su usuario no está vinculado a una persona del módulo Personal, por eso no se muestran trabajos asignados.${S.gestiona ? ' Vincúlelo con su correo en Personal.' : ' Pida al administrador que lo vincule.'}</div>`}
     ${grupos.map(g => `<section class="ot-mis"><h2>${esc(g.t)} <span>${g.l.length}</span></h2>
-      ${g.l.length ? `<div class="ot-mlist">${g.l.sort(ordenar).map(o => tarjetaMia(o)).join('')}</div>` : '<div class="ot-vacio sm">Nada por ahora.</div>'}</section>`).join('')}`;
+      ${g.l.length ? `<div class="ot-mlist">${g.l.sort(ordenar).map(o => tarjetaMia(o)).join('')}</div>` : '<div class="ot-vacio sm">Nada por ahora.</div>'}</section>`).join('')}
+    ${yo ? `<section class="ot-mis"><h2>Preventivo de esta semana <span>${prev.length}</span></h2>
+      ${prev.length ? `<div class="ot-mlist">${prev.map(o => `<div class="ot-mcard ${o.atrasada ? 'late' : ''}" style="--c:#1B86C4">
+        <div class="ot-c1"><span class="ot-num">${esc(o.t.eq)}</span><span class="ot-ori" style="--c:#1B86C4">PMP · ${esc(o.t.rutina || '')}</span>${o.atrasada ? '<span class="ot-pill ot-late" style="--c:#B91C1C">Atrasada</span>' : ''}</div>
+        <div class="ot-c2">${esc(o.t.tarea)}</div>
+        <div class="ot-c3"><span>${IC.eq}${esc(o.t.eqDesc || '')}</span><span>${IC.reloj}${M.nf(M.hhTarea(o.t), 1)} HH previstas</span></div>
+        <button class="btn btn-primary ot-mact" data-pmp="${esc(M.clavePMP(o.t.id, o.s))}">${IC.play} Iniciar</button></div>`).join('')}</div>` : '<div class="ot-vacio sm">No hay preventivos pendientes de su especialidad esta semana.</div>'}</section>` : ''}`;
 
   main.querySelectorAll('[data-ot]').forEach(b => b.onclick = () => abrirOT(S, S.ords.get(b.dataset.ot)));
   main.querySelectorAll('[data-ini]').forEach(b => b.onclick = async (ev) => {
@@ -43,6 +55,15 @@ export function vMis(S) {
     } catch (e) { S.ctx.toast(e.message || 'No se pudo iniciar.', 'err'); b.disabled = false; }
   });
   main.querySelectorAll('[data-fin]').forEach(b => b.onclick = (ev) => { ev.stopPropagation(); abrirOT(S, S.ords.get(b.dataset.fin)); });
+  main.querySelectorAll('[data-pmp]').forEach(b => b.onclick = async () => {
+    const o = prev.find(x => M.clavePMP(x.t.id, x.s) === b.dataset.pmp); b.disabled = true;
+    try {
+      const ahora = M.ahoraLocal();
+      const r = await S.api.crear({ ...base(), ...M.otDesdePMP(o, SISTEMAS), estado: 'ejecucion', inicio: ahora, asignados: [yo.id],
+        tecnicos: [{ id: yo.id, nombre: yo.nombre, especialidad: yo.especialidad, tipo: yo.tipo || 'mant', hh: null }] }, 'Inició el preventivo');
+      S.ctx.toast(`${r.numero} iniciada.`);
+    } catch (e) { S.ctx.toast(e.message || 'No se pudo iniciar.', 'err'); b.disabled = false; }
+  });
   const bR = main.querySelector('#bRep'); if (bR) bR.onclick = () => reporteRapido(S);
   const bD = main.querySelector('#bDet'); if (bD) bD.onclick = () => abrirOT(S, null);
 }
