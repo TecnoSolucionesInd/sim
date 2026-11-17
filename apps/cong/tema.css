@@ -1,0 +1,104 @@
+/* Congelamiento — tema oscuro de la portada del SIM.
+   Se carga DESPUÉS del <style> de index.html y solo cambia la apariencia: no toca lógica ni estructura.
+   Si este archivo no llegara a cargar, el aplicativo sigue funcionando con su aspecto anterior.
+
+   Regla: los colores de ESTADO no se tocan (--accent celeste = congelando, --success, --warn, --danger,
+   amarillo #facc15, morado #a855f7): también están escritos en el JavaScript de las gráficas y deben coincidir.
+   Aquí solo cambia la base: fondos, bordes, textos, tipografía, menú lateral y detalles de marca. */
+
+:root{
+  color-scheme:dark;
+  --bg:#05080A; --surface:#0C1216; --surface2:#121B21;
+  --border:#1B2730; --border2:#2B3B46;
+  --text:#EEF3F6; --text2:#A7B4BF; --text3:#7C8A96;
+  /* marca (solo adorno: brillos, filetes, rótulos del menú) */
+  --marca:#6FE3CF; --marca-2:#A5F5E7; --marca-azul:#4FA8E0;
+}
+
+body{
+  font-family:'Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:
+    radial-gradient(1100px 520px at 88% -8%,rgba(79,168,224,.085),transparent 62%),
+    radial-gradient(900px 560px at 6% 104%,rgba(111,227,207,.06),transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+  -webkit-font-smoothing:antialiased;
+  font-feature-settings:"tnum" 1;
+}
+::selection{background:rgba(111,227,207,.28)}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ── menú lateral (igual que el de la portada) ── */
+.sidebar{
+  background:
+    radial-gradient(120% 50% at 0% 0%,rgba(111,227,207,.13),transparent 60%),
+    radial-gradient(90% 40% at 100% 100%,rgba(79,168,224,.10),transparent 65%),
+    #060B0E;
+  border-right:1px solid rgba(255,255,255,.07);
+}
+.sidebar-header{border-bottom-color:rgba(255,255,255,.07);padding:22px 20px 16px}
+.sidebar-logo-img{display:none!important}
+.sidebar-header::before{
+  content:"";display:block;width:158px;height:39px;margin-bottom:12px;
+  background:url(../../core/marca/logo-negativo.png) left center/contain no-repeat;
+}
+.sidebar-dept{color:var(--marca);font-family:'Geist Mono',ui-monospace,monospace;font-weight:500;font-size:9.5px;letter-spacing:.2em}
+.nav-section-label{color:#8C99A5;font-family:'Geist Mono',ui-monospace,monospace;font-weight:500;letter-spacing:.18em}
+.nav-item{border-radius:11px}
+.nav-item:hover{background:rgba(255,255,255,.05)}
+.nav-item.active{background:rgba(0,200,255,.11);box-shadow:inset 0 0 0 1px rgba(0,200,255,.16)}
+.sidebar-footer{border-top-color:rgba(255,255,255,.07)}
+.user-chip{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);border-radius:12px}
+.user-chip > div:nth-child(2){min-width:0}
+.user-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-avatar{background:linear-gradient(145deg,var(--marca-2),var(--marca));color:#062A25}
+
+/* ── barra superior ── */
+.topbar{
+  background:rgba(5,8,10,.78);
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);
+  border-bottom-color:rgba(255,255,255,.07);
+}
+.topbar-title{font-weight:600;letter-spacing:-.02em}
+
+/* ── titulares: Geist se ve mejor un punto menos gruesa que la tipografía anterior ── */
+.modal-title,.sl-title,.pbi-header-title{font-weight:600;letter-spacing:-.015em}
+.kpi-value,.mant-kpi-val{font-weight:700;letter-spacing:-.02em}
+.card-title{letter-spacing:.09em}
+
+/* ── superficies ── */
+.card,.kpi,.pbi-card,.pbi-kpi,.pbi-filter-bar,.bc-card,.rc,.sl-panel,.module-card,.mus-cfg{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.pbi-header-bar{
+  background:
+    radial-gradient(70% 160% at 0% 0%,rgba(111,227,207,.07),transparent 60%),
+    linear-gradient(135deg,var(--surface),var(--surface2));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+.modal-overlay{background:rgba(2,4,6,.74);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.modal{box-shadow:0 40px 90px -30px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.05)}
+
+/* ── controles ── */
+.btn-sm,.bc-btn{border-radius:9px}
+.btn-accent{box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 22px -14px rgba(0,200,255,.85)}
+.btn-ghost:hover{background:rgba(255,255,255,.04)}
+.bc-btn:hover{background:#1A252D}
+.field input:focus,.field select:focus,.field textarea:focus,.dash-tend-input:focus{box-shadow:0 0 0 3px rgba(0,200,255,.14)}
+.tab{border-radius:8px 8px 0 0}
+.tab:not(.active):hover{color:var(--text)}
+
+@media (max-width:768px){
+  body{background-attachment:scroll}
+  .sidebar-header::before{width:136px;height:34px}
+}
+
+/* Pantalla de Sala vista desde el celular: los 4 indicadores pasan a 2 columnas para que no se encimen.
+   (La pantalla mural y el modo kiosco no cambian: siempre miden más de 700 px.) */
+@media (max-width:700px){
+  .sl-ind{grid-template-columns:1fr 1fr}
+  .sl-kc{grid-template-columns:1fr;gap:4px}
+  .sl-kc-p{font-size:22px}
+  .sl-kc-w{font-size:16px}
+  .sl-clock{font-size:22px}
+}

@@ -286,9 +286,10 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 
 ## Rediseño claro de los aplicativos (EN CURSO)
 Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y cómo probar). Resumen: hechos portada, menú lateral
-común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Pendiente: Congelamiento.
+común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fase 1 hecha; faltan las gráficas (fase 2) y el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-16: Congelamiento, fase 1 del tema oscuro de la portada: `apps/cong/tema.css` (fondos, bordes, textos, menú lateral con logo, barra superior), tipografía Geist, íconos de fecha/hora visibles, Pantalla de Sala sin desborde en celular. Sin cambios de lógica. Prueba completa en `herramientas/tema/cong.py`.
 - 2026-11-16: Rediseño claro — migrados Equipos, Plan de mantenimiento, Informes técnicos, Registro de formatos, Agua de planta y Materiales; `core/tema-panel.css`; herramientas de prueba en `herramientas/tema/`; archivo de continuación REDISENO.md. Agua: el trasvase manual solo se informa si el pozo de producción sube de verdad.
 - 2026-11-16: Inicio del rediseño claro de los aplicativos: base `core/tema-claro.css` y plan de migración (sin enlazar todavía).
 - 2026-11-16: Portada en celular — animaciones siempre activas (no se apagan con la preferencia de movimiento reducido del equipo), tarjetas que aparecen al desplazarse y se iluminan solas al cruzar el centro de la pantalla, más contraste, y engranajes del inicio de sesión más visibles y rápidos en vertical.

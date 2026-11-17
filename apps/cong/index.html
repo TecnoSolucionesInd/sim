@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Congelamiento · SIM</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400..700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#060d1a;--surface:#0d1c2e;--surface2:#132237;--border:#1e3352;--border2:#2a4a6e;
@@ -12,7 +12,7 @@
   --success:#00e87a;--text:#e8f4ff;--text2:#8aaac8;--text3:#4a6a8a;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body{font-family:'Geist',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
 ::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-track{background:var(--surface);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
 
 /* AUTH */
@@ -20,12 +20,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   background-image:radial-gradient(ellipse at 20% 50%,#00c8ff08 0%,transparent 60%),radial-gradient(ellipse at 80% 50%,#00ffb308 0%,transparent 60%);}
 .auth-box{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:40px;width:440px;box-shadow:0 40px 80px #00000088,0 0 0 1px #00c8ff11;}
 .auth-logo-img{width:220px;margin-bottom:6px;background:#fff;border-radius:8px;padding:8px 12px;}
-.auth-dept{color:var(--accent);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:28px;border-top:1px solid var(--border2);padding-top:12px;}
+.auth-dept{color:var(--accent);font-family:'Geist',sans-serif;font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:28px;border-top:1px solid var(--border2);padding-top:12px;}
 .auth-field{margin-bottom:16px;}
 .auth-field label{display:block;font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;}
-.auth-field input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:12px 16px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s;}
+.auth-field input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:12px 16px;border-radius:10px;font-family:'Geist',sans-serif;font-size:14px;outline:none;transition:border-color .2s;}
 .auth-field input:focus{border-color:var(--accent);}
-.btn-primary{width:100%;background:var(--accent);color:var(--bg);border:none;padding:13px;border-radius:10px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.06em;transition:all .2s;margin-top:6px;}
+.btn-primary{width:100%;background:var(--accent);color:var(--bg);border:none;padding:13px;border-radius:10px;font-family:'Geist',sans-serif;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.06em;transition:all .2s;margin-top:6px;}
 .btn-primary:hover{background:#33d4ff;transform:translateY(-1px);box-shadow:0 8px 24px #00c8ff44;}
 .auth-error{color:var(--danger);font-size:12px;text-align:center;margin-top:10px;display:none;}
 
@@ -75,7 +75,7 @@ body.sidebar-collapsed .sidebar:hover{transform:translateX(0);box-shadow:4px 0 2
 /* ===== FILTROS PROPIOS DE LA GRÁFICA DE TENDENCIA ===== */
 .dash-tend-filtros{display:flex;align-items:center;gap:7px;margin:2px 0 10px;flex-wrap:wrap;}
 .dash-tend-flabel{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600;}
-.dash-tend-input{background:var(--bg);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:4px 8px;font-size:11px;font-family:'DM Mono',monospace;outline:none;}
+.dash-tend-input{background:var(--bg);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:4px 8px;font-size:11px;font-family:'Geist Mono',monospace;outline:none;}
 .dash-tend-input:focus{border-color:var(--accent);}
 .dash-tend-sep{color:var(--text3);font-size:11px;}
 .dash-tend-reset{background:var(--surface2);border:1px solid var(--border2);color:var(--accent);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
@@ -96,8 +96,8 @@ body.sidebar-collapsed .sidebar:hover{transform:translateX(0);box-shadow:4px 0 2
   grid-template-columns:repeat(2, minmax(0, 1fr));
 }
 .topbar{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;z-index:50;}
-.topbar-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;}
-.btn-sm{padding:8px 15px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:all .18s;font-family:'DM Sans',sans-serif;}
+.topbar-title{font-family:'Geist',sans-serif;font-size:17px;font-weight:700;}
+.btn-sm{padding:8px 15px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:all .18s;font-family:'Geist',sans-serif;}
 .btn-accent{background:var(--accent);color:var(--bg);}
 .btn-accent:hover{background:#33d4ff;}
 .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);}
@@ -111,24 +111,24 @@ body.sidebar-collapsed .sidebar:hover{transform:translateX(0);box-shadow:4px 0 2
 
 /* CARDS */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;}
-.card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text2);letter-spacing:.07em;text-transform:uppercase;margin-bottom:16px;}
+.card-title{font-family:'Geist',sans-serif;font-size:13px;font-weight:700;color:var(--text2);letter-spacing:.07em;text-transform:uppercase;margin-bottom:16px;}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
 
 /* ===== SECCIONES DASHBOARD MANTENIMIENTO ===== */
 .mant-sec-tabs{display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--border);padding-bottom:0;}
-.mant-sec-tab{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--text2);font-size:13px;font-weight:600;padding:10px 18px;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;}
+.mant-sec-tab{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--text2);font-size:13px;font-weight:600;padding:10px 18px;cursor:pointer;transition:all .15s;font-family:'Geist',sans-serif;}
 .mant-sec-tab:hover{color:var(--text);}
 .mant-sec-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
 .mant-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
 .mant-kpi{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;}
 .mant-kpi-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;}
-.mant-kpi-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);}
+.mant-kpi-val{font-family:'Geist',sans-serif;font-size:20px;font-weight:800;color:var(--text);}
 .mant-heat-cell{border-radius:2px;height:20px;}
 .mant-rank-row{display:flex;align-items:center;gap:8px;}
 .mant-rank-lbl{font-size:11px;color:var(--text2);width:30px;}
 .mant-rank-bar{flex:1;height:16px;background:var(--surface);border-radius:4px;overflow:hidden;}
-.mant-rank-val{font-size:11px;color:var(--text);font-family:'DM Mono',monospace;min-width:28px;text-align:right;}
+.mant-rank-val{font-size:11px;color:var(--text);font-family:'Geist Mono',monospace;min-width:28px;text-align:right;}
 @media (max-width:768px){
   .mant-sec-tab{font-size:12px;padding:8px 12px;}
   .grid-3{grid-template-columns:1fr;}
@@ -145,16 +145,16 @@ body.sidebar-collapsed .sidebar:hover{transform:translateX(0);box-shadow:4px 0 2
 .kpi.kpi-red::before{background:var(--danger);}
 .kpi.kpi-teal::before{background:var(--accent3);}
 .kpi-label{font-size:10px;font-weight:600;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;}
-.kpi-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;margin:5px 0 3px;}
+.kpi-value{font-family:'Geist',sans-serif;font-size:28px;font-weight:800;margin:5px 0 3px;}
 .kpi-sub{font-size:11px;color:var(--text3);}
 
 /* FORMS */
 .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
 .field{display:flex;flex-direction:column;gap:6px;}
 .field label{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;}
-.field input,.field select,.field textarea{background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13.5px;outline:none;transition:border-color .2s;}
+.field input,.field select,.field textarea{background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'Geist',sans-serif;font-size:13.5px;outline:none;transition:border-color .2s;}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
-.field input[readonly]{color:var(--accent);font-family:'DM Mono',monospace;font-weight:500;}
+.field input[readonly]{color:var(--accent);font-family:'Geist Mono',monospace;font-weight:500;}
 .field-note{font-size:11px;color:var(--text3);margin-top:2px;}
 
 /* TABLE */
@@ -181,8 +181,8 @@ body.sidebar-collapsed .sidebar:hover{transform:translateX(0);box-shadow:4px 0 2
 .sl-ind{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
 .sl-kc{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;}
 .sl-kc-l{min-width:0;}
-.sl-kc-w{font-family:'DM Mono',monospace;font-size:19px;font-weight:500;color:var(--text);margin:3px 0 0;line-height:1.1;}
-.sl-kc-p{font-family:'DM Mono',monospace;font-size:27px;font-weight:700;line-height:1;white-space:nowrap;letter-spacing:-.02em;}
+.sl-kc-w{font-family:'Geist Mono',monospace;font-size:19px;font-weight:500;color:var(--text);margin:3px 0 0;line-height:1.1;}
+.sl-kc-p{font-family:'Geist Mono',monospace;font-size:27px;font-weight:700;line-height:1;white-space:nowrap;letter-spacing:-.02em;}
 .sl-kc-p span{font-size:14px;margin-left:1px;opacity:.75;}
 .sl-left{display:flex;flex-direction:column;gap:12px;min-height:0;}
 .sl-right{display:flex;flex-direction:column;gap:12px;min-height:0;}
@@ -206,15 +206,15 @@ body.sidebar-collapsed .sidebar:hover{transform:translateX(0);box-shadow:4px 0 2
 .sala-screen{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px;}
 .sl-top{display:flex;justify-content:space-between;align-items:center;
   padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:14px;gap:12px;flex-wrap:wrap;}
-.sl-title{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;color:var(--text);}
+.sl-title{font-family:'Geist',sans-serif;font-size:19px;font-weight:700;color:var(--text);}
 .sl-sub{font-size:12px;color:var(--text2);margin-top:2px;}
-.sl-clock{font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--text);line-height:1;}
+.sl-clock{font-family:'Geist Mono',monospace;font-size:28px;font-weight:500;color:var(--text);line-height:1;}
 .sl-date{font-size:12px;color:var(--text2);text-align:right;margin-top:3px;}
 /* KPIs */
 .sl-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
 .sl-kpi{background:var(--surface);border-radius:12px;padding:13px 15px;}
 .sl-kpi-l{font-size:10.5px;color:var(--text2);letter-spacing:.09em;text-transform:uppercase;margin:0;}
-.sl-kpi-v{font-family:'DM Mono',monospace;font-size:27px;font-weight:500;margin:3px 0 0;line-height:1.1;}
+.sl-kpi-v{font-family:'Geist Mono',monospace;font-size:27px;font-weight:500;margin:3px 0 0;line-height:1.1;}
 .sl-kpi-n{font-size:11px;color:var(--text2);margin:6px 0 0;}
 .sl-bar{height:5px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden;}
 .sl-bar > div{height:100%;border-radius:3px;transition:width .5s;}
@@ -229,7 +229,7 @@ body.sidebar-collapsed .sidebar:hover{transform:translateX(0);box-shadow:4px 0 2
 .sl-eq.off{opacity:.42;}
 .sl-eq-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:4px;}
 .sl-eq-n{font-size:14px;font-weight:700;color:var(--text);}
-.sl-eq-t{font-size:9.5px;padding:2px 6px;border-radius:20px;font-family:'DM Mono',monospace;white-space:nowrap;}
+.sl-eq-t{font-size:9.5px;padding:2px 6px;border-radius:20px;font-family:'Geist Mono',monospace;white-space:nowrap;}
 .sl-eq-b{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:5px;}
 .sl-eq-b > div{height:100%;transition:width .5s;}
 .sl-eq-s{font-size:10.5px;margin:0;line-height:1.35;}
@@ -333,20 +333,20 @@ body.kiosco .sl-title{font-size:18px;}
 /* Línea de tiempo */
 .rc-tl{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
 .rc-tl-pt{text-align:center;flex-shrink:0;}
-.rc-tl-h{font-size:13px;font-family:'DM Mono',monospace;color:var(--text);margin:0;line-height:1.3;}
+.rc-tl-h{font-size:13px;font-family:'Geist Mono',monospace;color:var(--text);margin:0;line-height:1.3;}
 .rc-tl-l{font-size:9.5px;color:var(--text3);margin:0;line-height:1.3;}
 .rc-tl-bar{flex:1;height:3px;border-radius:2px;background:var(--border);}
-.rc-tl-dur{font-size:12px;font-family:'DM Mono',monospace;margin:0;line-height:1.3;}
+.rc-tl-dur{font-size:12px;font-family:'Geist Mono',monospace;margin:0;line-height:1.3;}
 /* Fila de datos en una sola línea */
 .rc-data{display:flex;align-items:center;justify-content:space-between;gap:3px;
-  font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;white-space:nowrap;
+  font-size:11px;color:var(--text2);font-family:'Geist Mono',monospace;white-space:nowrap;
   padding:7px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:10px;}
 .rc-data span{display:inline-flex;align-items:center;gap:3px;}
 .rc-obs{font-size:11px;color:var(--text3);margin-bottom:10px;padding:6px 8px;
   background:var(--surface2);border-radius:6px;white-space:normal;line-height:1.45;}
 .rc-btns{display:flex;gap:6px;}
 .rc-btn{flex:1;font-size:12px;padding:7px 0;border-radius:8px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;min-height:34px;}
+  background:var(--surface2);color:var(--text2);cursor:pointer;font-family:'Geist',sans-serif;min-height:34px;}
 .rc-btn:active{transform:scale(.97);}
 .rc-btn-del{flex:0 0 46px;color:var(--danger);border-color:#ff3b5c33;}
 .rc-empty{text-align:center;padding:34px 0;color:var(--text3);font-size:13px;}
@@ -383,7 +383,7 @@ tr:hover td{background:var(--surface2);}
 .modal-overlay{position:fixed;inset:0;background:#000000cc;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border2);border-radius:18px;padding:28px;width:100%;max-width:680px;max-height:92vh;overflow-y:auto;}
-.modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:6px;}
+.modal-title{font-family:'Geist',sans-serif;font-size:18px;font-weight:700;margin-bottom:6px;}
 .modal-subtitle{font-size:12px;color:var(--text2);margin-bottom:20px;}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;}
 .modal-section{background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:14px;border:1px solid var(--border);}
@@ -420,13 +420,13 @@ tr:hover td{background:var(--surface2);}
 .bc-info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 12px;margin-bottom:12px;}
 .bc-info2{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:12px;}
 .bc-lbl{font-size:10.5px;color:var(--text3);margin:0 0 2px;}
-.bc-val{font-size:12.5px;font-weight:600;color:var(--text);margin:0;font-family:'DM Mono',monospace;}
+.bc-val{font-size:12.5px;font-weight:600;color:var(--text);margin:0;font-family:'Geist Mono',monospace;}
 .bc-val-t{color:var(--accent);}
 .bc-val-warn{color:#facc15;}
 .bc-val-ev{color:#ff9500;}
-.bc-val-txt{color:var(--text);font-family:'DM Sans',sans-serif;font-weight:500;font-size:12.5px;}
+.bc-val-txt{color:var(--text);font-family:'Geist',sans-serif;font-weight:500;font-size:12.5px;}
 .bc-btns{display:flex;gap:6px;}
-.bc-btn{flex:1;font-size:11.5px;padding:7px 6px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;text-align:center;min-height:34px;transition:background .15s;font-family:'DM Sans',sans-serif;}
+.bc-btn{flex:1;font-size:11.5px;padding:7px 6px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;text-align:center;min-height:34px;transition:background .15s;font-family:'Geist',sans-serif;}
 .bc-btn:hover{background:var(--border);}
 .bc-btn:active{transform:scale(.97);}
 .bc-btn-del{flex:0 0 38px;min-height:34px;color:#ff3b5c;border-color:#ff3b5c33;}
@@ -434,7 +434,7 @@ tr:hover td{background:var(--surface2);}
 .bc-empty-ico{font-size:32px;margin-bottom:10px;}
 @media(max-width:600px){.bc-info{grid-template-columns:1fr 1fr;}.bc-info2{grid-template-columns:1fr 1fr;}}
 .module-icon{font-size:34px;margin-bottom:12px;}
-.module-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:5px;}
+.module-name{font-family:'Geist',sans-serif;font-size:15px;font-weight:700;margin-bottom:5px;}
 .module-desc{font-size:12px;color:var(--text2);line-height:1.5;}
 .module-coming{position:absolute;top:12px;right:12px;background:var(--warn);color:#000;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
 
@@ -444,7 +444,7 @@ tr:hover td{background:var(--surface2);}
 .gap-2{gap:8px;}.gap-3{gap:12px;}
 .mb-4{margin-bottom:16px;}.mb-6{margin-bottom:24px;}
 .text-sm{font-size:12px;}.text-muted{color:var(--text2);}
-.font-mono{font-family:'DM Mono',monospace;}
+.font-mono{font-family:'Geist Mono',monospace;}
 .status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
 .admin-tab-content{display:none;}.admin-tab-content.active{display:block;}
 .status-pendiente{background:#ff950022;color:var(--warn);}
@@ -474,12 +474,12 @@ tr:hover td{background:var(--surface2);}
 }
 .page-btn {
   background: var(--surface); border: 1px solid var(--border2); color: var(--text2);
-  padding: 8px 20px; border-radius: 8px; cursor: pointer; font-family: 'DM Sans',sans-serif;
+  padding: 8px 20px; border-radius: 8px; cursor: pointer; font-family: 'Geist',sans-serif;
   font-size: 13px; font-weight: 600; transition: all .18s;
 }
 .page-btn:hover { border-color: var(--accent); color: var(--accent); }
 .page-btn.active-page { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-.page-indicator { font-family: 'Syne',sans-serif; font-size: 13px; color: var(--text2); }
+.page-indicator { font-family: 'Geist',sans-serif; font-size: 13px; color: var(--text2); }
 
 @media print {
   #tab-cong-dashboard .dash-page { display: block !important; }
@@ -729,10 +729,10 @@ tr.clickable-row:hover td { background: var(--surface2); }
 .detalle-row { display: contents; }
 .detalle-label { font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: .07em; text-transform: uppercase; padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); }
 .detalle-value { font-size: 13.5px; color: var(--text); padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--border); }
-.detalle-value.mono { font-family: 'DM Mono', monospace; }
+.detalle-value.mono { font-family: 'Geist Mono', monospace; }
 .detalle-full { grid-column: 1/-1; }
 .detalle-header { background: var(--surface2); border-radius: 10px; padding: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
-.detalle-equipo-badge { width: 52px; height: 52px; border-radius: 12px; background: #00c8ff22; border: 1px solid #00c8ff44; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--accent); flex-shrink: 0; }
+.detalle-equipo-badge { width: 52px; height: 52px; border-radius: 12px; background: #00c8ff22; border: 1px solid #00c8ff44; display: flex; align-items: center; justify-content: center; font-family: 'Geist', sans-serif; font-size: 18px; font-weight: 800; color: var(--accent); flex-shrink: 0; }
 .detalle-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
 .status-cerrado-badge { background: #00e87a22; color: var(--success); }
 .status-pendiente-badge { background: #ff950022; color: var(--warn); }
@@ -750,7 +750,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
   flex-wrap: wrap; gap: 12px;
 }
 .pbi-header-title {
-  font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700;
+  font-family: 'Geist', sans-serif; font-size: 17px; font-weight: 700;
   color: var(--text); display: flex; align-items: center; gap: 12px;
   letter-spacing: 0.01em;
 }
@@ -763,7 +763,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
 .pbi-header-sub { font-size: 11px; color: var(--text2); margin-top: 3px; }
 .pbi-header-side { text-align: right; }
 .pbi-header-side-label { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
-.pbi-header-side-value { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); font-weight: 600; }
+.pbi-header-side-value { font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--accent); font-weight: 600; }
 
 /* Sección con título pequeño tipo agrupador */
 .pbi-section-title {
@@ -806,13 +806,13 @@ tr.clickable-row:hover td { background: var(--surface2); }
   font-weight: 600; margin-bottom: 6px;
 }
 .pbi-kpi-value {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Geist', sans-serif;
   font-size: 24px; font-weight: 800;
   color: var(--text); line-height: 1;
   letter-spacing: -0.01em;
 }
 .pbi-kpi-value-unit {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Geist', sans-serif;
   font-size: 13px; font-weight: 500;
   color: var(--text3); margin-left: 2px;
 }
@@ -892,7 +892,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
 .pbi-donut-legend > div span:nth-child(2) { flex: 1; }
 .pbi-donut-legend > div span:nth-child(3) {
   color: var(--text2);
-  font-family: 'DM Mono', monospace; font-size: 11px;
+  font-family: 'Geist Mono', monospace; font-size: 11px;
 }
 
 /* Chips de resumen del header */
@@ -977,7 +977,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
   color:#8396AA;padding:9px 10px;border-bottom:2px solid #E3E9F0;white-space:nowrap;}
 #inf-ov th:first-child,#inf-ov td:first-child{text-align:left;}
 #inf-ov td{padding:10px;border-bottom:1px solid #EDF1F6;text-align:right;
-  font-family:'DM Mono',ui-monospace,monospace;color:#1B2A3D;}
+  font-family:'Geist Mono',ui-monospace,monospace;color:#1B2A3D;}
 #inf-ov td:first-child{font-family:inherit;font-weight:700;}
 #inf-ov tr:last-child td{border-bottom:none;}
 #inf-ov .eqd{display:inline-flex;align-items:center;gap:8px;}
@@ -1011,7 +1011,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
 .pm-sc.w{border-left-color:var(--warn);}
 .pm-sc.p{border-left-color:#a855f7;}
 .pm-sc-l{font-size:9.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
-.pm-sc-v{font-size:18px;font-weight:800;font-family:'DM Mono',monospace;color:var(--text);letter-spacing:-.5px;}
+.pm-sc-v{font-size:18px;font-weight:800;font-family:'Geist Mono',monospace;color:var(--text);letter-spacing:-.5px;}
 .pm-sc-v small{font-size:10.5px;color:var(--text2);font-weight:500;margin-left:2px;}
 .pm-sc-s{font-size:10px;color:var(--text2);margin-top:2px;}
 .pm-sc-s.up{color:var(--success);}
@@ -1049,7 +1049,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
   margin-bottom: 3px;
 }
 .dash-mini-value {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Geist', sans-serif;
   font-size: 17px;
   font-weight: 800;
   color: var(--text, #e8f4ff);
@@ -1058,7 +1058,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
 .dash-mini-unit {
   font-size: 10px;
   color: var(--text2, #8aaac8);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Geist', sans-serif;
   font-weight: 500;
   margin-left: 1px;
 }
@@ -1107,6 +1107,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
   75% { transform: rotate(8deg) scale(1.08); }
 }
 </style>
+<link rel="stylesheet" href="tema.css">
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -1210,7 +1211,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
         <div class="tab-content active" id="tab-cong-bachadas">
           <div class="flex-between mb-4">
             <div>
-              <span style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Equipos en proceso</span>
+              <span style="font-family:'Geist',sans-serif;font-size:15px;font-weight:700;">Equipos en proceso</span>
               <span style="font-size:12px;color:var(--text2);margin-left:12px;" id="bc-sub">Cargando...</span>
             </div>
             <button class="btn-sm btn-accent no-print" onclick="openBachadaModal(null)">+ Nueva Bachada</button>
@@ -1222,7 +1223,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
         <div class="tab-content" id="tab-cong-registros">
           <div class="flex-between mb-4">
             <div>
-              <span style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Registro de Bachadas</span>
+              <span style="font-family:'Geist',sans-serif;font-size:15px;font-weight:700;">Registro de Bachadas</span>
               <span style="font-size:12px;color:var(--text2);margin-left:12px;">Historial completo · Registra inicio y completa al finalizar</span>
             </div>
             <button class="btn-sm btn-accent no-print" onclick="openBachadaModal(null)">+ Nueva Bachada</button>
@@ -1232,7 +1233,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;" class="no-print">
             <div style="flex:1;min-width:130px;">
               <div style="font-size:10px;font-weight:600;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">Congelador</div>
-              <select id="filt-b-equipo" onchange="filtrarBachadas(true)" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+              <select id="filt-b-equipo" onchange="filtrarBachadas(true)" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'Geist',sans-serif;font-size:13px;outline:none;">
                 <option value="">Todos</option>
                 <option value="C1">C1</option><option value="C2">C2</option><option value="C3">C3</option>
                 <option value="C4">C4</option><option value="C5">C5</option><option value="C6">C6</option>
@@ -1242,17 +1243,17 @@ tr.clickable-row:hover td { background: var(--surface2); }
             </div>
             <div style="flex:1;min-width:130px;">
               <div style="font-size:10px;font-weight:600;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">Fecha</div>
-              <input type="date" id="filt-b-fecha" onchange="filtrarBachadas(true)" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+              <input type="date" id="filt-b-fecha" onchange="filtrarBachadas(true)" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'Geist',sans-serif;font-size:13px;outline:none;">
             </div>
             <div style="flex:1;min-width:130px;">
               <div style="font-size:10px;font-weight:600;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">Técnico</div>
-              <select id="filt-b-tecnico" onchange="filtrarBachadas(true)" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+              <select id="filt-b-tecnico" onchange="filtrarBachadas(true)" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'Geist',sans-serif;font-size:13px;outline:none;">
                 <option value="">Todos</option>
               </select>
             </div>
             <div style="flex:1;min-width:130px;">
               <div style="font-size:10px;font-weight:600;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">Estado</div>
-              <select id="filt-b-estado" onchange="filtrarBachadas(true)" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+              <select id="filt-b-estado" onchange="filtrarBachadas(true)" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'Geist',sans-serif;font-size:13px;outline:none;">
                 <option value="">Todos</option>
                 <option value="cerrado">✅ Cerrado</option>
                 <option value="pendiente">⏳ En Proceso</option>
@@ -1260,7 +1261,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
             </div>
             <div style="flex:1;min-width:130px;">
               <div style="font-size:10px;font-weight:600;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">Buscar texto</div>
-              <input type="text" id="filt-b-texto" oninput="filtrarBachadas(true)" placeholder="Producto, aros..." style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+              <input type="text" id="filt-b-texto" oninput="filtrarBachadas(true)" placeholder="Producto, aros..." style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'Geist',sans-serif;font-size:13px;outline:none;">
             </div>
             <div style="display:flex;gap:8px;align-items:flex-end;padding-bottom:1px;">
               <button class="btn-sm btn-ghost" onclick="limpiarFiltrosBachadas()" title="Limpiar filtros" style="padding:8px 12px;">✕ Limpiar</button>
@@ -1285,7 +1286,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
         <!-- EVENTOS -->
         <div class="tab-content" id="tab-cong-eventos">
           <div class="flex-between mb-4">
-            <div><span style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Eventos / Paradas</span><span style="font-size:12px;color:var(--text2);margin-left:12px;">Registra inicio del evento y cierra cuando el equipo quede operativo</span></div>
+            <div><span style="font-family:'Geist',sans-serif;font-size:15px;font-weight:700;">Eventos / Paradas</span><span style="font-size:12px;color:var(--text2);margin-left:12px;">Registra inicio del evento y cierra cuando el equipo quede operativo</span></div>
             <button class="btn-sm btn-accent no-print" onclick="openEventoModal(null)">+ Nuevo Evento</button>
           </div>
           <div id="alert-eventos"></div>
@@ -1756,11 +1757,11 @@ tr.clickable-row:hover td { background: var(--surface2); }
         <div class="tab-content" id="tab-cong-sala">
           <div class="sala-toolbar no-print">
             <div>
-              <span style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">📺 Pantalla de Sala</span>
+              <span style="font-family:'Geist',sans-serif;font-size:15px;font-weight:700;">📺 Pantalla de Sala</span>
               <span style="font-size:12px;color:var(--text2);margin-left:10px;">Vista mural para sala de procesos · actualización en vivo</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <select id="sel-voz" onchange="cambiarVoz(this.value)" title="Voz de los anuncios" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;max-width:190px;">
+              <select id="sel-voz" onchange="cambiarVoz(this.value)" title="Voz de los anuncios" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:8px;font-family:'Geist',sans-serif;font-size:12px;outline:none;max-width:190px;">
                 <option>Detectando voces…</option>
               </select>
               <button class="btn-sm" onclick="hablarSala('Prueba de sonido. Congelador uno está próximo a llegar a su tiempo de descarga.')" title="Escuchar una prueba">▶ Probar</button>
@@ -1792,7 +1793,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
             <div class="card">
               <div class="card-title">Lista de Técnicos — Proceso Congelamiento</div>
               <div style="display:flex;gap:10px;margin-bottom:14px;">
-                <input type="text" id="new-tecnico" placeholder="Nombre completo del técnico" style="flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13.5px;outline:none;">
+                <input type="text" id="new-tecnico" placeholder="Nombre completo del técnico" style="flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'Geist',sans-serif;font-size:13.5px;outline:none;">
                 <button class="btn-sm btn-accent" onclick="addTecnico()">Agregar</button>
               </div>
               <div id="lista-tecnicos"></div>
@@ -1802,7 +1803,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
             <div class="card">
               <div class="card-title">Productos — Proceso Congelamiento</div>
               <div style="display:flex;gap:10px;margin-bottom:14px;">
-                <input type="text" id="new-producto" placeholder="Nombre del producto (ej: Calamar)" style="flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13.5px;outline:none;">
+                <input type="text" id="new-producto" placeholder="Nombre del producto (ej: Calamar)" style="flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'Geist',sans-serif;font-size:13.5px;outline:none;">
                 <button class="btn-sm btn-accent" onclick="addProducto()">Agregar</button>
               </div>
               <div id="lista-productos"></div>
@@ -1822,7 +1823,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
       <!-- USUARIOS -->
       <div class="page" id="page-usuarios">
         <div class="flex-between mb-4">
-          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">⚙️ Administración del Sistema</div>
+          <div style="font-family:'Geist',sans-serif;font-size:15px;font-weight:700;">⚙️ Administración del Sistema</div>
           <button class="btn-sm btn-accent no-print" onclick="openUserModal()">+ Nuevo Usuario</button>
         </div>
         <!-- Niveles de acceso info -->
@@ -1868,7 +1869,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
 
         <div class="admin-tab-content active" id="atab-usuarios">
           <div class="flex-between mb-4">
-            <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Usuarios Registrados</div>
+            <div style="font-family:'Geist',sans-serif;font-size:15px;font-weight:700;">Usuarios Registrados</div>
             <button class="btn-sm btn-accent" onclick="openUserModal()">+ Nuevo Usuario</button>
           </div>
           <div class="table-wrap">
@@ -1991,7 +1992,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
         <div class="field"><label>Cantidad de Aros</label><input type="number" id="b-aros" min="1" oninput="calcPeso()"></div>
         <div class="field">
           <label>Peso por aro (kg/aro)</label>
-          <select id="b-factor" onchange="calcPeso()" style="max-width:160px;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+          <select id="b-factor" onchange="calcPeso()" style="max-width:160px;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:'Geist',sans-serif;font-size:13px;outline:none;">
             <option value="7.35">7.35 kg/aro — estándar (C1-C9)</option>
             <option value="10">10.00 kg/aro — aro grande (C10-C13 · TE)</option>
           </select>
@@ -2062,7 +2063,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
         <div class="field"><label>Técnico que Registra</label><select id="e-tecnico"></select></div>
       </div>
       <div class="form-grid" style="margin-top:12px;">
-        <div class="field" style="grid-column:1/-1;"><label>Descripción del Evento / Falla</label><textarea id="e-desc" rows="2" placeholder="Describa qué ocurrió..." style="resize:vertical;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13.5px;outline:none;"></textarea></div>
+        <div class="field" style="grid-column:1/-1;"><label>Descripción del Evento / Falla</label><textarea id="e-desc" rows="2" placeholder="Describa qué ocurrió..." style="resize:vertical;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'Geist',sans-serif;font-size:13.5px;outline:none;"></textarea></div>
       </div>
     </div>
 
@@ -2082,7 +2083,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
         <div class="field"><label>Fecha Fin Parada <span style="color:var(--text3);font-size:10px;">(puede ser día distinto)</span></label><input type="date" id="e-fecha-fin" oninput="calcTEvento()"></div>
         <div class="field"><label>Hora Fin Parada <span style="color:var(--text3);font-size:10px;">(al quedar operativo)</span></label><input type="time" id="e-fin" oninput="calcTEvento()"></div>
         <div class="field"><label>Duración Total</label><input type="text" id="e-duracion" readonly placeholder="Auto calculado"></div>
-        <div class="field" style="grid-column:1/-1;"><label>Acción Correctiva Realizada</label><textarea id="e-accion" rows="2" placeholder="Describa qué se hizo para restablecer el equipo..." style="resize:vertical;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13.5px;outline:none;"></textarea></div>
+        <div class="field" style="grid-column:1/-1;"><label>Acción Correctiva Realizada</label><textarea id="e-accion" rows="2" placeholder="Describa qué se hizo para restablecer el equipo..." style="resize:vertical;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 13px;border-radius:9px;font-family:'Geist',sans-serif;font-size:13.5px;outline:none;"></textarea></div>
         <div class="field"><label>Técnico Reparador</label><select id="e-tecnico-rep"></select></div>
       </div>
     </div>
@@ -2683,7 +2684,7 @@ function showToast(msg, type='info'){
   if(!t){
     t = document.createElement('div');
     t.id = 'toast-msg';
-    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;font-family:DM Sans,sans-serif;box-shadow:0 8px 24px #00000066;transition:opacity .3s;';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;font-family:Geist,sans-serif;box-shadow:0 8px 24px #00000066;transition:opacity .3s;';
     document.body.appendChild(t);
   }
   const colors = {danger:'#ff3b5c',success:'#00e87a',info:'#00c8ff',warn:'#ff9500'};
@@ -4033,8 +4034,8 @@ function renderSala(){
     return `<div class="sl-brow"><span class="sl-beq">${eq}</span>
       <div class="sl-btrack"><div style="position:absolute;inset:0;background:var(--border);"></div>
       <div style="position:absolute;left:0;top:0;height:100%;width:${rW.toFixed(1)}%;background:${col};display:flex;align-items:center;overflow:hidden;">
-      ${dentro?`<span style="padding-left:6px;font-size:9.5px;font-weight:700;color:${p>=75&&p<=100?'var(--bg)':'#fff'};font-family:'DM Mono',monospace;">${rT.toFixed(1)}t</span>`:''}</div>
-      ${!dentro?`<span style="position:absolute;left:calc(${rW.toFixed(1)}% + 5px);top:50%;transform:translateY(-50%);font-size:9.5px;font-weight:700;color:${col};font-family:'DM Mono',monospace;white-space:nowrap;">${rT.toFixed(1)}t</span>`:''}
+      ${dentro?`<span style="padding-left:6px;font-size:9.5px;font-weight:700;color:${p>=75&&p<=100?'var(--bg)':'#fff'};font-family:'Geist Mono',monospace;">${rT.toFixed(1)}t</span>`:''}</div>
+      ${!dentro?`<span style="position:absolute;left:calc(${rW.toFixed(1)}% + 5px);top:50%;transform:translateY(-50%);font-size:9.5px;font-weight:700;color:${col};font-family:'Geist Mono',monospace;white-space:nowrap;">${rT.toFixed(1)}t</span>`:''}
       <div class="sl-tick"></div></div>
       <span class="sl-bpct" style="color:${col};">${p.toFixed(2)}%</span></div>`;
   });
@@ -4047,7 +4048,7 @@ function renderSala(){
     const ds = Array.from({length:m},(_,i)=>`<span class="sl-dot" style="background:${i<v?col:'var(--border)'};"></span>`).join('');
     return `<div class="sl-drow"><span style="font-size:10px;color:var(--text2);text-align:right;">${eq}</span>
       <div style="display:flex;gap:3px;">${ds}</div>
-      <span style="font-size:10px;font-weight:700;color:${col};font-family:'DM Mono',monospace;text-align:right;">${v}/${m}</span></div>`;
+      <span style="font-size:10px;font-weight:700;color:${col};font-family:'Geist Mono',monospace;text-align:right;">${v}/${m}</span></div>`;
   }).join('');
 
   const nBachTurno = delDia.filter(b=>b.turno===turno).length;
@@ -5887,10 +5888,10 @@ function renderEstadoEquipos(bachs, evs) {
       const ctx = chart.ctx;
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = "bold 28px 'Syne',sans-serif";
+      ctx.font = "bold 28px 'Geist',sans-serif";
       ctx.fillStyle = '#E8F4FF';
       ctx.fillText(nOperativos, cx, cy - 10);
-      ctx.font = "10px 'DM Sans',sans-serif";
+      ctx.font = "10px 'Geist',sans-serif";
       ctx.fillStyle = '#8AAAC8';
       ctx.fillText('de ' + FLOTA.length + ' equipos', cx, cy + 10);
       ctx.restore();
@@ -5913,7 +5914,7 @@ function renderEstadoEquipos(bachs, evs) {
         const r = arc.innerRadius + (arc.outerRadius - arc.innerRadius) * 0.52;
         const x = arc.x + Math.cos(midAngle) * r;
         const y = arc.y + Math.sin(midAngle) * r;
-        ctx.font = "bold 14px 'DM Sans',sans-serif";
+        ctx.font = "bold 14px 'Geist',sans-serif";
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 5;
         ctx.fillStyle = '#FFFFFF';
@@ -5991,7 +5992,7 @@ function renderBachadasTiempo(id,labels,dataBach,dataTiempo){
       ctx.textAlign='center';
 
       // Valores de bachadas: en el centro de la barra inferior
-      ctx.font="600 "+(anchoPorBarra<36?9:10)+"px 'DM Sans', sans-serif";
+      ctx.font="600 "+(anchoPorBarra<36?9:10)+"px 'Geist', sans-serif";
       mB.data.forEach((bar,i)=>{
         if(dataBach[i]<=0) return;
         const yBase=chart.scales.y.getPixelForValue(0);
@@ -6001,7 +6002,7 @@ function renderBachadasTiempo(id,labels,dataBach,dataTiempo){
       });
 
       // Valores de tiempo: encima de la barra superior; rotados si hay poco espacio
-      ctx.font="600 "+fontTiempo+"px 'DM Sans', sans-serif";
+      ctx.font="600 "+fontTiempo+"px 'Geist', sans-serif";
       ctx.fillStyle='#7fd4e8';
       mT.data.forEach((bar,i)=>{
         if(dataTiempo[i]<=0) return;
@@ -6273,7 +6274,7 @@ function renderUsers(){
     <td style="font-size:12px;min-width:160px;">${u.email}</td>
     <td style="min-width:110px;">
       <div style="display:flex;align-items:center;gap:6px;">
-        <span id="ptbl-${u._fid}" style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:1px;">••••••</span>
+        <span id="ptbl-${u._fid}" style="font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:1px;">••••••</span>
         <span onclick="verPass('ptbl-${u._fid}','${(u.pass||'').replace(/'/g,'\'')}')" style="cursor:pointer;font-size:14px;color:var(--text2);" title="Ver contraseña">👁</span>
       </div>
     </td>
@@ -7180,7 +7181,7 @@ function renderTimeline() {
 
       const block = document.createElement('div');
       block.style.cssText = 'background:var(--surface2);border-radius:10px;padding:12px 14px;border:1px solid var(--border);min-width:0;';
-      block.innerHTML = '<div style="font-family:\'Syne\',sans-serif;font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px;">' + equipoLabel(eq) + '</div>'
+      block.innerHTML = '<div style="font-family:\'Geist\',sans-serif;font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px;">' + equipoLabel(eq) + '</div>'
                      + '<div style="position:relative;height:' + Math.max(120, segs.length*22) + 'px;"><canvas id="timeline-' + eq + '"></canvas></div>';
       grid.appendChild(block);
 
@@ -7278,7 +7279,7 @@ function renderTimeline() {
             const w = Math.abs(x - base);
             if(w < 30) return;                       // barra muy corta: se omite
             const txt = hoursToStr(dur);
-            ctx.font = '700 ' + (height > 18 ? 11 : 9.5) + "px 'DM Mono', monospace";
+            ctx.font = '700 ' + (height > 18 ? 11 : 9.5) + "px 'Geist Mono', monospace";
             if(ctx.measureText(txt).width + 12 > w) return;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -7382,7 +7383,7 @@ function renderAdminUsers() {
     <td style="font-size:12px;min-width:150px;">${u.email}</td>
     <td style="min-width:110px;">
       <div style="display:flex;align-items:center;gap:6px;">
-        <span id="padm-${u._fid}" style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:1px;">••••••</span>
+        <span id="padm-${u._fid}" style="font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:1px;">••••••</span>
         <span onclick="verPass('padm-${u._fid}','${(u.pass||'').replace(/'/g,'\'')}')" style="cursor:pointer;font-size:14px;color:var(--text2);" title="Ver contraseña">👁</span>
       </div>
     </td>
@@ -7487,7 +7488,7 @@ function cargarUsuariosAdmin() {
       <td style="font-size:12px;min-width:140px;">${u.email||'—'}</td>
       <td style="min-width:110px;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span id="padm-${uid}" style="font-family:'DM Mono',monospace;font-size:13px;letter-spacing:2px;">••••••</span>
+          <span id="padm-${uid}" style="font-family:'Geist Mono',monospace;font-size:13px;letter-spacing:2px;">••••••</span>
           <span onclick="verPass('padm-${uid}',decodeURIComponent('${passSafe}'))" style="cursor:pointer;font-size:18px;color:var(--accent);line-height:1;" title="Ver/ocultar contraseña">👁</span>
         </div>
       </td>
@@ -8251,7 +8252,7 @@ async function guardarPostBachada() {
         </div>
         <div class="field"><label>Contraseña <span style="color:var(--text3);font-size:10px;">(auto, editable)</span></label>
           <div style="position:relative;">
-            <input type="text" id="au-pass" style="width:100%;padding-right:76px;font-family:'DM Mono',monospace;font-size:13px;">
+            <input type="text" id="au-pass" style="width:100%;padding-right:76px;font-family:'Geist Mono',monospace;font-size:13px;">
             <span onclick="generarPass()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:11px;font-weight:600;color:var(--accent);background:var(--surface2);padding:3px 7px;border-radius:6px;">🔀 Nueva</span>
           </div>
         </div>
@@ -8276,14 +8277,14 @@ async function guardarPostBachada() {
     </div>
     <!-- Sección editar usuario (oculta por defecto) -->
     <div id="au-edit-section" class="modal-section" style="display:none;margin-bottom:18px;border:1px solid var(--warn);">
-      <div class="modal-section-title" style="color:var(--warn);">✏️ Editar Usuario: <span id="au-edit-nombre-label" style="color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;"></span></div>
+      <div class="modal-section-title" style="color:var(--warn);">✏️ Editar Usuario: <span id="au-edit-nombre-label" style="color:var(--text);font-family:'Geist',sans-serif;font-size:13px;"></span></div>
       <input type="hidden" id="au-edit-fid">
       <div class="form-grid">
         <div class="field"><label>Nombre</label><input type="text" id="au-edit-nombre"></div>
         <div class="field"><label>Correo</label><input type="email" id="au-edit-email"></div>
         <div class="field"><label>Contraseña</label>
           <div style="position:relative;">
-            <input type="text" id="au-edit-pass" style="width:100%;padding-right:80px;font-family:'DM Mono',monospace;">
+            <input type="text" id="au-edit-pass" style="width:100%;padding-right:80px;font-family:'Geist Mono',monospace;">
             <span onclick="generarPassEdit()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:11px;font-weight:600;color:var(--accent);white-space:nowrap;background:var(--surface2);padding:3px 7px;border-radius:6px;">🔀 Nueva</span>
           </div>
         </div>
@@ -8358,10 +8359,10 @@ async function guardarPostBachada() {
     <div class="detalle-header">
       <div class="detalle-equipo-badge" id="det-equipo-badge">C1</div>
       <div>
-        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;" id="det-equipo-nombre">Congelador 1</div>
+        <div style="font-family:'Geist',sans-serif;font-size:20px;font-weight:700;" id="det-equipo-nombre">Congelador 1</div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
           <span id="det-estado-badge" class="detalle-status status-cerrado-badge">✅ Cerrado</span>
-          <span style="font-size:12px;color:var(--text2);">Bach <span id="det-bach" style="font-family:'DM Mono',monospace;font-weight:600;color:var(--accent);">#1</span></span>
+          <span style="font-size:12px;color:var(--text2);">Bach <span id="det-bach" style="font-family:'Geist Mono',monospace;font-weight:600;color:var(--accent);">#1</span></span>
         </div>
       </div>
     </div>
@@ -8425,7 +8426,7 @@ async function guardarPostBachada() {
     <div class="detalle-header">
       <div class="detalle-equipo-badge" id="det-ev-equipo-badge">C1</div>
       <div>
-        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;" id="det-ev-equipo-nombre">Congelador 1</div>
+        <div style="font-family:'Geist',sans-serif;font-size:20px;font-weight:700;" id="det-ev-equipo-nombre">Congelador 1</div>
         <div style="margin-top:4px;">
           <span id="det-ev-tipo-badge" class="badge badge-blue">Tipo</span>
           <span id="det-ev-estado-badge" class="detalle-status status-cerrado-badge" style="margin-left:6px;">✅ Cerrado</span>
@@ -8481,11 +8482,11 @@ async function guardarPostBachada() {
 <div class="modal-overlay" id="modal-post-bachada" style="z-index:1500;">
   <div class="modal" style="max-width:560px;">
     <div style="background:var(--surface2);border-radius:12px;padding:16px 18px;margin-bottom:20px;border-left:4px solid var(--accent);">
-      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;">✅ Bachada cerrada correctamente</div>
+      <div style="font-family:'Geist',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;">✅ Bachada cerrada correctamente</div>
       <div style="font-size:13px;color:var(--text2);" id="pb-resumen">Congelador — Bach #1 — Producto</div>
     </div>
 
-    <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px;">¿Qué ocurre ahora con este equipo?</div>
+    <div style="font-family:'Geist',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px;">¿Qué ocurre ahora con este equipo?</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Registra el evento que sigue para llevar un control completo del tiempo del equipo.</div>
 
     <!-- Contenedor de alerta inteligente -->
@@ -8494,7 +8495,7 @@ async function guardarPostBachada() {
     <!-- Tipo de evento -->
     <div class="field" style="margin-bottom:14px;">
       <label>Tipo de Evento</label>
-      <select id="pb-tipo" onchange="onPbTipoChange()" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;width:100%;">
+      <select id="pb-tipo" onchange="onPbTipoChange()" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'Geist',sans-serif;font-size:14px;outline:none;width:100%;">
         <option value="carga_descarga">🔄 Carga / Descarga (siguiente bachada)</option>
         <option value="descongelamiento">❄️ Descongelamiento</option>
         <option value="sin_produccion">⏸ Sin Producción</option>
@@ -8509,12 +8510,12 @@ async function guardarPostBachada() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
         <div class="field">
           <label>Fecha Operativa</label>
-          <input type="date" id="pb-fecha" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;" onchange="onPbFechaChange()">
+          <input type="date" id="pb-fecha" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'Geist',sans-serif;font-size:14px;outline:none;" onchange="onPbFechaChange()">
           <div style="font-size:11px;color:var(--text3);margin-top:3px;" id="pb-fecha-note">Día operativo al que pertenece el evento</div>
         </div>
         <div class="field">
           <label>Hora Inicio</label>
-          <input type="time" id="pb-inicio" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+          <input type="time" id="pb-inicio" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'Geist',sans-serif;font-size:14px;outline:none;">
           <div style="font-size:11px;color:var(--text3);margin-top:3px;">Prellenado con la hora fin de la bachada</div>
         </div>
       </div>
@@ -8523,18 +8524,18 @@ async function guardarPostBachada() {
       </div>
       <div class="field">
         <label>Técnico</label>
-        <select id="pb-tecnico" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;"></select>
+        <select id="pb-tecnico" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'Geist',sans-serif;font-size:14px;outline:none;"></select>
       </div>
     </div>
 
     <div class="field" style="margin-bottom:14px;" id="pb-desc-field">
       <label>Descripción / Observación <span style="color:var(--text3);font-size:10px;">(opcional)</span></label>
-      <textarea id="pb-desc" rows="2" placeholder="Ej: Descarga normal, producto en buen estado..." style="resize:vertical;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%;"></textarea>
+      <textarea id="pb-desc" rows="2" placeholder="Ej: Descarga normal, producto en buen estado..." style="resize:vertical;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'Geist',sans-serif;font-size:13px;outline:none;width:100%;"></textarea>
     </div>
 
     <div class="field" style="margin-bottom:14px;" id="pb-falla-field" style="display:none;">
       <label>Descripción de la Falla</label>
-      <textarea id="pb-falla" rows="2" placeholder="¿Qué falló? Componente, síntoma..." style="resize:vertical;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%;"></textarea>
+      <textarea id="pb-falla" rows="2" placeholder="¿Qué falló? Componente, síntoma..." style="resize:vertical;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:9px;font-family:'Geist',sans-serif;font-size:13px;outline:none;width:100%;"></textarea>
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
