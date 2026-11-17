@@ -5,7 +5,7 @@ ap=argparse.ArgumentParser(); ap.add_argument('ruta'); ap.add_argument('pref'); 
 A=ap.parse_args()
 AQUI=os.path.dirname(os.path.abspath(__file__))+'/'
 REPO=os.path.abspath(AQUI+'../..')
-LIB=os.environ.get('SIM_LIBS',AQUI+'node_modules/')   # npm i three@0.128.0 chart.js@4.4.1 jspdf@2.5.1 @fontsource-variable/geist @fontsource-variable/geist-mono
+LIB=os.environ.get('SIM_LIBS',AQUI+'node_modules/')   # npm i three@0.128.0 chart.js@4.4.1 jspdf@2.5.1 html2canvas@1.4.1 exceljs@4.4.0 @fontsource-variable/geist @fontsource-variable/geist-mono
 def lee(p,modo='r'):
     try: return open(p,modo).read()
     except Exception: return b'' if 'b' in modo else ''
@@ -14,7 +14,8 @@ seed=open(A.seed).read() if A.seed else ''
 M={'firebase-app.js':lee(AQUI+'mocks/m_app.js')+"\nexport async function deleteApp(){}",'firebase-auth.js':lee(AQUI+'mocks/m_auth.js')+"\nexport async function createUserWithEmailAndPassword(){return{user:{uid:'x'}}}\nexport async function sendPasswordResetEmail(){}\nexport async function sendEmailVerification(){}\nexport const browserSessionPersistence={};\nexport async function signInWithEmailAndPassword(){}",'firebase-firestore.js':lee(AQUI+'mocks/m_fs.js').replace('/*SEED*/',seed),'firebase-storage.js':'export function getStorage(){return{}}\nexport function ref(){return{}}\nexport async function uploadBytes(){}\nexport async function getDownloadURL(){return ""}\nexport async function deleteObject(){}\nexport async function getBlob(){return new Blob()}\nexport async function listAll(){return {items:[],prefixes:[]}}\nexport async function getMetadata(){return {size:0}}'}
 F={'geist.woff2':lee(LIB+'@fontsource-variable/geist/files/geist-latin-wght-normal.woff2','rb'),'mono.woff2':lee(LIB+'@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2','rb')}
 CSS="@font-face{font-family:'Geist';font-weight:100 900;src:url(https://fonts.gstatic.com/geist.woff2) format('woff2')}@font-face{font-family:'Geist Mono';font-weight:100 900;src:url(https://fonts.gstatic.com/mono.woff2) format('woff2')}"
-LIBS={'three':LIB+'three/build/three.min.js','jspdf':LIB+'jspdf/dist/jspdf.umd.min.js','chart':LIB+'chart.js/dist/chart.umd.js'}
+LIBS={'three':LIB+'three/build/three.min.js','jspdf':LIB+'jspdf/dist/jspdf.umd.min.js','chart':LIB+'chart.js/dist/chart.umd.js',
+      'html2canvas':LIB+'html2canvas/dist/html2canvas.min.js','exceljs':LIB+'exceljs/dist/exceljs.min.js'}
 AUD=lee(AQUI+'contraste.js')
 # Firebase 'compat' simulado mínimo (Costos): sesión de administrador y datos vacíos
 COMPAT="window.firebase=window.firebase||(function(){const D={'datos/cost/fuente/meta':{partes:0,extra:'{}',cat:'[]'}};\nconst doc=(p)=>({get:async()=>({exists:p in D,data:()=>D[p]}),set:async()=>{},collection:(c)=>col(p+'/'+c),onSnapshot:()=>()=>{}});\nconst col=(p)=>({doc:(d)=>doc(p+'/'+d),get:async()=>({docs:[],empty:true,forEach(){}})});\nconst fs=()=>({collection:col});fs.FieldValue={serverTimestamp:()=>0};\nreturn {initializeApp(){},auth:()=>({onAuthStateChanged(cb){setTimeout(()=>cb({uid:'u1',email:'emiranda@santamonicafishing.com',emailVerified:true}),5)},signOut:async()=>{}}),firestore:fs};})();"

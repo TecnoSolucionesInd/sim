@@ -7,15 +7,16 @@
 //   datos/ot/solicitudes/{id}         pedido de un área usuaria { numero SOL-AA-00001, fecha, mes, areaSolicitante, solicitante,
 //                                     creadoUid, zona, areaTrabajo, equipo…, descripcion, urgencia, estado, motivo, otId, otNumero }
 //   datos/ot/contadores/{OT-AA|SOL-AA} correlativo anual { n }
+//   datos/ot/resumen/{AAAA-MM}        { filas: { <idOT>: copia compacta } } por mes de registro (dashboard)
 // Lee (sin escribir): datos/eq/equipos, datos/eq/config/ubicaciones y datos/plan/pmp_tareas.
 // Escribe fuera de datos/ot una sola cosa: ejec.<semana> de una tarea del PMP cuando su OT se cierra.
 import { db } from '../../core/core.js';
 import { listarEquipos } from '../../core/equipos.js';
 import {
   collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where,
-  runTransaction, serverTimestamp, arrayUnion
+  runTransaction, serverTimestamp, arrayUnion, deleteField
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { CONFIG_BASE, camposBusqueda, ahoraLocal } from './modelo.js';
+import { CONFIG_BASE, camposBusqueda, ahoraLocal, compacta, mesDe } from './modelo.js';
 
 const APP = 'ot';
 const colOrd = () => collection(db, 'datos', APP, 'ordenes');
@@ -25,6 +26,15 @@ const colPer = () => collection(db, 'datos', APP, 'personal');
 const refCfg = () => doc(db, 'datos', APP, 'config', 'general');
 const colSol = () => collection(db, 'datos', APP, 'solicitudes');
 const colPMP = () => collection(db, 'datos', 'plan', 'pmp_tareas');
+const refRes = (mes) => doc(db, 'datos', APP, 'resumen', mes);
+// Mantiene la copia compacta de la OT en el resumen de su mes (y la quita del mes anterior si cambió la fecha)
+async function alResumen(id, ot, mesAntes) {
+  try {
+    const mes = mesDe(ot.fecha);
+    await setDoc(refRes(mes), { mes, filas: { [id]: limpio(compacta(ot)) }, actualizado: serverTimestamp() }, { merge: true });
+    if (mesAntes && mesAntes !== mes) await updateDoc(refRes(mesAntes), { [`filas.${id}`]: deleteField() });
+  } catch (e) { console.warn('No se actualizó el resumen mensual', e); }
+}
 const lista = (s) => s.docs.map(d => ({ id: d.id, ...d.data() }));
 
 // Correlativo anual dentro de una transacción (OT-26-00001, SOL-26-00001)
@@ -53,12 +63,14 @@ export function crearApi(usuario) {
     async crear(ot, accion = 'Registró la OT') {
       const ref = doc(colOrd());
       const numero = await conNumero('OT', ot.fecha, ref, (num) => limpio({ ...ot, ...camposBusqueda(ot), numero: num, creadoPor: usuario, creado: ahoraLocal(), historial: [evento(accion)] }));
+      await alResumen(ref.id, { ...ot, numero });
       return { id: ref.id, numero };
     },
     async actualizar(ot, patch, accion, detalle = '') {
       const nuevo = { ...ot, ...patch };
       await updateDoc(docOrd(ot.id), limpio({ ...patch, ...camposBusqueda(nuevo), actualizado: ahoraLocal(), actualizadoPor: usuario }));
       if (accion) await updateDoc(docOrd(ot.id), { historial: arrayUnion(limpio(evento(accion, detalle))) });
+      await alResumen(ot.id, nuevo, mesDe(ot.fecha));
     },
     async agregarFoto(id, data) {
       const r = doc(colFotos(id));
@@ -85,6 +97,26 @@ export function crearApi(usuario) {
     // ---- plan preventivo (lectura) y marca de ejecución al cerrar la OT
     async pmpTareas() { return lista(await getDocs(colPMP())); },
     marcarPMP: (tareaId, semana, valor) => updateDoc(doc(colPMP(), tareaId), { [`ejec.${semana}`]: limpio(valor), actualizado: serverTimestamp() }),
+
+    // ---- dashboard: resúmenes mensuales y solicitudes por mes
+    async resumenes(meses) {
+      const r = await Promise.all(meses.map(m => getDoc(refRes(m)).then(d => d.exists() ? (d.data().filas || {}) : {}).catch(() => ({}))));
+      const out = new Map();
+      r.forEach(f => Object.entries(f).forEach(([id, x]) => out.set(id, { id, ...x })));
+      return out;
+    },
+    async solicitudesMeses(meses) {
+      const out = [];
+      for (let i = 0; i < meses.length; i += 30) out.push(...lista(await getDocs(query(colSol(), where('mes', 'in', meses.slice(i, i + 30))))));
+      return out;
+    },
+    // Rehace todos los resúmenes a partir de las OT (una lectura de toda la colección; uso ocasional del administrador)
+    async reconstruirResumenes() {
+      const todas = lista(await getDocs(colOrd())), porMes = {};
+      todas.forEach(o => { const m = mesDe(o.fecha); (porMes[m] ||= {})[o.id] = limpio(compacta(o)); });
+      for (const [m, filas] of Object.entries(porMes)) await setDoc(refRes(m), { mes: m, filas, actualizado: serverTimestamp() });
+      return { ot: todas.length, meses: Object.keys(porMes).length };
+    },
 
     // ---- personal
     escucharPersonal: (cb, err) => onSnapshot(colPer(), s => cb(lista(s)), err),

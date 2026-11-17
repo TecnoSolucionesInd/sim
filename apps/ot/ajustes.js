@@ -99,6 +99,8 @@ export function vConfig(S) {
         <textarea class="field ot-ta" id="cAs" rows="8" ${dis}>${esc((c.areasSolicitantes || []).join('\n'))}</textarea></section>
       <section class="glass"><h3>Áreas de trabajo sin equipos</h3><p class="ot-hint">Las ubicaciones de la base de Equipos ya están incluidas (${S.ubic.length}). Agregue aquí pasillos, techos, servicios u otras zonas sin equipo.</p>
         <div id="cEx" class="ot-rows"></div>${admin ? `<button class="btn" id="cExA">${IC.mas} Agregar área</button>` : ''}</section>
+      ${admin ? `<section class="glass"><h3>Resúmenes del dashboard</h3><p class="ot-hint">El dashboard lee un resumen por mes que se actualiza solo con cada OT. Si alguna vez no cuadra con la bandeja, reconstrúyalos (lee todas las OT una vez).</p>
+        <button class="btn" id="cRes">Reconstruir resúmenes</button></section>` : ''}
     </div>`;
   const pintar = () => {
     main.querySelector('#cEx').innerHTML = extra.map((a, i) => `<div class="ot-row ot-exrow"><input class="field" data-x="${i}" value="${esc(a.nombre)}" placeholder="Nombre del área" ${dis}>
@@ -111,6 +113,12 @@ export function vConfig(S) {
   pintar();
   if (!admin) return;
   main.querySelector('#cExA').onclick = () => { extra.push({ nombre: '', sistema: null }); pintar(); };
+  main.querySelector('#cRes').onclick = async (ev) => {
+    ev.target.disabled = true;
+    try { const r = await S.api.reconstruirResumenes(); S.ctx.toast(`Resúmenes reconstruidos: ${r.ot} OT en ${r.meses} meses. Vuelva a abrir el dashboard.`); }
+    catch (e) { S.ctx.toast(e.message || 'No se pudo reconstruir.', 'err'); }
+    ev.target.disabled = false;
+  };
   main.querySelector('#bG').onclick = async () => {
     const n = {
       plazos: Object.fromEntries(M.PRIORIDADES.map(p => [p.id, Math.max(1, +main.querySelector('#c' + p.id).value || p.h)])),

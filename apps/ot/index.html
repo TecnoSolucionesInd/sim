@@ -7,6 +7,7 @@
 <link rel="icon" href="../../core/marca/isotipo.png">
 <link rel="stylesheet" href="../../core/sim.css">
 <link rel="stylesheet" href="../../core/tema-claro.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 /* ══ Órdenes de trabajo ══ */
 .ot-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
@@ -219,6 +220,39 @@ fieldset[disabled] .ot-tog button{cursor:default}
 .cp-mini i{display:block;height:100%;background:var(--c);border-radius:4px;transition:width .6s var(--ease)}
 @media (max-width:1000px){.cp-grid{grid-template-columns:1fr}}
 @media (max-width:760px){.cp-row{grid-template-columns:96px minmax(0,1fr) 64px 34px;gap:6px;font-size:12px}.cp-card{padding:14px}}
+
+/* etapa 4: dashboard gerencial */
+.db-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.db-bar .ot-chips{flex:1;min-width:0}
+.db-fil{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.db-fil .field{height:38px;width:auto;font-size:13px;padding-right:32px}
+.db-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.db-kpi{position:relative;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px 17px;box-shadow:var(--sombra);display:flex;flex-direction:column;gap:3px;transition:transform .22s var(--ease),box-shadow .22s}
+.db-kpi::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--c)}
+.db-kpi span{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-3);font-weight:500}
+.db-kpi b{font-size:27px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+.db-kpi small{font-size:12px;color:var(--tx-2);line-height:1.35}
+.db-kpi em{font-style:normal;font-size:11.5px;margin-top:3px}
+.db-kpi em i{font-style:normal;color:var(--tx-3)}
+.db-dl{font-weight:600;color:var(--tx-3)}.db-dl.up{color:#087F74}.db-dl.dn{color:#B91C1C}
+@media (hover:hover){.db-kpi:hover{transform:translateY(-2px);box-shadow:var(--sombra-2)}}
+.db-g2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;margin-bottom:14px}
+.db-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.db-card{padding:16px 18px;min-width:0}
+.db-card h3{margin:0;font-size:15px;font-weight:600}
+.db-card > .ot-hint{margin:2px 0 10px}
+.db-ch{position:relative;height:260px}
+.db-prod{display:flex;flex-direction:column;gap:12px;padding-top:4px}
+.db-pr{display:grid;grid-template-columns:150px minmax(0,1fr) 54px;align-items:center;gap:4px 10px;font-size:13px}
+.db-pr .cp-mini{width:100%}
+.db-pr small{grid-column:2 / -1;color:var(--tx-3);font-size:11.5px;margin-top:-4px}
+body.db-pdf #dash{width:1520px;padding:12px}
+body.db-pdf .db-noprint{display:none!important}
+body.db-pdf .db-ch{height:230px}
+body.db-pdf .cp-mini i,body.db-pdf .db-kpi{transition:none}
+@media (max-width:1200px){.db-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:900px){.db-g2,.db-g3{grid-template-columns:1fr}}
+@media (max-width:760px){.db-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.db-kpi b{font-size:22px}.db-ch{height:230px}.db-fil{gap:6px}.db-fil .field{flex:1 1 calc(50% - 6px);min-width:0;max-width:calc(50% - 3px);height:36px;font-size:12.5px}.db-pr{grid-template-columns:110px minmax(0,1fr) 46px}}
 @media (max-width:1100px){.ot-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:760px){
   .ot-h1{font-size:23px}
@@ -250,13 +284,14 @@ import { vPersonal, vConfig } from './ajustes.js';
 import { vPMP } from './pmp.js';
 import { vSolicitudes } from './solicitudes.js';
 import { vCapacidad } from './capacidad.js';
+import { vDashboard } from './dashboard.js';
 
 const S = { ctx: null, api: null, cfg: { ...CONFIG_BASE }, eq: [], ubic: [], per: new Map(), ords: new Map(), sols: new Map(), pmp: new Map(), pmpError: false, yo: null, listo: false };
 S.solicitudes = () => [...S.sols.values()];
 S.lista = () => [...S.ords.values()];
 S.personas = () => [...S.per.values()];
 
-const VISTAS = { mis: vMis, solicitudes: vSolicitudes, ordenes: vOrdenes, pmp: vPMP, capacidad: vCapacidad, personal: vPersonal, config: vConfig };
+const VISTAS = { mis: vMis, solicitudes: vSolicitudes, ordenes: vOrdenes, pmp: vPMP, capacidad: vCapacidad, dashboard: vDashboard, personal: vPersonal, config: vConfig };
 let modActual = null, tPint = null;
 const pintar = () => {
   if (!S.ctx || !modActual) return;

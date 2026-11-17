@@ -71,7 +71,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 | F3 | Equipos (maestro) | Construido (pruebas) |
 | F5 | Agua de planta | Panel HMI 3D, análisis y parámetros desde el R-303 en pruebas |
 | F5 | Materiales e inventario (maestro) | Químicos e insumos de ósmosis en pruebas (Análisis, kardex, catálogo) · pendiente: almacén general |
-| F6 | Órdenes de trabajo | Etapas 1 a 3 en pruebas (registro, bandeja, Mis trabajos, personal, solicitudes, preventivo de la semana, capacidad) · sigue el dashboard gerencial |
+| F6 | Órdenes de trabajo | Etapas 1 a 4 en pruebas (registro, bandeja, Mis trabajos, personal, solicitudes, preventivo de la semana, capacidad, dashboard gerencial) · sigue la etapa 5 (R-001, ausencias desde rol, materiales) |
 | F6 | Conformidades | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Programas de trabajo (paradas, auditorías, proyectos) con costos en pruebas · pendiente: plan preventivo, programación quincenal, OT |
 | F9 | Informes técnicos | Construido (pruebas) · archivos en Firestore por partes (sin Blaze) |
@@ -296,8 +296,7 @@ trabajos de mantenimiento (SIM)" en Claude Docs). Aplicativo independiente `apps
   planta de hielo 2, ósmosis 2) al 0 %, sus HH van aparte como apoyo; plazos P1 4 h · P2 24 h · P3 7 d · P4 30 d;
   toda OT pasa por supervisor; el cierre de una OT del PMP marcará la ocurrencia en Plan preventivo (etapa 2);
   numeración OT-26-00001 / SOL-26-00001.
-- Etapas: [x] 1 base y registro · [x] 2 solicitudes + PMP · [x] 3 capacidad · [ ] 4 dashboard gerencial (resúmenes
-  mensuales, PDF horizontal, Excel) · [ ] 5 R-001 prellenado, ausencias, materiales.
+- Etapas: [x] 1 base y registro · [x] 2 solicitudes + PMP · [x] 3 capacidad · [x] 4 dashboard gerencial · [ ] 5 R-001 prellenado, ausencias, materiales.
 - Etapa 2 (17-nov): módulo **Solicitudes** (`solicitudes.js`, `datos/ot/solicitudes`, correlativo SOL-AA): el área registra y
   ve las suyas (`creadoUid`); el supervisor acepta (abre la OT prellenada; al registrarla la solicitud queda `aceptada` con
   `otId`/`otNumero`) o rechaza con motivo; "Atendida" se calcula cuando su OT está cerrada. Módulo **Preventivo de la semana**
@@ -315,6 +314,18 @@ trabajos de mantenimiento (SIM)" en Claude Docs). Aplicativo independiente `apps
   criticidad y fecha límite en un horizonte de 4 semanas; lo que no entra = "sin capacidad". Tercero no consume capacidad.
   Vista: indicadores, alertas (déficit por especialidad, especialidad sin personal, técnico sobrecargado, trabajos sin
   capacidad), barras por especialidad, mapa de 4 semanas, carga por técnico y lista de trabajos sin capacidad.
+- Etapa 4 (17-nov): módulo **Dashboard gerencial** (`dashboard.js`; cálculo puro en `indicadores.js`). Cada OT mantiene una
+  copia compacta (`modelo.compacta`) en `datos/ot/resumen/{AAAA-MM}` (mes de registro, campo `filas.<id>`), escrita por
+  `datos.js` en cada alta o cambio; el dashboard lee 1 documento por mes (periodo + periodo anterior + 2 meses antes) y lo
+  corrige con las OT en vivo. Configuración → "Reconstruir resúmenes" (admin) los rehace leyendo todas las OT.
+  Periodos día/semana/mes/trimestre/semestre/año con navegación; filtros especialidad, técnico, área solicitante, zona,
+  origen, criticidad. Indicadores: cumplimiento PMP (semanas ya terminadas; a tiempo = dentro de su semana), cumplimiento
+  de solicitudes (atendidas en el plazo de su OT / vencidas o atendidas; rechazadas fuera), OT registradas/ejecutadas y a
+  tiempo, HH utilizadas/disponibles (disponibles desde el inicio del registro = primera OT), backlog al cierre (HH,
+  semanas, antigüedad, vencidas), % preventivo y emergencias, distribuciones, criticidad, productividad por técnico y
+  especialidad, tendencias por cubeta. Periodo en curso se compara con el mismo tramo del anterior. PDF A4 horizontal
+  (html2canvas + jsPDF, cortes por bloque `.db-blk`, firma al pie) y Excel (ExcelJS: Indicadores, OT del periodo, Técnicos).
+  Datos de ejemplo con historial: `mocks/seed_ot_hist.txt` (jun–oct, ficticio).
 - Regla nueva en `firestore.rules`: `match /datos/plan/pmp_tareas/{id}` — lectura con acceso a `ot`; actualización por
   admin/supervisor de `ot` solo de los campos `ejec` y `actualizado`. **Debe publicarse en la consola.**
 - Para dar acceso a un área solicitante: rol operador en `ot` con solo el módulo Solicitudes.
@@ -333,6 +344,7 @@ Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y c�
 común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fases 1 (base) y 2 (gráficas) hechas; falta el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-17: Órdenes de trabajo, etapa 4: Dashboard gerencial con resúmenes mensuales, periodos de día a año, filtros, comparación con el periodo anterior, gráficos (tendencia, tipo, HH, especialidad, áreas, criticidad, backlog), productividad, PDF horizontal y Excel.
 - 2026-11-17: Órdenes de trabajo, etapa 3: módulo Capacidad (disponibles, requeridas, utilizadas, holgura o déficit, backlog, asignación de 4 semanas, trabajos sin capacidad, carga por técnico) y ausencias en Personal.
 - 2026-11-17: Órdenes de trabajo, etapa 2: Solicitudes de las áreas (registro, aceptación que crea la OT, rechazo con motivo), Preventivo de la semana desde el Plan preventivo (OT por tarea o todas), preventivo en Mis trabajos y marca automática de ejecución en el PMP al cerrar la OT. Regla nueva para `pmp_tareas`.
 - 2026-11-17: Órdenes de trabajo, etapa 1: aplicativo nuevo `apps/ot/` (bandeja, formulario, estados, Mis trabajos en celular, reporte rápido, Personal con capacidad, Configuración). Reemplaza en el catálogo al "Reporte de mantenimiento" planificado. El mock de pruebas ahora avisa a los oyentes tras una transacción.

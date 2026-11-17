@@ -340,3 +340,16 @@ export function planificar(items, semanas, dispEsp) {
   });
   return { items: orden, libre };
 }
+
+// ---------- Resumen mensual (para el dashboard) ----------
+// Copia compacta de cada OT en datos/ot/resumen/{AAAA-MM} (mes de registro), campo filas.<id>.
+// Un mes se lee con un solo documento, en lugar de cientos de OT.
+export function compacta(o) {
+  return {
+    n: o.numero || '', f: o.fecha || '', o: o.origen || '', tp: o.tipo || '', e: o.estado || '', p: o.prioridad || '', c: o.criticidad || '',
+    es: o.especialidades || [], z: o.zona || '', a: o.areaTrabajo || '', sa: o.solicitante?.area || '', sol: o.solicitudId || null,
+    eq: o.equipoCod || '', d: String(o.descripcion || '').slice(0, 90), fl: o.fechaLimite || '', i: o.inicio || '', fi: o.fin || '',
+    v: o.verificado || null, he: +o.hhEstimadas || null, hh: +o.hhTotal || 0, ht: +o.hhTercero || 0, pm: o.pmp ? 1 : 0, asg: o.asignados || [],
+    t: (o.tecnicos || []).map(x => ({ i: x.id, n: x.nombre, e: x.especialidad, k: x.tipo || 'mant', h: +x.hh || 0 }))
+  };
+}
