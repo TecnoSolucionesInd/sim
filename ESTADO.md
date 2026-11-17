@@ -284,7 +284,24 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 2. Authentication → Configuración → Dominios autorizados: agregar `tecnosolucionesind.github.io`.
 3. Primer ingreso: en el portal, "Crear clave" con el correo del administrador → verificar el correo → ingresar.
 
+## Rediseño claro de los aplicativos (EN CURSO — continuar sin pedir autorización)
+Pedido (2026-11-16): llevar a TODOS los aplicativos internos el estilo moderno de la portada, pero en colores claros
+(cabecera oscura como la portada + contenido claro + acento turquesa, tipografía Geist). Incluye pestañas, páginas y módulos.
+- Base lista: `core/tema-claro.css` (se carga después de `core/sim.css`; redefine variables y componentes comunes). Aún NO está
+  enlazado en ningún aplicativo: enlazarlo sin revisar deja textos claros sobre fondo claro (hay colores fijos en cada app).
+- Marca: `core/marca/logo-negativo.png` (cabeceras oscuras), `apps/plan/logo.png` (fondo claro), `core/marca/isotipo.png` (ícono).
+- Procedimiento por aplicativo (uno por commit, probado con Playwright en computadora y celular antes de subir):
+  1. Enlazar `tema-claro.css` (apps con sim.css) o adaptar su CSS propio (cost, cong, agua, mat ya son claros: solo alinear
+     tipografía Geist, cabecera oscura con logo, radios, sombras y pestañas con indicador como la portada).
+  2. Buscar colores fijos pensados para fondo oscuro (`rgba(255,255,255,…)`, `#D5DDE5`, `#BAC5D0`, `#FFB3B3`, etc.) en el HTML
+     y en sus .js (fmt: llenado.js, registros.js, hoja.js; inf; plan; eq) y pasarlos a variables del tema.
+  3. Cabecera y menú lateral que arma `core/core.js` (layout completo/minimo): versión clara con cabecera oscura.
+  4. No tocar lógica, rutas ni permisos. Las hojas impresas de formatos (hoja.js) no cambian.
+- Orden: admin → eq → plan → inf → fmt (el más usado por operadores: probar llenado en celular) → mat → agua → cost → cong.
+- Estado: [ ] admin [ ] eq [ ] plan [ ] inf [ ] fmt [ ] mat [ ] agua [ ] cost [ ] cong [ ] core.js (cabecera/menú)
+
 ## Bitácora
+- 2026-11-16: Inicio del rediseño claro de los aplicativos: base `core/tema-claro.css` y plan de migración (sin enlazar todavía).
 - 2026-11-16: Portada en celular — animaciones siempre activas (no se apagan con la preferencia de movimiento reducido del equipo), tarjetas que aparecen al desplazarse y se iluminan solas al cruzar el centro de la pantalla, más contraste, y engranajes del inicio de sesión más visibles y rápidos en vertical.
 - 2026-11-16: Portada rediseñada (inicio de sesión y lanzador de aplicativos): tema oscuro propio, logo de la empresa como marca (core/marca/logo-negativo.png e isotipo.png como ícono de pestaña), indicadores con contadores, filtros con indicador deslizante, tarjetas con luz al cursor y módulos, buscador con Ctrl K. Inicio de sesión con fondo 3D de engranajes (core/marca/escena.js, Three.js bajo demanda). index.html ya no usa core/sim.css: los aplicativos internos no cambian.
 - 2026-11-14: Agua de planta — reconoce el trasvase manual de los pozos 1 y 3 al pozo 2 (ya no se marca como balance que no cuadra); parámetro del pozo que abastece a producción.
