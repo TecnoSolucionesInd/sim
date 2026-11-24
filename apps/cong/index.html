@@ -2814,6 +2814,68 @@ function tiempoTranscurridoH(fechaOp, horaInicio){
   } catch(e){ return 0; }
 }
 
+// ============================================================
+// VENTANAS DE TIEMPO PARA INDICADORES
+// ------------------------------------------------------------
+// Un evento cuenta en un período si ESTUVO ACTIVO en él, no solo si empezó
+// en él: una falla abierta desde ayer sigue restando disponibilidad hoy
+// hasta que se cierre. Las horas de cada evento se recortan a la ventana
+// del período (día operativo 08:00 → 08:00) y nunca pasan de "ahora".
+// ============================================================
+function tsOperativo(fecha, hora){
+  if(!fecha) return null;
+  const base = new Date(fecha + 'T00:00:00').getTime();
+  if(isNaN(base)) return null;
+  const [hh, mm] = String(hora || '08:00').split(':').map(Number);
+  if(isNaN(hh) || isNaN(mm)) return base + 8*3600000;
+  const h = hh + mm/60;
+  return base + (h < 8 ? 24*3600000 : 0) + h*3600000;
+}
+// Intervalo real de un evento. Sin duración registrada y sin cerrar → hasta ahora.
+function intervaloEvento(e, ahora){
+  const ini = tsOperativo(e.fechaIni, e.inicio);
+  if(ini === null) return null;
+  let fin;
+  if(e.durH !== null && e.durH !== undefined) fin = ini + e.durH*3600000;
+  else if(e.estado !== 'cerrado') fin = Math.max(ini, ahora);
+  else fin = ini;
+  return { ini, fin };
+}
+// Ventana de los días operativos [desde, hasta], recortada a ahora.
+function ventanaOperativa(desde, hasta, ahora){
+  const ini = desde ? tsOperativo(desde, '08:00') : -Infinity;
+  const finTeo = hasta ? tsOperativo(hasta, '08:00') + 24*3600000 : Infinity;
+  return { ini, fin: Math.min(finTeo, ahora), finTeo };
+}
+function horasEnVentana(e, v, ahora){
+  const iv = intervaloEvento(e, ahora);
+  if(!iv) return 0;
+  const a = Math.max(iv.ini, v.ini), b = Math.min(iv.fin, v.fin);
+  return b > a ? (b - a)/3600000 : 0;
+}
+// En el período: empezó dentro del rango de fechas, o estuvo activo dentro de la ventana.
+function eventoEnVentana(e, v, ahora, desde, hasta){
+  if((!desde || e.fechaIni >= desde) && (!hasta || e.fechaIni <= hasta)) return true;
+  return horasEnVentana(e, v, ahora) > 0;
+}
+// Duración total del evento hasta ahora (para promedios: MTTR, C/D).
+function duracionEventoH(e, ahora){
+  const iv = intervaloEvento(e, ahora);
+  return iv ? Math.max(0, (iv.fin - iv.ini)/3600000) : 0;
+}
+// Equipos detenidos por falla o mantenimiento en un instante dado.
+function equiposDetenidosEn(evs, momento, ahora){
+  const out = new Set();
+  evs.forEach(e => {
+    if(e.tipo !== 'no_programada' && e.tipo !== 'programada') return;
+    const iv = intervaloEvento(e, ahora);
+    if(!iv) return;
+    const abierto = e.estado !== 'cerrado' && (e.durH === null || e.durH === undefined);
+    if(iv.ini <= momento && (abierto || iv.fin > momento)) out.add(e.equipo);
+  });
+  return out;
+}
+
 
 function setDefaultDates(){
   const t=today();
@@ -4642,8 +4704,13 @@ function renderDashboard(){
   const sel=document.getElementById('dash-producto');
   if(sel){const cur=sel.value;sel.innerHTML='<option value="">Todos</option>'+allProds.map(p=>`<option value="${p}"${p===cur?' selected':''} >${p}</option>`).join('');}
 
-  if(from){bachs=bachs.filter(b=>b.fecha>=from);evs=evs.filter(e=>e.fechaIni>=from);}
-  if(to){bachs=bachs.filter(b=>b.fecha<=to);evs=evs.filter(e=>e.fechaIni<=to);}
+  // Eventos: cuentan los que estuvieron ACTIVOS en el período (una falla
+  // abierta desde días anteriores sigue contando hasta que se cierre).
+  const AHORA = Date.now();
+  const VENT = ventanaOperativa(from, to, AHORA);
+  if(from)bachs=bachs.filter(b=>b.fecha>=from);
+  if(to)bachs=bachs.filter(b=>b.fecha<=to);
+  if(from||to)evs=evs.filter(e=>eventoEnVentana(e,VENT,AHORA,from,to));
   if(equipoF){bachs=bachs.filter(b=>b.equipo===equipoF);evs=evs.filter(e=>e.equipo===equipoF);}
   if(turnoF)bachs=bachs.filter(b=>b.turno===turnoF);
   if(prodF)bachs=bachs.filter(b=>b.producto===prodF);
@@ -4657,14 +4724,14 @@ function renderDashboard(){
     if(b.tcong !== null && b.tcong !== undefined) return b.tcong;
     return tiempoTranscurridoH(b.fecha, b.inicio); // bachada en proceso
   };
-  const durHReal = (e) => {
-    if(e.durH !== null && e.durH !== undefined) return e.durH;
-    return tiempoTranscurridoH(e.fechaIni, e.inicio); // evento abierto
-  };
+  // Horas del evento DENTRO del período (recortadas a la ventana y a ahora)
+  const durHReal = (e) => (from||to) ? horasEnVentana(e, VENT, AHORA) : duracionEventoH(e, AHORA);
+  // Duración total del evento (para promedios como MTTR o C/D)
+  const durHTot = (e) => duracionEventoH(e, AHORA);
 
   const avgTcong=bachs.length?bachs.reduce((s,b)=>s+tcongReal(b),0)/bachs.length:null;
   const evCD=evs.filter(e=>e.tipo==='carga_descarga' && e.equipo!=='TE'); // Excluir Túnel Estático (tiempo de C/D muy diferente)
-  const avgCD=evCD.length?evCD.reduce((s,e)=>s+durHReal(e),0)/evCD.length:null;
+  const avgCD=evCD.length?evCD.reduce((s,e)=>s+durHTot(e),0)/evCD.length:null;
   const totalPar=evs.reduce((s,e)=>s+durHReal(e),0);
 
   // Producción en toneladas con 1 decimal
@@ -4681,10 +4748,15 @@ function renderDashboard(){
   // ===== NUEVOS KPIs del Dashboard General =====
   // Congeladores operativos (con actividad en el período) sobre el total
   const equiposTotales = ['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','TE'];
-  const equiposActivos = new Set(bachs.map(b=>b.equipo).concat(evs.map(e=>e.equipo)));
-  const nOperativos = equiposTotales.filter(eq => equiposActivos.has(eq)).length;
+  // Operativo = apto para operar: sin falla ni mantenimiento en curso al
+  // cierre del período (o ahora, si el período incluye hoy).
+  const eqDetenidos = equiposDetenidosEn(DB.get('eventos',[]), Math.min(VENT.fin, AHORA) - 1, AHORA);
+  const nOperativos = equiposTotales.filter(eq => !eqDetenidos.has(eq)).length;
   const elOper = document.getElementById('kpi-operativos');
-  if(elOper) elOper.innerHTML = nOperativos + '<span class="dash-mini-unit">/' + equiposTotales.length + '</span>';
+  if(elOper){
+    elOper.innerHTML = nOperativos + '<span class="dash-mini-unit">/' + equiposTotales.length + '</span>';
+    elOper.title = eqDetenidos.size ? 'Detenidos por falla o mantenimiento: ' + [...eqDetenidos].join(', ') : 'Todos los equipos aptos para operar';
+  }
 
   // ============================================================
   // TARJETAS 1 y 2 — ambas ligadas al RANGO DE FECHAS FILTRADO
@@ -4769,11 +4841,15 @@ function renderDashboard(){
   const desc=evs.filter(e=>e.tipo==='descongelamiento').length;
 
   // Periodo en horas (rango de fechas del filtro)
-  let periodHours=0;
+  // periodHoursTeo: duración completa del rango (para la capacidad teórica).
+  // periodHours: horas YA transcurridas del rango; las horas futuras no
+  // pueden ser operativas ni de falla, así que no entran en disponibilidad.
+  let periodHours=0, periodHoursTeo=0;
   if(from&&to){
     const d1=new Date(from),d2=new Date(to);
-    periodHours=Math.max(1,(d2-d1)/3600000+24);
-  } else periodHours=30*24;
+    periodHoursTeo=Math.max(1,(d2-d1)/3600000+24);
+    periodHours=Math.max(1/60,Math.min(periodHoursTeo,(VENT.fin-VENT.ini)/3600000));
+  } else periodHours=periodHoursTeo=30*24;
 
   // ============================================================
   // HORAS OPERATIVAS REALES (no teóricas)
@@ -4803,7 +4879,7 @@ function renderDashboard(){
   // MTBF = horas que el equipo estuvo operando entre fallas
   const mtbf=nFallas>0?(totalOpHours/nFallas):totalOpHours;
   // MTTR = tiempo medio de reparación (horas de falla / número de fallas)
-  const mttr=nFallas>0?(tFallas/nFallas):0;
+  const mttr=nFallas>0?(fallas.reduce((s,e)=>s+durHTot(e),0)/nFallas):0;
   // ── DISPONIBILIDAD (criterio de Mantenimiento) ──────────────────────
   // La disponibilidad mide si el equipo estuvo apto para operar cuando se
   // le requirió. Las paradas por FALTA DE MATERIA PRIMA son externas al
@@ -4862,7 +4938,7 @@ function renderDashboard(){
   // Capacidad teórica para el período y equipos filtrados
   const equiposEfic = equipoF ? [equipoF] : Object.keys(CAP_MAX_KGH);
   const maxKgH = equiposEfic.reduce((s,eq)=>s+(CAP_MAX_KGH[eq]||0),0);
-  const teorMaxKg  = maxKgH * periodHours;
+  const teorMaxKg  = maxKgH * periodHoursTeo;
   const teorMaxTDia = (maxKgH * 24) / 1000; // t/día para mostrar en el título
 
   // Eficiencia = producción real / capacidad teórica del período × 100
@@ -4920,7 +4996,7 @@ function renderDashboard(){
   });
   const mttrEq=equipos.map(eq=>{
     const ef=evs.filter(e=>e.equipo===eq&&e.tipo==='no_programada');
-    return ef.length?ef.reduce((s,e)=>s+durHReal(e),0)/ef.length:0;
+    return ef.length?ef.reduce((s,e)=>s+durHTot(e),0)/ef.length:0;
   });
   renderMultiBar('chart-mant',equipos,[{label:'MTBF',data:mtbfEq,color:'#00c8ff'},{label:'MTTR',data:mttrEq,color:'#ff3b5c'}],true);
 
@@ -4947,7 +5023,7 @@ function renderDashboard(){
   renderBachadasTiempo('chart-bach-tiempo', labelsBT, dataBach, dataTiempo);
 
   // ===== Estado de equipos en tiempo real (dona) =====
-  renderEstadoEquipos(bachs, evs);
+  renderEstadoEquipos(DB.get('bachadas',[]).filter(b=>b.estado==='pendiente'), DB.get('eventos',[]).filter(e=>e.estado==='abierto'));
 
   // ===== Producción por equipo · barras horizontales =====
   renderProduccionBarras(bachs, CAP_MAX_KGH);
@@ -4975,9 +5051,9 @@ function renderDashboard(){
       // Horas operativas reales del equipo (período − todas las paradas)
       const horasRealesEq = horasOperativasReales(eq, periodHours);
       const mB=ef.length?(horasRealesEq/ef.length):null;
-      const mT=ef.length?tF/ef.length:null;
+      const mT=ef.length?ef.reduce((s,e)=>s+durHTot(e),0)/ef.length:null;
       // Disponibilidad = horas reales / (horas reales + horas de falla)
-      const dsp=Math.min(100,(horasRealesEq/(horasRealesEq+tF))*100);
+      const dsp=(horasRealesEq+tF)>0?Math.min(100,(horasRealesEq/(horasRealesEq+tF))*100):100;
       const conf=ef.length?Math.min(100,(1-ef.length/(eb.length+ef.length))*100):eb.length>0?100:null;
       const prod=eb.reduce((s,b)=>s+(b.peso||0),0);
       const prodTon = (prod/1000).toFixed(2);
@@ -5005,7 +5081,7 @@ function renderDashboard(){
     eqConDatos.push(eq);
     const tF=ef.reduce((s,e)=>s+durHReal(e),0);
     const horasRealesEq=horasOperativasReales(eq, periodHours);
-    const dsp=Math.min(100,(horasRealesEq/(horasRealesEq+tF))*100);
+    const dsp=(horasRealesEq+tF)>0?Math.min(100,(horasRealesEq/(horasRealesEq+tF))*100):100;
     dispData.push(parseFloat(dsp.toFixed(1)));
     fallasData.push(ef.length);
   });
@@ -5038,16 +5114,18 @@ function renderDashboard(){
   }
 
   // ===== NUEVO: Render de las secciones A y B del dashboard de mantenimiento =====
-  renderMantSecciones(bachs, evs, from, to, periodHours);
+  renderMantSecciones(bachs, evs, from, to, periodHours, durHReal, durHTot);
 }
 
 // ============================================================
 // DASHBOARD DE MANTENIMIENTO — SECCIÓN A Y SECCIÓN B
 // ============================================================
-function renderMantSecciones(bachs, evs, from, to, periodHours){
+function renderMantSecciones(bachs, evs, from, to, periodHours, durPer, durTot){
   const equipos=['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','TE'];
   const tiposParada=['no_programada','sin_produccion','programada','descongelamiento','fin_proceso'];
-  const durHR=(e)=>{ if(e.durH!=null) return e.durH; return e.estado!=='cerrado'&&e.inicio?tiempoTranscurridoH(e.fechaIni,e.inicio):0; };
+  const AH=Date.now();
+  const durHT=durTot||((e)=>duracionEventoH(e,AH)); // duración total (promedios)
+  const durHR=durPer||durHT;                         // horas dentro del período
 
   // ---------- SECCIÓN A: KPIs resumen ----------
   const fallas=evs.filter(e=>e.tipo==='no_programada');
@@ -5061,7 +5139,7 @@ function renderMantSecciones(bachs, evs, from, to, periodHours){
     totalReal+=Math.max(0,periodHours-par);
   });
   const mtbfA=nFallas>0?totalReal/nFallas:totalReal;
-  const mttrA=nFallas>0?tFallas/nFallas:0;
+  const mttrA=nFallas>0?fallas.reduce((s,e)=>s+durHT(e),0)/nFallas:0;
   const dispA=(totalReal+tFallas)>0?Math.min(100,(totalReal/(totalReal+tFallas))*100):100;
   setTextSafe('mA-mtbf', nFallas>0?hoursToStr(mtbfA):'Sin fallas');
   setTextSafe('mA-mttr', nFallas>0?hoursToStr(mttrA):'—');
@@ -5076,15 +5154,20 @@ function renderMantSecciones(bachs, evs, from, to, periodHours){
   const mtbfMes=[], mttrMes=[];
   meses.forEach(mes=>{
     const pref=`${mes.y}-${String(mes.m+1).padStart(2,'0')}`;
-    const efMes=allEvs.filter(e=>e.tipo==='no_programada'&&(e.fechaIni||'').startsWith(pref));
-    const tfMes=efMes.reduce((s,e)=>s+durHR(e),0);
     const diasMes=new Date(mes.y,mes.m+1,0).getDate();
+    // Ventana del mes (08:00 del día 1 → 08:00 del día siguiente al último), hasta ahora
+    const dIni=pref+'-01', dFin=pref+'-'+String(diasMes).padStart(2,'0');
+    const vm=ventanaOperativa(dIni,dFin,AH);
+    const hMes=Math.max(0,(vm.fin-vm.ini)/3600000);
+    const evMes=allEvs.filter(e=>eventoEnVentana(e,vm,AH,dIni,dFin));
+    const efMes=evMes.filter(e=>e.tipo==='no_programada');
+    const tfMes=efMes.reduce((s,e)=>s+durHT(e),0);
     let realMes=0;
     equipos.forEach(eq=>{
-      const act=allBachs.some(b=>b.equipo===eq&&(b.fecha||'').startsWith(pref))||allEvs.some(e=>e.equipo===eq&&(e.fechaIni||'').startsWith(pref));
+      const act=allBachs.some(b=>b.equipo===eq&&(b.fecha||'').startsWith(pref))||evMes.some(e=>e.equipo===eq);
       if(!act) return;
-      const par=allEvs.filter(e=>e.equipo===eq&&tiposParada.includes(e.tipo)&&(e.fechaIni||'').startsWith(pref)).reduce((s,e)=>s+durHR(e),0);
-      realMes+=Math.max(0,diasMes*24-par);
+      const par=evMes.filter(e=>e.equipo===eq&&tiposParada.includes(e.tipo)).reduce((s,e)=>s+horasEnVentana(e,vm,AH),0);
+      realMes+=Math.max(0,hMes-par);
     });
     mtbfMes.push(efMes.length?parseFloat((realMes/efMes.length).toFixed(1)):0);
     mttrMes.push(efMes.length?parseFloat((tfMes/efMes.length).toFixed(1)):0);
@@ -5158,14 +5241,15 @@ function renderSeccionDesviaciones(bachs, evs, periodHours, durHR){
     }
   });
   evs.forEach(e=>{
+    if(e.tipo==='no_programada'){ // las fallas siempre son desviación (también las que siguen abiertas)
+      desviaciones.push({eq:e.equipo,causa:'Falla/Avería',exceso:durHR(e),fecha:e.fechaIni,hora:e.inicio,turno:e.turno});
+      return;
+    }
     if(e.estado!=='cerrado'||e.durH==null) return;
     const lim=limiteEvento(e.equipo,e.tipo);
     if(lim && e.durH>lim.max){
       const causa=e.tipo==='carga_descarga'?'Carga/Descarga':e.tipo==='descongelamiento'?'Descongelamiento':e.tipo;
       desviaciones.push({eq:e.equipo,causa,exceso:e.durH-lim.max,fecha:e.fechaIni,hora:e.inicio,turno:e.turno});
-    }
-    if(e.tipo==='no_programada'){ // las fallas siempre son desviación
-      desviaciones.push({eq:e.equipo,causa:'Falla/Avería',exceso:durHR(e),fecha:e.fechaIni,hora:e.inicio,turno:e.turno});
     }
   });
 

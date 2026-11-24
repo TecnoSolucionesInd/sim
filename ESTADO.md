@@ -89,6 +89,13 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   idéntico al sistema actual), pulsar "Copiar datos", verificar que las cinco colecciones queden en "Coincide", pasar al personal
   al enlace del SIM y dejar el sistema anterior solo como respaldo unas semanas.
   La segunda casilla retira del SIM los registros eliminados en el origen; sin ella los totales nunca coinciden.
+- Indicadores del dashboard (desde 2026-11-24): un evento cuenta en el periodo si estuvo ACTIVO en él (no solo si empezó en él).
+  Sus horas se recortan a la ventana del periodo (día operativo 08:00 → 08:00) y nunca pasan de "ahora"; una falla abierta sigue
+  restando disponibilidad cada día hasta que se cierre. Las horas futuras del día en curso no cuentan como operativas.
+  "Operativos" = equipos sin falla ni mantenimiento en curso al cierre del periodo (antes: equipos con actividad).
+  MTTR y C/D promedio usan la duración total del evento; horas detenidas y disponibilidad, solo la parte dentro del periodo.
+  La eficiencia sigue comparando contra la capacidad del día completo. Funciones: `tsOperativo`, `intervaloEvento`,
+  `ventanaOperativa`, `horasEnVentana`, `eventoEnVentana`, `equiposDetenidosEn`.
 
 ## Costos de mantenimiento (F2)
 - Repositorio público: las órdenes (DATA) NO van en el código. Se guardan en `datos/cost/fuente/{meta, p0..pN}` (JSON por partes de ~700 KB).
@@ -344,6 +351,7 @@ Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y c�
 común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fases 1 (base) y 2 (gráficas) hechas; falta el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-24: Congelamiento — corregido el cálculo con fallas abiertas de días anteriores: ya no se pierden al filtrar por fecha (antes el dashboard volvía a 100 % de disponibilidad al día siguiente). Afecta indicadores clave, mantenimiento, evolución mensual, desviaciones, tabla por equipo, estado en tiempo real y conteo de operativos.
 - 2026-11-17: Órdenes de trabajo, etapa 4: Dashboard gerencial con resúmenes mensuales, periodos de día a año, filtros, comparación con el periodo anterior, gráficos (tendencia, tipo, HH, especialidad, áreas, criticidad, backlog), productividad, PDF horizontal y Excel.
 - 2026-11-17: Órdenes de trabajo, etapa 3: módulo Capacidad (disponibles, requeridas, utilizadas, holgura o déficit, backlog, asignación de 4 semanas, trabajos sin capacidad, carga por técnico) y ausencias en Personal.
 - 2026-11-17: Órdenes de trabajo, etapa 2: Solicitudes de las áreas (registro, aceptación que crea la OT, rechazo con motivo), Preventivo de la semana desde el Plan preventivo (OT por tarea o todas), preventivo en Mis trabajos y marca automática de ejecución en el PMP al cerrar la OT. Regla nueva para `pmp_tareas`.
