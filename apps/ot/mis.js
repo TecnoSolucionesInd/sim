@@ -28,6 +28,7 @@ export function vMis(S) {
       <div><div class="eyebrow">Mis trabajos</div><h1 class="ot-h1">${yo ? `Hola, ${esc(yo.nombre.split(' ')[0])}` : 'Mis trabajos'}</h1>
         ${yo ? `<div class="ot-sub">${esc(M.espDe(yo.especialidad).l)} · ${esc(yo.grupo || '')} · hoy ${M.nf(hhHoy, 2)} HH registradas</div>` : ''}</div>
     </div>
+    ${miRol(S, yo, hoy)}
     ${S.ctx.puedeEscribir ? `<div class="ot-big">
       <button class="ot-bigb" id="bRep"><span>${IC.mas}</span><b>Reportar un trabajo</b><small>Correctivo, emergencia o actividad propia</small></button>
       <button class="ot-bigb sec" id="bDet"><span>${IC.edit}</span><b>Registrar con detalle</b><small>Formulario completo, también trabajos ya hechos</small></button>
@@ -66,6 +67,14 @@ export function vMis(S) {
   });
   const bR = main.querySelector('#bRep'); if (bR) bR.onclick = () => reporteRapido(S);
   const bD = main.querySelector('#bDet'); if (bD) bD.onclick = () => abrirOT(S, null);
+}
+
+// Mi rol de guardia de esta semana (si el supervisor ya lo publicó)
+function miRol(S, yo, hoy) {
+  const sem = M.lunesDe(), f = yo ? M.filaRol(S.rol, yo.id, sem) : null;
+  if (!f) return '';
+  return `<div class="ot-mirol" aria-label="Mi rol de esta semana">${f.map((c, i) => { const k = M.codRol(c), d = M.masDias(sem, i);
+    return `<span class="${d === hoy ? 'hoy' : ''}" title="${esc(k?.l || 'Sin asignar')}"><small>${M.DIAS_SEM[i]} ${M.deLocal(d).getDate()}</small><b style="--c:${k?.c || '#8A96A2'};--bg:${k?.bg || '#EEF2F5'}">${esc(c || '·')}</b></span>`; }).join('')}</div>`;
 }
 
 function tarjetaMia(o) {

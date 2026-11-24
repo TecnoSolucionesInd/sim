@@ -56,6 +56,16 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ejec', 'actualizado']));
     }
 
+    // Órdenes de trabajo deja por llenar el R-001 de una OT correctiva, prellenado con sus datos
+    // (solo documentos ot-<idOT>, solo el R-001 y mientras siga abierto; el cierre lo hace Registro de formatos).
+    match /datos/fmt/pendientes/{id} {
+      allow read: if puedeLeer('ot');
+      allow create: if puedeEscribir('ot') && id.matches('ot-.+')
+        && request.resource.data.codigo == 'R-001' && request.resource.data.estado == 'abierto';
+      allow update: if puedeEscribir('ot') && id.matches('ot-.+') && resource.data.estado == 'abierto'
+        && request.resource.data.codigo == 'R-001' && request.resource.data.estado == 'abierto';
+    }
+
     function esRevisorFmt() {
       return esAdmin() || (activo() && permiso('fmt').get('rol', '') in ['admin', 'supervisor']);
     }

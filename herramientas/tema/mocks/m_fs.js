@@ -1,5 +1,5 @@
 const SENT={ts:'__ts',inc:'__inc',au:'__au',del:'__del'};
-const DB=window.__DB={/*SEED*/'usuarios/u1':{email:'emiranda@santamonicafishing.com',nombre:'Elvis Miranda',activo:true,apps:{}}};
+const DB=window.__DB={/*SEED*/'usuarios/u1':{email:'emiranda@santamonicafishing.com',nombre:'Administrador de prueba',activo:true,apps:{}}};
 let seq=0; const subs=[];
 const P=(...p)=>p.join('/');
 const clone=(x)=>JSON.parse(JSON.stringify(x));

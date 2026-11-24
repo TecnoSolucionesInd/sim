@@ -71,7 +71,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 | F3 | Equipos (maestro) | Construido (pruebas) |
 | F5 | Agua de planta | Panel HMI 3D, análisis y parámetros desde el R-303 en pruebas |
 | F5 | Materiales e inventario (maestro) | Químicos e insumos de ósmosis en pruebas (Análisis, kardex, catálogo) · pendiente: almacén general |
-| F6 | Órdenes de trabajo | Etapas 1 a 4 en pruebas (registro, bandeja, Mis trabajos, personal, solicitudes, preventivo de la semana, capacidad, dashboard gerencial) · sigue la etapa 5 (R-001, ausencias desde rol, materiales) |
+| F6 | Órdenes de trabajo | Etapas 1 a 5 en pruebas (registro, bandeja, Mis trabajos, personal, solicitudes, preventivo de la semana, capacidad, dashboard gerencial, rol de guardia, R-001 prellenado, catálogo de materiales) |
 | F6 | Conformidades | Planificado |
 | F7 | Plan de mantenimiento y OT (desde cero) | Programas de trabajo (paradas, auditorías, proyectos) con costos en pruebas · pendiente: plan preventivo, programación quincenal, OT |
 | F9 | Informes técnicos | Construido (pruebas) · archivos en Firestore por partes (sin Blaze) |
@@ -303,7 +303,7 @@ trabajos de mantenimiento (SIM)" en Claude Docs). Aplicativo independiente `apps
   planta de hielo 2, ósmosis 2) al 0 %, sus HH van aparte como apoyo; plazos P1 4 h · P2 24 h · P3 7 d · P4 30 d;
   toda OT pasa por supervisor; el cierre de una OT del PMP marcará la ocurrencia en Plan preventivo (etapa 2);
   numeración OT-26-00001 / SOL-26-00001.
-- Etapas: [x] 1 base y registro · [x] 2 solicitudes + PMP · [x] 3 capacidad · [x] 4 dashboard gerencial · [ ] 5 R-001 prellenado, ausencias, materiales.
+- Etapas: [x] 1 base y registro · [x] 2 solicitudes + PMP · [x] 3 capacidad · [x] 4 dashboard gerencial · [x] 5 R-001 prellenado, rol de guardia, materiales.
 - Etapa 2 (17-nov): módulo **Solicitudes** (`solicitudes.js`, `datos/ot/solicitudes`, correlativo SOL-AA): el área registra y
   ve las suyas (`creadoUid`); el supervisor acepta (abre la OT prellenada; al registrarla la solicitud queda `aceptada` con
   `otId`/`otNumero`) o rechaza con motivo; "Atendida" se calcula cuando su OT está cerrada. Módulo **Preventivo de la semana**
@@ -333,6 +333,26 @@ trabajos de mantenimiento (SIM)" en Claude Docs). Aplicativo independiente `apps
   especialidad, tendencias por cubeta. Periodo en curso se compara con el mismo tramo del anterior. PDF A4 horizontal
   (html2canvas + jsPDF, cortes por bloque `.db-blk`, firma al pie) y Excel (ExcelJS: Indicadores, OT del periodo, Técnicos).
   Datos de ejemplo con historial: `mocks/seed_ot_hist.txt` (jun–oct, ficticio).
+- Etapa 5 (24-nov):
+  **Rol de guardia** (módulo `rol`, `rol.js`; `datos/ot/rol/{lunes}` = { semana, filas: { idPersona: [7 códigos lun→dom] } }).
+  Códigos D, N, DSO, V, DM, F, P, C (`M.COD_ROL`). "Generar" propone la semana: rota la anterior (Turno 1 y Turno 2 cambian
+  D↔N, los demás grupos conservan su turno, DSO se mantiene, una ausencia de la semana previa vuelve al turno) o, sin semana
+  previa, turno del grupo × turnos/semana y DSO al final; las ausencias de la ficha de Personal se marcan solas (Vacaciones→V,
+  Descanso médico→DM, Permiso/Capacitación/Otro→P). Cada casilla se cambia con un menú (opción "aplicar al resto de la semana").
+  Exporta imagen PNG (en celular abre compartir, para WhatsApp) y Excel de la semana. Mis trabajos muestra el rol del técnico.
+  Capacidad y dashboard: si la semana tiene rol, HH = horas de turno × dedicación × días con D o N que no caen en una ausencia
+  de la ficha (`hhDispSemana`, `hhDia`, `diasAusente` con `S.rol`); si no, la fórmula anterior. La app escucha toda la colección.
+  **R-001 prellenado**: al pasar una OT correctiva o de emergencia a "Por verificar" (o registrarla ya ejecutada) y al cerrarla
+  se escribe `datos/fmt/pendientes/ot-<idOT>` { codigo R-001, estado abierto, equipo, origen {tipo:'ot', numero}, prellenado }.
+  `prellenado` = { campos: [{ n: etiqueta, v }], listas: [{ t: título, filas: [{ columna: valor }] }] }; Registro de formatos lo
+  aplica al abrir el pendiente (`aplicarPrellenado` en `apps/fmt/llenado.js`, por nombre normalizado, solo campos vacíos, en una
+  selección la opción igual u "Otra"). Si el R-001 ya se llenó no se toca. La OT muestra su estado y un botón para dejarlo o
+  actualizarlo. La causa de la OT pasa a ser la lista del R-001 (`M.CAUSAS`) y hay un campo "Trabajo realizado".
+  **Catálogo de materiales**: `datos/ot/config/materiales` { items: [{ c, d, u }] }, se reemplaza pegando desde Excel (Código,
+  Descripción, Unidad) o con un CSV en Configuración. En la OT el material se busca en el catálogo y en los ya usados; al elegir
+  uno se guardan `cod` y unidad. Un documento admite ~15 000 materiales.
+- Regla nueva en `firestore.rules` (etapa 5): `match /datos/fmt/pendientes/{id}` — lectura con acceso a `ot`; crear/actualizar
+  solo `ot-…`, codigo R-001 y estado abierto, por usuarios con escritura en `ot`. **Debe publicarse en la consola.**
 - Regla nueva en `firestore.rules`: `match /datos/plan/pmp_tareas/{id}` — lectura con acceso a `ot`; actualización por
   admin/supervisor de `ot` solo de los campos `ejec` y `actualizado`. **Debe publicarse en la consola.**
 - Para dar acceso a un área solicitante: rol operador en `ot` con solo el módulo Solicitudes.
@@ -351,6 +371,7 @@ Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y c�
 común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fases 1 (base) y 2 (gráficas) hechas; falta el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-24: Órdenes de trabajo, etapa 5: rol de guardia semanal (genera con rotación, imagen y Excel, alimenta la capacidad y el dashboard), R-001 prellenado desde las OT correctivas en Registro de formatos y catálogo de materiales. Los mocks de prueba ya no usan un nombre real.
 - 2026-11-24: Congelamiento — corregido el cálculo con fallas abiertas de días anteriores: ya no se pierden al filtrar por fecha (antes el dashboard volvía a 100 % de disponibilidad al día siguiente). Afecta indicadores clave, mantenimiento, evolución mensual, desviaciones, tabla por equipo, estado en tiempo real y conteo de operativos.
 - 2026-11-17: Órdenes de trabajo, etapa 4: Dashboard gerencial con resúmenes mensuales, periodos de día a año, filtros, comparación con el periodo anterior, gráficos (tendencia, tipo, HH, especialidad, áreas, criticidad, backlog), productividad, PDF horizontal y Excel.
 - 2026-11-17: Órdenes de trabajo, etapa 3: módulo Capacidad (disponibles, requeridas, utilizadas, holgura o déficit, backlog, asignación de 4 semanas, trabajos sin capacidad, carga por técnico) y ausencias en Personal.

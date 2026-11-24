@@ -292,6 +292,38 @@ function hace(iso) {
 // =====================================================================
 // INICIO DE UN LLENADO
 // =====================================================================
+// Prellenado que trae un pendiente generado por otro aplicativo (p. ej. el R-001 desde una orden de trabajo):
+// { campos: [{ n: nombre del campo, v }], listas: [{ t: título de la sección, filas: [{ <nombre de columna>: valor }] }] }.
+// Solo completa lo que está vacío; en una selección usa la opción equivalente (o "Otra" si existe).
+const TIPOS_TEXTO = ['texto', 'textoLargo', 'fechaHora', 'fecha', 'hora', 'numero', 'referencia'];
+function aplicarPrellenado(def, reg, pre) {
+  if (!pre) return;
+  const campos = new Map((pre.campos || []).map(x => [norm(x.n), x.v]));
+  const listas = new Map((pre.listas || []).map(x => [norm(x.t), x.filas || []]));
+  def.secciones.forEach(s => {
+    if (s.tipo === 'lista') {
+      const filas = listas.get(norm(s.titulo));
+      if (filas?.length && !(reg.v[s.id] || []).length) {
+        reg.v[s.id] = filas.map(f => {
+          const fx = new Map(Object.entries(f).map(([k, v]) => [norm(k), v]));
+          const fila = {};
+          s.columnas.forEach(c => { const v = fx.get(norm(c.nombre)); if (v != null && v !== '') fila[c.id] = c.tipo === 'seleccion' && c.opciones && !c.opciones.includes(v) ? '' : String(v); });
+          return fila;
+        });
+      }
+      return;
+    }
+    (s.campos || []).forEach(c => {
+      const v = campos.get(norm(c.etiqueta || c.nombre));
+      if (v == null || v === '' || (reg.v[c.id] != null && reg.v[c.id] !== '')) return;
+      if (c.tipo === 'seleccion') {
+        const op = (c.opciones || []).find(o => norm(o) === norm(v)) || ((c.opciones || []).includes('Otra') ? 'Otra' : null);
+        if (op) reg.v[c.id] = op;
+      } else if (TIPOS_TEXTO.includes(c.tipo)) reg.v[c.id] = String(v);
+    });
+  });
+}
+
 function iniciar(p, { pendiente = null, ubicacion = '' } = {}) {
   if (!p || !p.def) return toast('El formato no está disponible.', 'err');
   const hoy = turnoActual(A.cfg);
@@ -308,6 +340,7 @@ function iniciar(p, { pendiente = null, ubicacion = '' } = {}) {
       if (c.tipo === 'equipo' && pendiente.equipo && !reg.v[c.id]) reg.v[c.id] = pendiente.equipo;
       if (c.tipo === 'referencia' && pendiente.origen?.numero && !reg.v[c.id]) reg.v[c.id] = pendiente.origen.numero;
     }));
+    aplicarPrellenado(def, reg, pendiente.prellenado);
   }
   armarTablas(def, reg);
   F = { key: reg.id, reg, def: clonar(def), paso: 0, modo: 'nuevo', pendienteId: pendiente?.id || null, intento: false, col: {} };

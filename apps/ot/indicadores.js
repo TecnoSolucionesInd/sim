@@ -65,15 +65,13 @@ export function filtrar(filas, F) {
 // HH de una fila que cuentan según el filtro de especialidad o técnico
 const hhFila = (r, F, soloMant = true) => suma((r.t || []).filter(t => (!soloMant || t.k !== 'oper') && (!F.esp || t.e === F.esp) && (!F.tec || t.i === F.tec)), t => t.h);
 
-// HH disponibles de una persona entre dos fechas (inclusive), día a día, descontando ausencias
-export function hhDispRango(p, desde, hasta, cfg) {
-  const porDia = M.hhSemana(p, cfg) / 7; if (!porDia || hasta < desde) return 0;
+// HH disponibles de una persona entre dos fechas (inclusive), día a día: con rol de guardia, sus días de turno;
+// sin rol, el promedio diario de su capacidad semanal. Las ausencias registradas descuentan en ambos casos.
+export function hhDispRango(p, desde, hasta, cfg, rol) {
+  if (hasta < desde) return 0;
   let n = 0;
-  for (let s = desde; s <= hasta; s = masDias(s, 1)) {
-    const aus = (p.ausencias || []).some(a => s >= a.desde && s <= (a.hasta || a.desde));
-    if (!aus) n++;
-  }
-  return n * porDia;
+  for (let s = desde; s <= hasta; s = masDias(s, 1)) n += M.hhDia(p, s, cfg, rol);
+  return n;
 }
 
 // Cumplimiento del PMP: ocurrencias cuya semana (efectiva) cae en el periodo y ya terminó
@@ -113,7 +111,7 @@ export function cumplimientoSolicitudes(sols, filasPorId, desde, hasta, ahora, c
 }
 
 // Todos los indicadores de un periodo
-export function calcular({ filas, sols, tareas, personas, cfg, P, F, hoy, ahora, sistemas }) {
+export function calcular({ filas, sols, tareas, personas, cfg, rol, P, F, hoy, ahora, sistemas }) {
   const { desde, hasta } = P;
   const fs = filtrar(filas, F), porId = new Map(filas.map(r => [r.id, r]));
   const reg = fs.filter(r => en(r.f, desde, hasta));
@@ -127,7 +125,7 @@ export function calcular({ filas, sols, tareas, personas, cfg, P, F, hoy, ahora,
   const inicioReg = filas.reduce((m, r) => r.f && r.f.slice(0, 10) < m ? r.f.slice(0, 10) : m, hoy);
   const desdeDisp = desde > inicioReg ? desde : inicioReg;
   const pers = personas.filter(p => p.activo !== false && p.tipo !== 'oper' && (!F.esp || p.especialidad === F.esp) && (!F.tec || p.id === F.tec));
-  const hhDisp = suma(pers, p => hhDispRango(p, desdeDisp, hastaDisp, cfg));
+  const hhDisp = suma(pers, p => hhDispRango(p, desdeDisp, hastaDisp, cfg, rol));
   // backlog al cierre del periodo (o a hoy si el periodo sigue en curso)
   const corte = hasta < hoy ? hasta : hoy;
   const backlog = fs.filter(r => r.f && r.f.slice(0, 10) <= corte && !(r.fi && r.fi.slice(0, 10) <= corte));
@@ -156,7 +154,7 @@ export function calcular({ filas, sols, tareas, personas, cfg, P, F, hoy, ahora,
   const tecnicos = personas.filter(p => p.activo !== false && (!F.esp || p.especialidad === F.esp) && (!F.tec || p.id === F.tec)).map(p => {
     const hh = suma(iniciadas, r => suma((r.t || []).filter(t => t.i === p.id), t => t.h));
     const suyas = ejec.filter(r => (r.t || []).some(t => t.i === p.id));
-    const disp = p.tipo === 'oper' ? 0 : hhDispRango(p, desdeDisp, hastaDisp, cfg);
+    const disp = p.tipo === 'oper' ? 0 : hhDispRango(p, desdeDisp, hastaDisp, cfg, rol);
     return { p, hh, disp, pct: ratio(hh, disp), ot: suyas.length, aTiempo: ratio(suyas.filter(r => !r.fl || r.fi <= r.fl).length, suyas.length) };
   }).filter(x => x.hh || x.disp).sort((a, b) => b.hh - a.hh);
   const prodEsp = M.ESPECIALIDADES.filter(e => e.id !== 'Tercero').map(e => {
@@ -171,7 +169,7 @@ export function calcular({ filas, sols, tareas, personas, cfg, P, F, hoy, ahora,
     const pmp = cumplimientoPMP(tareas, b.desde, b.hasta, hoy, F, sistemas);
     const ini = fs.filter(r => en(r.i, b.desde, b.hasta));
     return { l: b.l, reg: rg.length, ejec: ej.length, pmp: pmp.pct, hh: suma(ini, r => hhFila(r, F)),
-      disp: b.desde > hoy || b.hasta < inicioReg ? null : suma(pers, p => hhDispRango(p, b.desde > inicioReg ? b.desde : inicioReg, b.hasta < hoy ? b.hasta : hoy, cfg)),
+      disp: b.desde > hoy || b.hasta < inicioReg ? null : suma(pers, p => hhDispRango(p, b.desde > inicioReg ? b.desde : inicioReg, b.hasta < hoy ? b.hasta : hoy, cfg, rol)),
       correctivo: ratio(ej.filter(r => ['correctivo', 'emergencia'].includes(r.tp)).length, ej.length),
       tipos: Object.fromEntries(M.TIPOS_MANT.map(t => [t.id, ej.filter(r => r.tp === t.id).length])) };
   });

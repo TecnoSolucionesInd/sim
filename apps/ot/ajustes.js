@@ -1,7 +1,7 @@
 // Órdenes de trabajo — Personal y Configuración
 import { SISTEMAS } from '../../core/maestros.js';
 import * as M from './modelo.js';
-import { esc, IC, modal } from './ui.js';
+import { esc, IC, modal, confirmar } from './ui.js';
 
 // ---------------- Personal ----------------
 export function vPersonal(S) {
@@ -26,7 +26,8 @@ export function vPersonal(S) {
         <td class="r num">${p.dedicacion ?? (p.tipo === 'oper' ? 0 : 100)} %</td><td class="r num"><b>${M.nf(M.hhSemana(p, S.cfg), 0)}</b></td>
         <td>${p.email ? esc(p.email) : '<span class="ot-hint">sin vincular</span>'}</td></tr>`).join('') || '<tr><td colspan="9" class="ot-vacio">Aún no hay personal registrado.</td></tr>'}</tbody>
     </table></div>
-    <p class="ot-hint" style="margin-top:12px">El personal de operación (congelamiento, calderos, planta de hielo, ósmosis) queda con 0 % de dedicación: puede registrar trabajos cuando la producción está baja o nula y esas horas se cuentan aparte como apoyo de operación.</p>`;
+    <p class="ot-hint" style="margin-top:12px">En las semanas que tienen rol de guardia, la capacidad sale de los días de turno del rol; en las demás, de los turnos por semana de esta tabla.</p>
+    <p class="ot-hint" style="margin-top:6px">El personal de operación (congelamiento, calderos, planta de hielo, ósmosis) queda con 0 % de dedicación: puede registrar trabajos cuando la producción está baja o nula y esas horas se cuentan aparte como apoyo de operación.</p>`;
   if (admin) {
     main.querySelector('#bNP').onclick = () => fichaPersona(S, null);
     main.querySelectorAll('[data-p]').forEach(tr => { tr.style.cursor = 'pointer'; tr.onclick = () => fichaPersona(S, S.per.get(tr.dataset.p)); });
@@ -48,7 +49,7 @@ function fichaPersona(S, p) {
       <div class="ot-span2"><label class="label" for="pM">Correo de su usuario en el SIM</label><input class="field" type="email" id="pM" value="${esc(v.email)}" placeholder="Para que vea sus trabajos en Mis trabajos"></div>
       <div class="ot-span2"><label class="label">Ausencias (vacaciones, descanso médico, permisos)</label><div id="pAus" class="ot-rows"></div>
         <button type="button" class="btn" id="pAusA">${IC.mas} Agregar ausencia</button>
-        <div class="ot-hint" style="margin-top:6px">Los días de ausencia se descuentan de su capacidad en esa semana.</div></div>
+        <div class="ot-hint" style="margin-top:6px">Los días de ausencia se descuentan de su capacidad en esa semana y se marcan solos al generar el rol de guardia.</div></div>
       <div class="ot-span2"><label class="check"><input type="checkbox" id="pA" ${v.activo !== false ? 'checked' : ''}> Activo</label></div>
       <div class="ot-span2 ot-hint" id="pCap"></div>
     </div></div>`,
@@ -99,6 +100,12 @@ export function vConfig(S) {
         <textarea class="field ot-ta" id="cAs" rows="8" ${dis}>${esc((c.areasSolicitantes || []).join('\n'))}</textarea></section>
       <section class="glass"><h3>Áreas de trabajo sin equipos</h3><p class="ot-hint">Las ubicaciones de la base de Equipos ya están incluidas (${S.ubic.length}). Agregue aquí pasillos, techos, servicios u otras zonas sin equipo.</p>
         <div id="cEx" class="ot-rows"></div>${admin ? `<button class="btn" id="cExA">${IC.mas} Agregar área</button>` : ''}</section>
+      <section class="glass ot-span2c"><h3>Catálogo de materiales</h3>
+        <p class="ot-hint">Al registrar materiales en una OT se buscan por código o descripción. ${admin ? 'Copie desde Excel las columnas <b>Código, Descripción y Unidad</b>, en ese orden, y péguelas aquí (o suba un CSV). Reemplaza el catálogo completo.' : ''}</p>
+        <div class="ot-matres" id="cMatRes"></div>
+        ${admin ? `<textarea class="field ot-ta mono" id="cMat" rows="6" placeholder="REP-00125&#9;Rodamiento 6205 2RS&#9;und&#10;LUB-00031&#9;Aceite para compresor ISO 68&#9;gal"></textarea>
+        <div class="ot-add" style="margin-top:10px"><button class="btn btn-primary" id="cMatG" disabled>Reemplazar catálogo</button><label class="btn" style="cursor:pointer">Subir CSV<input type="file" accept=".csv,.txt,text/csv" id="cMatF" hidden></label><span class="ot-hint" id="cMatN"></span></div>` : ''}
+      </section>
       ${admin ? `<section class="glass"><h3>Resúmenes del dashboard</h3><p class="ot-hint">El dashboard lee un resumen por mes que se actualiza solo con cada OT. Si alguna vez no cuadra con la bandeja, reconstrúyalos (lee todas las OT una vez).</p>
         <button class="btn" id="cRes">Reconstruir resúmenes</button></section>` : ''}
     </div>`;
@@ -111,7 +118,24 @@ export function vConfig(S) {
     main.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { extra.splice(+b.dataset.q, 1); pintar(); });
   };
   pintar();
+  const pintarCat = () => {
+    const n = (S.catalogo || []).length;
+    main.querySelector('#cMatRes').innerHTML = n ? `<b>${M.nf(n, 0)}</b> materiales en el catálogo. <span class="ot-hint">Ej.: ${(S.catalogo || []).slice(0, 3).map(x => esc(M.etiquetaMat(x))).join(' · ')}</span>` : '<span class="ot-hint">Aún no hay catálogo: los materiales se escriben a mano y se sugieren los ya usados en otras OT.</span>';
+  };
+  pintarCat();
   if (!admin) return;
+  let nuevos = [];
+  const prev = () => { nuevos = M.leerCatalogo(main.querySelector('#cMat').value); main.querySelector('#cMatN').textContent = nuevos.length ? `${nuevos.length} materiales leídos${nuevos.some(x => !x.c) ? ' (algunos sin código)' : ''}.` : ''; main.querySelector('#cMatG').disabled = !nuevos.length; };
+  main.querySelector('#cMat').oninput = prev;
+  main.querySelector('#cMatF').onchange = async (ev) => { const f = ev.target.files[0]; if (!f) return; main.querySelector('#cMat').value = await f.text(); prev(); ev.target.value = ''; };
+  main.querySelector('#cMatG').onclick = async (ev) => {
+    const n = (S.catalogo || []).length;
+    if (n && !(await confirmar({ titulo: 'Reemplazar catálogo', texto: `El catálogo actual (${n} materiales) se reemplaza por ${nuevos.length}. Las OT ya registradas no cambian.`, si: 'Reemplazar' }))) return;
+    ev.target.disabled = true;
+    const lista = nuevos;
+    try { await S.api.guardarCatalogo(lista); S.catalogo = lista; main.querySelector('#cMat').value = ''; prev(); pintarCat(); S.ctx.toast(`Catálogo guardado: ${lista.length} materiales.`); }
+    catch (e) { S.ctx.toast(e.message || 'No se pudo guardar el catálogo.', 'err'); ev.target.disabled = false; }
+  };
   main.querySelector('#cExA').onclick = () => { extra.push({ nombre: '', sistema: null }); pintar(); };
   main.querySelector('#cRes').onclick = async (ev) => {
     ev.target.disabled = true;

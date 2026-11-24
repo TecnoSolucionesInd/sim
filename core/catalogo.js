@@ -133,6 +133,7 @@ export const APPS = [
       { id: 'ordenes', nombre: 'Órdenes de trabajo' },
       { id: 'pmp', nombre: 'Preventivo de la semana' },
       { id: 'capacidad', nombre: 'Capacidad' },
+      { id: 'rol', nombre: 'Rol de guardia' },
       { id: 'dashboard', nombre: 'Dashboard gerencial' },
       { id: 'personal', nombre: 'Personal' },
       { id: 'config', nombre: 'Configuración' }

@@ -1,4 +1,4 @@
-const U={uid:'u1',email:'emiranda@santamonicafishing.com',emailVerified:true,displayName:'Elvis Miranda'};
+const U={uid:'u1',email:'emiranda@santamonicafishing.com',emailVerified:true,displayName:'Administrador de prueba'};
 export function getAuth(){return {currentUser:U}}
 export async function setPersistence(){}
 export const browserLocalPersistence={};

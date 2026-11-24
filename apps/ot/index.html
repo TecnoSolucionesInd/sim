@@ -18,6 +18,52 @@
 .ot-vacio{padding:34px 16px;text-align:center;color:var(--tx-3);font-size:14px;background:var(--panel);border:1px dashed var(--line-2);border-radius:14px}
 .ot-vacio.sm{padding:16px;font-size:13px}
 
+/* rol de guardia */
+.rol-acc{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rol-wrap{overflow-x:auto}
+.rol-tab{width:100%;border-collapse:separate;border-spacing:0;min-width:760px;font-size:13.5px}
+.rol-tab th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx-3);font-weight:500;padding:10px 6px;border-bottom:1px solid var(--line);text-align:left;background:var(--panel)}
+.rol-tab th.rol-d span{display:block}.rol-tab th.rol-d b{display:block;font-family:var(--f-body);font-size:16px;letter-spacing:-.02em;color:var(--tx);font-weight:600;text-transform:none}
+.rol-tab td{padding:5px 6px;border-bottom:1px solid var(--line)}
+.rol-tab .r{text-align:right}
+.rol-tab .rol-d{text-align:center;width:9%}
+.rol-tab th.hoy b,.rol-tab th.hoy span{color:#087F74}
+.rol-tab td.hoy{background:rgba(11,154,139,.06)}
+.rol-n{position:sticky;left:0;background:var(--panel);z-index:1;min-width:190px}
+.rol-n b{display:block;font-weight:600}.rol-n small{display:block;color:var(--tx-3);font-size:11.5px}
+.rol-tab .rol-n,.rol-tab .rol-n b,.rol-tab .rol-n small{white-space:normal!important;overflow-wrap:anywhere}
+.rol-g td{padding:14px 8px 6px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#087F74;font-weight:600;background:transparent;border-bottom:1px solid #CFE1E6}
+.rol-g td{position:static}
+.rol-tab tfoot td{font-size:12.5px;color:var(--tx-2);background:rgba(15,27,36,.025)}
+.rol-c{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:32px;padding:0 6px;border-radius:8px;font:700 12.5px var(--f-mono);color:var(--c,#6B7A88);background:var(--bg,#F1F4F6);transition:transform .12s,box-shadow .12s}
+button.rol-c{cursor:pointer}
+button.rol-c:focus-visible{outline:2px solid #0B9A8B;outline-offset:2px}
+@media (hover:hover){button.rol-c:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(15,27,36,.14)}}
+.rol-c.vac{color:#A9B4BE;background:transparent;border:1px dashed #C9D3DA;font-weight:400}
+.rol-ley{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:12.5px;color:var(--tx-2)}
+.rol-ley span{display:inline-flex;align-items:center;gap:6px}.rol-ley .rol-c{min-width:34px;height:24px;font-size:11px}
+.rol-menu{position:fixed;z-index:1000;width:290px;background:var(--panel,#fff);border:1px solid var(--line-2,#D5DEE4);border-radius:14px;box-shadow:0 18px 44px rgba(15,27,36,.22);padding:12px}
+.rol-mt{font-size:12.5px;font-weight:600;color:var(--tx-2);margin:0 2px 8px}
+.rol-mg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.rol-mg button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:9px;border:1px solid transparent;font-size:12.5px;color:var(--tx)}
+.rol-mg button b{display:inline-flex;justify-content:center;min-width:36px;padding:3px 0;border-radius:6px;font:700 12px var(--f-mono);color:var(--c);background:var(--bg)}
+.rol-mg button.on,.rol-mg button:focus-visible{border-color:#0B9A8B;background:rgba(11,154,139,.06)}
+@media (hover:hover){.rol-mg button:hover{background:rgba(15,27,36,.05)}}
+.rol-mr{margin-top:10px;font-size:12.5px}
+.ot-mirol{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:-4px 0 16px}
+.ot-mirol span{display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 2px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+.ot-mirol span.hoy{border-color:#0B9A8B;box-shadow:0 0 0 1px #0B9A8B inset}
+.ot-mirol small{font-size:10.5px;color:var(--tx-3)}
+.ot-mirol b{font:700 12px var(--f-mono);color:var(--c);background:var(--bg);border-radius:6px;padding:3px 0;width:100%;max-width:44px;text-align:center}
+/* R-001 en la OT */
+.ot-r001{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:1px dashed var(--line-2);background:rgba(15,27,36,.02)}
+.ot-r001 i{display:flex;color:#5564D8}.ot-r001 i svg{width:22px;height:22px}
+.ot-r001 div{flex:1;min-width:0}.ot-r001 b{display:block;font-size:13.5px}.ot-r001 small{display:block;font-size:12.5px;color:var(--tx-2);line-height:1.45;margin-top:2px}
+.ot-r001.pend{border-color:#E6C27A;background:#FFF8E8}.ot-r001.pend i{color:#B77908}
+.ot-r001.ok{border-style:solid;border-color:#A8DCD3;background:#EEFAF7}.ot-r001.ok i{color:#087F74}
+.ot-span2c{grid-column:span 2}
+.ot-matres{font-size:13.5px;margin-bottom:10px;line-height:1.5}
+
 /* indicadores */
 .ot-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:16px}
 .ot-kpi{all:unset;box-sizing:border-box;cursor:pointer;position:relative;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px 12px 17px;box-shadow:var(--sombra);transition:transform .22s var(--ease),box-shadow .22s,border-color .2s}
@@ -262,6 +308,11 @@ body.db-pdf .cp-mini i,body.db-pdf .db-kpi{transition:none}
   .ot-big{grid-template-columns:1fr}
   .ot-fil2 select.field{flex:1 1 calc(50% - 8px)}
   .ot-g3,.ot-g4,.ot-g2,.ot-cfg{grid-template-columns:1fr}
+  .ot-span2c{grid-column:auto}
+  .ot-r001{flex-wrap:wrap}.ot-r001 .btn{width:100%}
+  .rol-tab{min-width:520px;font-size:12.5px}.rol-tab .rol-n{min-width:112px;max-width:128px;width:128px}.rol-n b{font-size:12.5px;line-height:1.25}.rol-n small{font-size:10.5px}
+  .rol-tab td{padding:4px 2px}.rol-c{min-width:34px;height:30px;font-size:11.5px;padding:0 3px}.rol-tab th{padding:8px 2px}.rol-tab th.rol-d b{font-size:14px}
+  .rol-acc .btn{flex:1 1 auto}
   .ot-span2,.ot-span3,.ot-span4{grid-column:auto}
   .ot-mbg{padding:0}
   .ot-modal{border-radius:0;min-height:100%;border:0}
@@ -285,13 +336,14 @@ import { vPMP } from './pmp.js';
 import { vSolicitudes } from './solicitudes.js';
 import { vCapacidad } from './capacidad.js';
 import { vDashboard } from './dashboard.js';
+import { vRol } from './rol.js';
 
-const S = { ctx: null, api: null, cfg: { ...CONFIG_BASE }, eq: [], ubic: [], per: new Map(), ords: new Map(), sols: new Map(), pmp: new Map(), pmpError: false, yo: null, listo: false };
+const S = { ctx: null, api: null, cfg: { ...CONFIG_BASE }, eq: [], ubic: [], per: new Map(), ords: new Map(), sols: new Map(), pmp: new Map(), pmpError: false, yo: null, listo: false, rol: new Map(), catalogo: [] };
 S.solicitudes = () => [...S.sols.values()];
 S.lista = () => [...S.ords.values()];
 S.personas = () => [...S.per.values()];
 
-const VISTAS = { mis: vMis, solicitudes: vSolicitudes, ordenes: vOrdenes, pmp: vPMP, capacidad: vCapacidad, dashboard: vDashboard, personal: vPersonal, config: vConfig };
+const VISTAS = { mis: vMis, solicitudes: vSolicitudes, ordenes: vOrdenes, pmp: vPMP, capacidad: vCapacidad, rol: vRol, dashboard: vDashboard, personal: vPersonal, config: vConfig };
 let modActual = null, tPint = null;
 const pintar = () => {
   if (!S.ctx || !modActual) return;
@@ -306,9 +358,9 @@ S.gestiona = S.ctx.esAdmin || ['admin', 'supervisor'].includes(S.ctx.rol);
 S.admin = S.ctx.esAdmin || S.ctx.rol === 'admin';
 S.api = crearApi(S.usuario);
 
-const [cfg, eq, ubic, pmp] = await Promise.all([S.api.config(), S.api.equipos(), S.api.ubicaciones(),
-  S.api.pmpTareas().catch(e => { console.warn('Plan preventivo no disponible', e); S.pmpError = true; return []; })]);
-S.cfg = cfg; S.eq = eq; S.ubic = ubic; S.pmp = new Map(pmp.map(t => [t.id, t]));
+const [cfg, eq, ubic, pmp, cat] = await Promise.all([S.api.config(), S.api.equipos(), S.api.ubicaciones(),
+  S.api.pmpTareas().catch(e => { console.warn('Plan preventivo no disponible', e); S.pmpError = true; return []; }), S.api.catalogo()]);
+S.cfg = cfg; S.eq = eq; S.ubic = ubic; S.pmp = new Map(pmp.map(t => [t.id, t])); S.catalogo = cat;
 
 // Órdenes: todas las abiertas + las del mes actual y el anterior
 const abiertas = new Map(), recientes = new Map();
@@ -318,6 +370,8 @@ S.api.escucharAbiertas(l => { abiertas.clear(); l.forEach(o => abiertas.set(o.id
 const hoy = ahoraLocal(), d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
 S.api.escucharMeses([mesDe(hoy), mesDe(d.toISOString())], l => { recientes.clear(); l.forEach(o => recientes.set(o.id, o)); unir(); }, fallo);
 S.api.escucharSolicitudes([mesDe(hoy), mesDe(d.toISOString())], l => { S.sols = new Map(l.map(x => [x.id, x])); repintar(); }, (e) => console.warn(e));
+// Rol de guardia: todas las semanas (un documento pequeño por semana)
+S.api.escucharRol(l => { S.rol = new Map(l.map(r => [r.semana || r.id, r])); if (!document.querySelector('.rol-menu')) repintar(); }, (e) => console.warn(e));
 S.api.escucharPersonal(l => {
   S.per = new Map(l.map(p => [p.id, p]));
   const correo = String(S.ctx.user.email || '').toLowerCase();

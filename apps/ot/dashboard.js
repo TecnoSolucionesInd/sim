@@ -57,7 +57,7 @@ function pintar(S, P, Pp, meses) {
   const main = S.ctx.main;
   const hoy = I.iso(new Date()), ahora = M.ahoraLocal();
   const filas = filasDe(S, meses), sols = solsDe(S, meses), tareas = [...(S.pmp?.values() || [])], personas = S.personas();
-  const base = { filas, sols, tareas, personas, cfg: S.cfg, F: ST.F, hoy, ahora, sistemas: SISTEMAS };
+  const base = { filas, sols, tareas, personas, cfg: S.cfg, rol: S.rol, F: ST.F, hoy, ahora, sistemas: SISTEMAS };
   // periodo en curso: se compara con el mismo tramo de días del periodo anterior, no con el periodo completo
   const enCurso = P.hasta > hoy && P.desde <= hoy;
   const dias = Math.round((M.deLocal(hoy) - M.deLocal(P.desde)) / 864e5);

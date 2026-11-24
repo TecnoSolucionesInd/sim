@@ -170,8 +170,10 @@ export async function abrirOT(S, ot, base = {}, opts = {}) {
           <div id="oMat" class="ot-rows"></div>
           <div class="ot-add"><button type="button" class="btn" id="oMatAdd">${IC.mas} Agregar material</button><label class="check"><input type="checkbox" id="oSinM" ${o.sinMateriales ? 'checked' : ''}> Sin materiales</label></div></div>
         <div><label class="label" for="oCf">Condición final del equipo</label><select class="field" id="oCf"><option value="">Elegir…</option>${M.CONDICIONES.map(c => `<option value="${c.id}" ${o.condicionFinal === c.id ? 'selected' : ''}>${c.l}</option>`).join('')}</select></div>
-        <div class="ot-span2"><label class="label" for="oCa">Causa (correctivos y emergencias)</label><input class="field" id="oCa" value="${esc(o.causa)}" placeholder="Qué originó la falla"></div>
+        <div class="ot-span2" id="wCa"><label class="label" for="oCa">Causa (correctivos y emergencias)</label><select class="field" id="oCa"><option value="">Elegir…</option>${[...M.CAUSAS, ...(o.causa && !M.CAUSAS.includes(o.causa) ? [o.causa] : [])].map(c => `<option ${o.causa === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+        <div class="ot-span3"><label class="label" for="oTr">Trabajo realizado</label><textarea class="field ot-ta" id="oTr" rows="2" placeholder="Qué se hizo para dejar el equipo operativo">${esc(o.trabajoRealizado)}</textarea></div>
         <div class="ot-span3"><label class="label" for="oOb">Observaciones</label><textarea class="field ot-ta" id="oOb" rows="2">${esc(o.observaciones)}</textarea></div>
+        <div class="ot-span3" id="wR001" hidden></div>
       </div></section>
       </fieldset>
 
@@ -267,14 +269,24 @@ export async function abrirOT(S, ot, base = {}, opts = {}) {
 
   // materiales
   const mat = (o.materiales || []).map(x => ({ ...x }));
+  const opMat = opcionesMateriales(S);
+  $('#oMat').insertAdjacentHTML('afterend', `<datalist id="oMatL">${opMat.map(x => `<option value="${esc(M.etiquetaMat(x))}">${x.u ? esc(x.u) : ''}</option>`).join('')}</datalist>`);
+  const porEtiqueta = new Map(opMat.map(x => [M.etiquetaMat(x), x]));
   const pintarMat = () => {
     $('#oMat').innerHTML = mat.length ? mat.map((x, i) => `<div class="ot-row ot-mrow">
-      <input class="field" data-m="${i}" data-k="desc" value="${esc(x.desc)}" placeholder="Material o repuesto" ${dis}>
+      <input class="field" data-m="${i}" data-k="desc" value="${esc(x.cod ? M.etiquetaMat({ c: x.cod, d: x.desc }) : x.desc)}" placeholder="${opMat.length ? 'Buscar en el catálogo o escribir' : 'Material o repuesto'}" list="oMatL" ${dis}>
       <input class="field" type="number" min="0" step="any" data-m="${i}" data-k="cant" value="${x.cant ?? ''}" placeholder="Cant." ${dis}>
       <input class="field" data-m="${i}" data-k="und" value="${esc(x.und)}" placeholder="Und." ${dis}>
       <input class="field" data-m="${i}" data-k="ped" value="${esc(x.ped)}" placeholder="PED" ${dis}>
       ${editable ? `<button type="button" class="btn btn-icon" data-mq="${i}" aria-label="Quitar">${IC.x}</button>` : ''}</div>`).join('') : '';
-    $('#oMat').querySelectorAll('[data-m]').forEach(inp => inp.oninput = () => { mat[+inp.dataset.m][inp.dataset.k] = inp.dataset.k === 'cant' ? (inp.value === '' ? null : +inp.value) : inp.value; });
+    $('#oMat').querySelectorAll('[data-m]').forEach(inp => inp.oninput = () => {
+      const x = mat[+inp.dataset.m], k = inp.dataset.k;
+      if (k === 'desc') {
+        const c = porEtiqueta.get(inp.value);
+        if (c) { x.desc = c.d; x.cod = c.c || ''; if (c.u) { x.und = c.u; const u = inp.parentElement.querySelector('[data-k="und"]'); if (u) u.value = c.u; } }
+        else { x.desc = inp.value; x.cod = ''; }
+      } else x[k] = k === 'cant' ? (inp.value === '' ? null : +inp.value) : inp.value;
+    });
     $('#oMat').querySelectorAll('[data-mq]').forEach(b => b.onclick = () => { mat.splice(+b.dataset.mq, 1); pintarMat(); });
   };
   $('#oMatAdd').onclick = () => { mat.push({ desc: '', cant: null, und: 'und', ped: '' }); $('#oSinM').checked = false; pintarMat(); $('#oMat').querySelector('.ot-row:last-child input')?.focus(); };
@@ -308,6 +320,25 @@ export async function abrirOT(S, ot, base = {}, opts = {}) {
     inF.value = '';
   };
 
+  // causa solo para correctivos y emergencias
+  const verCausa = () => { $('#wCa').hidden = !M.esCorrectivo({ tipo: $('#oT').value }); };
+  $('#oT').addEventListener('change', verCausa); $('#oO').addEventListener('change', verCausa); verCausa();
+
+  // R-001: estado del formato en Registro de formatos
+  if (!nuevo && M.esCorrectivo(o) && ['ejecutada', 'cerrada'].includes(o.estado)) {
+    const w = $('#wR001'); w.hidden = false;
+    w.innerHTML = '<div class="ot-r001"><span class="ot-hint">Consultando el R-001…</span></div>';
+    const pintarR = (pd) => {
+      const ok = pd && pd.estado !== 'abierto';
+      w.innerHTML = `<div class="ot-r001 ${ok ? 'ok' : pd ? 'pend' : ''}"><i>${IC.doc || ''}</i><div><b>R-001 · Reporte de mantenimiento correctivo</b>
+        <small>${ok ? `Registrado como <b>${esc(pd.numero || '')}</b> en Registro de formatos.` : pd ? 'Por llenar en Registro de formatos (Llenar formatos → Pendientes), con los datos de esta OT ya cargados.' : 'Aún no se ha dejado por llenar.'}</small></div>
+        ${!ok && S.ctx.puedeEscribir ? `<button type="button" class="btn sm" id="bR001">${pd ? 'Actualizar datos' : 'Dejar por llenar'}</button>` : ''}</div>`;
+      const b = w.querySelector('#bR001');
+      if (b) b.onclick = async () => { b.disabled = true; const r = await dejarR001(S, { ...o, ...leer(), estado: o.estado }, eqActual); if (r) pintarR(r); else b.disabled = false; };
+    };
+    S.api.pendienteR001(o.id).then(pintarR).catch(() => { w.innerHTML = '<div class="ot-r001"><small class="ot-hint">No se pudo consultar el R-001 (permisos de Registro de formatos).</small></div>'; });
+  }
+
   // ---- lectura del formulario
   const leer = () => {
     const ter = $('#oTer').checked && $('#oTp').value.trim() ? { proveedor: $('#oTp').value.trim(), personas: +$('#oTn').value || null, hh: +$('#oTh').value || 0, doc: $('#oTd').value.trim() } : null;
@@ -320,7 +351,7 @@ export async function abrirOT(S, ot, base = {}, opts = {}) {
       hhEstimadas: $('#oHe').value === '' ? null : +$('#oHe').value, fechaProg: $('#oFp').value, asignados: [...asignados],
       inicio: $('#oI').value, fin: $('#oFi').value, tecnicos: tec.map(({ auto, ...t }) => t), tercero: ter,
       materiales: mat.filter(x => String(x.desc || '').trim()), sinMateriales: $('#oSinM').checked,
-      condicionFinal: $('#oCf').value, causa: $('#oCa').value.trim(), observaciones: $('#oOb').value.trim()
+      condicionFinal: $('#oCf').value, causa: $('#oCa').value, trabajoRealizado: $('#oTr').value.trim(), observaciones: $('#oOb').value.trim()
     };
     // la fecha límite se recalcula si cambia la prioridad o la fecha (salvo que la OT esté en espera)
     if (nuevo || x.prioridad !== o.prioridad || x.fecha !== o.fecha) x.fechaLimite = M.fechaLimite(x.fecha, x.prioridad, S.cfg);
@@ -348,6 +379,7 @@ export async function abrirOT(S, ot, base = {}, opts = {}) {
     if (ya?.checked) { if (errores(M.erroresCierre(x))) return; estado = 'ejecutada'; }
     const r = await S.api.crear({ ...x, estado, nFotos: fotosNuevas.length }, ya?.checked ? 'Registró el trabajo ya ejecutado' : 'Registró la OT');
     for (const f of fotosNuevas) await S.api.agregarFoto(r.id, f);
+    if (estado === 'ejecutada' && M.esCorrectivo(x)) await dejarR001(S, { ...x, ...r, estado }, eqActual);
     if (opts.alRegistrar) await opts.alRegistrar(r);
     S.ctx.toast(`${r.numero} registrada.`); m.cerrar();
   });
@@ -391,6 +423,7 @@ export async function abrirOT(S, ot, base = {}, opts = {}) {
     if (!$('#oFi').value) { $('#oFi').value = x.fin; tec.forEach(t => { if (t.hh == null || t.auto) t.hh = dur(); }); pintarTec(); Object.assign(x, { tecnicos: tec.map(({ auto, ...t }) => t) }, M.totales({ ...x, tecnicos: tec })); }
     if (errores([...M.erroresRegistro(x), ...M.erroresCierre(x)])) return;
     await S.api.actualizar(o, { ...x, estado: 'ejecutada', ejecutadoPor: S.usuario }, 'Terminó el trabajo', `${M.nf(x.hhTotal, 2)} HH`);
+    if (M.esCorrectivo(x)) await dejarR001(S, { ...o, ...x, estado: 'ejecutada' }, eqActual);
     S.ctx.toast('Trabajo terminado: pasa a verificación del supervisor.'); m.cerrar();
   });
   on('verificar', async () => {
@@ -398,6 +431,7 @@ export async function abrirOT(S, ot, base = {}, opts = {}) {
     if (errores([...M.erroresRegistro(x), ...M.erroresCierre(x)])) return;
     await S.api.actualizar(o, { ...x, estado: 'cerrada', verificadoPor: S.usuario, verificado: M.ahoraLocal() }, 'Verificó y cerró la OT');
     if (o.pmp) await marcarEnPMP(S, { ...o, ...x });
+    if (M.esCorrectivo(x)) await dejarR001(S, { ...o, ...x, estado: 'cerrada' }, eqActual);
     S.ctx.toast('OT cerrada.'); m.cerrar();
   });
   on('devolver', async () => {
@@ -428,6 +462,30 @@ export async function marcarEnPMP(S, o) {
     await S.api.actualizar(o, { pmpMarcado: false }).catch(() => {});
     S.ctx.toast('La OT se cerró, pero no se pudo marcar la tarea en Plan preventivo (revise las reglas de Firebase).', 'err');
   }
+}
+
+// Deja el R-001 por llenar en Registro de formatos con los datos de la OT (o los actualiza si aún no se llenó).
+export async function dejarR001(S, o, eq) {
+  try {
+    const e = eq?.id ? S.eq.find(x => x.id === eq.id) || eq : null;
+    return await S.api.dejarR001(o, M.prellenadoR001(o, e));
+  } catch (e) {
+    console.error(e);
+    S.ctx.toast('La OT se guardó, pero no se pudo dejar el R-001 por llenar (revise las reglas de Firebase).', 'err');
+    return null;
+  }
+}
+
+// Materiales para elegir: el catálogo y los que ya se usaron en otras OT (sin código)
+function opcionesMateriales(S) {
+  const cat = S.catalogo || [], vistos = new Set(cat.map(x => (x.c || x.d).toUpperCase()));
+  const usados = [];
+  S.lista().forEach(o => (o.materiales || []).forEach(m => {
+    const k = (m.cod || m.desc || '').toUpperCase();
+    if (!k || vistos.has(k)) return;
+    vistos.add(k); usados.push({ c: m.cod || '', d: m.desc, u: m.und || '' });
+  }));
+  return [...cat, ...usados];
 }
 
 const plazoTxt = (h) => h < 48 ? `${h} h` : `${Math.round(h / 24)} días`;

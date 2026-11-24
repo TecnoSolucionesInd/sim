@@ -11,7 +11,7 @@ const pct = (r) => r == null ? '—' : `${Math.round(r * 100)} %`;
 export function calcular(S) {
   const semAct = M.lunesDe(), horiz = M.semanasDesde(semAct, M.HORIZONTE);
   const pers = S.personas().filter(p => p.activo !== false);
-  const dispEsp = (e, s) => pers.filter(p => p.especialidad === e).reduce((a, p) => a + M.hhDispSemana(p, s, S.cfg), 0);
+  const dispEsp = (e, s) => pers.filter(p => p.especialidad === e).reduce((a, p) => a + M.hhDispSemana(p, s, S.cfg, S.rol), 0);
   const est = M.estimador(S.lista().filter(o => o.estado === 'cerrada'));
   const items = M.cargaPendiente({ ords: S.lista(), tareas: [...(S.pmp?.values() || [])], semActual: semAct, est });
   const plan = M.planificar(items.map(i => ({ ...i, rep: { ...i.rep } })), horiz, dispEsp);
@@ -58,9 +58,9 @@ export function vCapacidad(S) {
   // técnicos en la semana
   const nAsig = (it, esp) => it.asignados.filter(id => S.per.get(id)?.especialidad === esp).length || 1;
   const tec = C.pers.map(p => {
-    const d = M.hhDispSemana(p, SEM, S.cfg);
+    const d = M.hhDispSemana(p, SEM, S.cfg, S.rol);
     const a = futura ? C.items.filter(i => i.semana === SEM && i.asignados.includes(p.id)).reduce((x, i) => x + (+i.rep[p.especialidad] || 0) / nAsig(i, p.especialidad), 0) : null;
-    return { p, d, a, u: U.per[p.id] || 0, aus: M.diasAusente(p, SEM) };
+    return { p, d, a, u: U.per[p.id] || 0, aus: M.diasAusente(p, SEM, S.rol) };
   }).filter(t => t.d > 0 || t.a > 0 || t.u > 0).sort((x, y) => (y.d ? (y.a || 0) / y.d : 0) - (x.d ? (x.a || 0) / x.d : 0));
 
   // alertas

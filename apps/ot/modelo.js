@@ -81,6 +81,9 @@ export const CONDICIONES = [
 export const condDe = (id) => CONDICIONES.find(c => c.id === id) || { id, l: id || '—' };
 
 export const MOTIVOS_ESPERA = ['Repuesto o material', 'Tercero / proveedor', 'Parada de producción', 'Autorización', 'Otro'];
+// Mismas causas que el formato R-001 (Reporte de mantenimiento correctivo) para prellenarlo sin conversiones
+export const CAUSAS = ['Desgaste', 'Falta de lubricación', 'Falla eléctrica', 'Falla de operación', 'Contaminación / material extraño', 'Otra'];
+export const esCorrectivo = (o) => ['correctivo', 'emergencia'].includes(o?.tipo);
 
 export const CONFIG_BASE = {
   horasTurno: 12,
@@ -185,7 +188,51 @@ export function cruces(ot, otras) {
   return out;
 }
 
+// ---------- Rol de guardia ----------
+// datos/ot/rol/{lunes} = { semana, filas: { <idPersona>: [7 códigos, lunes a domingo] } }
+export const COD_ROL = [
+  { id: 'D', l: 'Día', c: '#8A5A00', bg: '#FFEBC2' },
+  { id: 'N', l: 'Noche', c: '#2F3C9E', bg: '#DDE2FF' },
+  { id: 'DSO', l: 'Descanso', c: '#4E5D6A', bg: '#E8EDF1' },
+  { id: 'V', l: 'Vacaciones', c: '#06695F', bg: '#D3F1EB' },
+  { id: 'DM', l: 'Descanso médico', c: '#A11D4E', bg: '#FADDE8' },
+  { id: 'F', l: 'Falta', c: '#A51818', bg: '#FDDCDC' },
+  { id: 'P', l: 'Permiso', c: '#8F5E00', bg: '#FCE9C4' },
+  { id: 'C', l: 'Compensatorio', c: '#4350C2', bg: '#E3E6FB' }
+];
+export const codRol = (id) => COD_ROL.find(c => c.id === id) || null;
+export const trabajaRol = (c) => c === 'D' || c === 'N';
+export const AUSENCIA_ROL = ['V', 'DM', 'F', 'P', 'C'];
+export const GRUPOS_ROTAN = ['Turno 1', 'Turno 2'];
+export const DIAS_SEM = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+export function filaRol(rol, pid, sem) {
+  const f = rol?.get?.(sem)?.filas?.[pid];
+  return Array.isArray(f) && f.length === 7 ? f : null;
+}
+const COD_MOTIVO = { 'Vacaciones': 'V', 'Descanso médico': 'DM', 'Permiso': 'P', 'Capacitación': 'P', 'Otro': 'P' };
+// Fila propuesta para una persona: rota la semana anterior (Turno 1 y 2 cambian día ↔ noche), conserva los descansos
+// y marca las ausencias registradas en su ficha. Sin semana anterior: turno de su grupo y descanso el domingo.
+export function filaPropuesta(p, sem, previa, cfg = CONFIG_BASE) {
+  const rota = GRUPOS_ROTAN.includes(p.grupo);
+  const swap = (c) => rota ? (c === 'D' ? 'N' : c === 'N' ? 'D' : c) : c;
+  let base;
+  if (previa) {
+    const nD = previa.filter(c => c === 'D').length, nN = previa.filter(c => c === 'N').length;
+    const turno = swap(nN > nD ? 'N' : 'D');
+    base = previa.map(c => c === 'DSO' ? 'DSO' : trabajaRol(c) ? swap(c) : turno);
+  } else {
+    const turno = p.grupo === 'Turno 2' ? 'N' : 'D';
+    const dias = Math.max(0, Math.min(7, +p.turnosSemana || cfg.turnosSemana || 6));
+    base = Array.from({ length: 7 }, (_, i) => i < dias ? turno : 'DSO');
+  }
+  return base.map((c, i) => {
+    const dia = masDias(sem, i), a = (p.ausencias || []).find(x => x.desde && dia >= x.desde && dia <= (x.hasta || x.desde));
+    return a && c !== 'DSO' ? (COD_MOTIVO[a.motivo] || 'P') : c;
+  });
+}
+
 // Capacidad semanal de una persona (HH)
+export const hhTurno = (p, cfg = CONFIG_BASE) => (+p.horasTurno || cfg.horasTurno) * ((p.dedicacion ?? (p.tipo === 'oper' ? 0 : 100)) / 100);
 export const hhSemana = (p, cfg = CONFIG_BASE) => p.activo === false ? 0
   : (+p.horasTurno || cfg.horasTurno) * (+p.turnosSemana || cfg.turnosSemana) * ((p.dedicacion ?? (p.tipo === 'oper' ? 0 : 100)) / 100);
 
@@ -194,6 +241,7 @@ export const hhSemana = (p, cfg = CONFIG_BASE) => p.activo === false ? 0
 // (ejec[s].a) cuenta en su semana nueva. Al cerrar su OT se marca ejec[s] = { estado:'hecho', fecha, por, obs }.
 const isoD = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 export const lunesDe = (d = new Date()) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return isoD(x); };
+export const masDias = (s, n) => { const d = deLocal(s); d.setDate(d.getDate() + n); return isoD(d); };
 export const masSemanas = (s, n) => { const d = deLocal(s); d.setDate(d.getDate() + 7 * n); return isoD(d); };
 export const finSemana = (s) => { const d = deLocal(s); d.setDate(d.getDate() + 6); return `${isoD(d)}T23:59`; };
 export function rangoSemana(s) {
@@ -254,16 +302,34 @@ export const MOTIVOS_AUSENCIA = ['Vacaciones', 'Descanso médico', 'Permiso', 'C
 export const HH_DEFECTO = 2; // por especialidad, cuando una OT no tiene estimación ni hay historial parecido
 export const HORIZONTE = 4;  // semanas que mira la planificación
 
-export function diasAusente(p, sem) {
-  const ini = deLocal(sem), dias = new Set();
-  (p.ausencias || []).forEach(a => {
-    const d0 = deLocal(a.desde), d1 = deLocal(a.hasta || a.desde);
-    if (!d0 || !d1) return;
-    for (let i = 0; i < 7; i++) { const d = new Date(ini); d.setDate(d.getDate() + i); if (d >= d0 && d <= d1) dias.add(i); }
-  });
-  return dias.size;
+const enAusencia = (p, fecha) => (p.ausencias || []).some(a => a.desde && fecha >= a.desde && fecha <= (a.hasta || a.desde));
+export function diasAusente(p, sem, rol) {
+  const f = filaRol(rol, p.id, sem);
+  let n = 0;
+  for (let i = 0; i < 7; i++) {
+    const dia = masDias(sem, i);
+    if (f ? AUSENCIA_ROL.includes(f[i]) || (trabajaRol(f[i]) && enAusencia(p, dia)) : enAusencia(p, dia)) n++;
+  }
+  return n;
 }
-export const hhDispSemana = (p, sem, cfg) => hhSemana(p, cfg) * (7 - diasAusente(p, sem)) / 7;
+// Con rol de guardia de esa semana: horas de turno × días con turno (D o N) que no caen en una ausencia registrada.
+// Sin rol: horas de turno × turnos por semana × dedicación, menos los días de ausencia.
+export function hhDispSemana(p, sem, cfg, rol) {
+  if (p.activo === false) return 0;
+  const f = filaRol(rol, p.id, sem);
+  if (!f) return hhSemana(p, cfg) * (7 - diasAusente(p, sem)) / 7;
+  let n = 0;
+  for (let i = 0; i < 7; i++) if (trabajaRol(f[i]) && !enAusencia(p, masDias(sem, i))) n++;
+  return hhTurno(p, cfg) * n;
+}
+// HH de una persona en un día (para el dashboard)
+export function hhDia(p, fecha, cfg, rol) {
+  if (p.activo === false) return 0;
+  const sem = lunesDe(deLocal(fecha)), f = filaRol(rol, p.id, sem);
+  if (enAusencia(p, fecha)) return 0;
+  if (!f) return hhSemana(p, cfg) / 7;
+  return trabajaRol(f[(deLocal(fecha).getDay() + 6) % 7]) ? hhTurno(p, cfg) : 0;
+}
 export const semanasDesde = (s, n) => Array.from({ length: n }, (_, i) => masSemanas(s, i));
 
 // Estimación de HH de una OT: la del formulario; si no hay, el promedio real de OT cerradas con la misma especialidad
@@ -340,6 +406,47 @@ export function planificar(items, semanas, dispEsp) {
   });
   return { items: orden, libre };
 }
+
+// ---------- R-001 (Reporte de mantenimiento correctivo) prellenado desde la OT ----------
+// Los campos se identifican por su nombre en la plantilla del R-001; Registro de formatos los coloca al abrir el pendiente.
+export function prellenadoR001(o, eq) {
+  const num = (n) => n == null || n === '' ? '' : String(n).replace('.', ',');
+  const detectado = [o.solicitante?.nombre, o.solicitante?.area && o.solicitante.area !== 'Mantenimiento' ? o.solicitante.area : ''].filter(Boolean).join(' · ');
+  const trabajo = [o.trabajoRealizado, o.trabajoRealizado ? '' : o.observaciones].filter(Boolean).join('\n');
+  return {
+    equipo: eq || (o.equipoCod ? { id: o.equipoId || null, codigo: o.equipoCod, descripcion: o.equipoDesc || '' } : null),
+    prellenado: {
+      campos: [
+        { n: 'Detectado por', v: detectado || o.solicitante?.area || '' },
+        { n: 'Descripción de la falla', v: o.descripcion || '' },
+        { n: 'Fecha y hora de la falla', v: o.fechaFalla || o.fecha || '' },
+        { n: 'Inicio de la atención', v: o.inicio || '' },
+        { n: 'Fin de la atención', v: o.fin || '' },
+        { n: 'Causa', v: o.causa || '' },
+        { n: 'Trabajo realizado', v: trabajo }
+      ].filter(x => x.v),
+      listas: (o.materiales || []).length ? [{ t: 'Repuestos y materiales utilizados', filas: o.materiales.map(m => ({ 'Descripción': [m.cod, m.desc].filter(Boolean).join(' · '), 'Cantidad': num(m.cant), 'Unidad': m.und || '' })) }] : []
+    },
+    otEstado: o.estado || ''
+  };
+}
+
+// ---------- Catálogo de materiales ----------
+// datos/ot/config/materiales = { items: [{ c: código, d: descripción, u: unidad }] }. Se carga pegando columnas desde Excel.
+export function leerCatalogo(texto) {
+  const filas = String(texto || '').split(/\r?\n/).map(l => l.split(l.includes('\t') ? '\t' : /;|,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x => x.replace(/^"|"$/g, '').trim()));
+  const out = [], vistos = new Set();
+  filas.forEach(f => {
+    if (f.length < 2 || !f[1]) return;
+    const [c, d, u = ''] = f;
+    if (/^c(o|ó)digo$/i.test(c) || /^descripci(o|ó)n$/i.test(d)) return; // encabezado
+    const k = (c || d).toUpperCase();
+    if (vistos.has(k)) return;
+    vistos.add(k); out.push({ c: c || '', d: d.replace(/\s+/g, ' '), u: u || 'und' });
+  });
+  return out;
+}
+export const etiquetaMat = (x) => x.c ? `${x.c} · ${x.d}` : x.d;
 
 // ---------- Resumen mensual (para el dashboard) ----------
 // Copia compacta de cada OT en datos/ot/resumen/{AAAA-MM} (mes de registro), campo filas.<id>.

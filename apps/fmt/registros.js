@@ -244,7 +244,8 @@ const det_codigo = () => `${DET.prefijo}/${DET.r.codigo}`;
 
 function relacionadosHtml(r) {
   const items = [];
-  if (r.origen?.id) items.push(`<a class="rel" href="?r=${encodeURIComponent(r.origen.id)}#registros" data-rel="${esc(r.origen.id)}"><b>${esc(r.origen.numero || '')}</b> ${esc(r.origen.nombre || '')}<div style="color:var(--tx-3);font-size:12px">Registro que lo originó</div></a>`);
+  if (r.origen?.tipo === 'ot') items.push(`<a class="rel" href="../ot/"><b>${esc(r.origen.numero || '')}</b> ${esc(r.origen.nombre || '')}<div style="color:var(--tx-3);font-size:12px">Orden de trabajo que lo originó</div></a>`);
+  else if (r.origen?.id) items.push(`<a class="rel" href="?r=${encodeURIComponent(r.origen.id)}#registros" data-rel="${esc(r.origen.id)}"><b>${esc(r.origen.numero || '')}</b> ${esc(r.origen.nombre || '')}<div style="color:var(--tx-3);font-size:12px">Registro que lo originó</div></a>`);
   (DET.rel || []).forEach(x => items.push(`<a class="rel" href="?r=${encodeURIComponent(x.id)}#registros" data-rel="${esc(x.id)}"><b>${esc(x.numero || x.codigo)}</b> ${esc(x.nombre)} · ${pill(x.estado)}<div style="color:var(--tx-3);font-size:12px">Generado desde este registro</div></a>`));
   const firmasGen = DET.def.secciones.flatMap(s => s.campos || []).filter(c => c.tipo === 'siNo' && c.genera && r.v?.[c.id] === 'Sí');
   firmasGen.forEach(c => { if (!(DET.rel || []).some(x => x.codigo === c.genera)) items.push(`<div class="rel" style="border:1px dashed rgba(245,185,74,.4)"><b>${esc(c.genera)}</b> pendiente de llenar<div style="color:var(--tx-3);font-size:12px">${esc(c.etiqueta)}</div></div>`); });

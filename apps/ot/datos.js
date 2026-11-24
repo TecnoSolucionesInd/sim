@@ -8,8 +8,11 @@
 //                                     creadoUid, zona, areaTrabajo, equipo…, descripcion, urgencia, estado, motivo, otId, otNumero }
 //   datos/ot/contadores/{OT-AA|SOL-AA} correlativo anual { n }
 //   datos/ot/resumen/{AAAA-MM}        { filas: { <idOT>: copia compacta } } por mes de registro (dashboard)
+//   datos/ot/rol/{lunes}              rol de guardia { semana, filas: { <idPersona>: [7 códigos] } }
+//   datos/ot/config/materiales        catálogo { items: [{ c, d, u }] }
 // Lee (sin escribir): datos/eq/equipos, datos/eq/config/ubicaciones y datos/plan/pmp_tareas.
-// Escribe fuera de datos/ot una sola cosa: ejec.<semana> de una tarea del PMP cuando su OT se cierra.
+// Escribe fuera de datos/ot dos cosas: ejec.<semana> de una tarea del PMP cuando su OT se cierra, y el R-001 por llenar
+// (datos/fmt/pendientes/ot-<idOT>) de una OT correctiva, prellenado con sus datos.
 import { db } from '../../core/core.js';
 import { listarEquipos } from '../../core/equipos.js';
 import {
@@ -27,6 +30,9 @@ const refCfg = () => doc(db, 'datos', APP, 'config', 'general');
 const colSol = () => collection(db, 'datos', APP, 'solicitudes');
 const colPMP = () => collection(db, 'datos', 'plan', 'pmp_tareas');
 const refRes = (mes) => doc(db, 'datos', APP, 'resumen', mes);
+const colRol = () => collection(db, 'datos', APP, 'rol');
+const refMat = () => doc(db, 'datos', APP, 'config', 'materiales');
+const refPend = (otId) => doc(db, 'datos', 'fmt', 'pendientes', `ot-${otId}`);
 // Mantiene la copia compacta de la OT en el resumen de su mes (y la quita del mes anterior si cambió la fecha)
 async function alResumen(id, ot, mesAntes) {
   try {
@@ -125,6 +131,27 @@ export function crearApi(usuario) {
       const ref = id ? doc(colPer(), id) : doc(colPer());
       await setDoc(ref, limpio({ ...d, actualizado: ahoraLocal(), por: usuario }), { merge: true });
       return ref.id;
+    },
+
+    // ---- rol de guardia
+    escucharRol: (cb, err) => onSnapshot(colRol(), s => cb(lista(s)), err),
+    guardarFilaRol: (sem, pid, fila) => setDoc(doc(colRol(), sem), { semana: sem, filas: { [pid]: fila }, actualizado: ahoraLocal(), por: usuario }, { merge: true }),
+    guardarRol: (sem, filas) => setDoc(doc(colRol(), sem), limpio({ semana: sem, filas, actualizado: ahoraLocal(), por: usuario }), { merge: true }),
+
+    // ---- catálogo de materiales
+    async catalogo() { try { const s = await getDoc(refMat()); return s.exists() ? (s.data().items || []) : []; } catch { return []; } },
+    guardarCatalogo: (items) => setDoc(refMat(), limpio({ items, n: items.length, actualizado: ahoraLocal(), por: usuario })),
+
+    // ---- R-001 por llenar en Registro de formatos (pendiente prellenado con la OT)
+    async pendienteR001(otId) { const s = await getDoc(refPend(otId)); return s.exists() ? { id: s.id, ...s.data() } : null; },
+    async dejarR001(ot, datos) {
+      const ref = refPend(ot.id), ya = await getDoc(ref);
+      if (ya.exists() && ya.data().estado !== 'abierto') return { ...ya.data(), id: ref.id };
+      const d = limpio({ codigo: 'R-001', plantillaId: null, estado: 'abierto', ...datos,
+        origen: { id: ot.id, numero: ot.numero, codigo: 'OT', nombre: 'Orden de trabajo', tipo: 'ot' },
+        ...(ya.exists() ? {} : { creado: ahoraLocal(), creadoPorNombre: usuario }), actualizado: ahoraLocal() });
+      await setDoc(ref, d, { merge: true });
+      return { ...d, id: ref.id };
     },
 
     // ---- configuración
