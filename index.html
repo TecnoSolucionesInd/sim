@@ -35,21 +35,22 @@ input{font:inherit;color:inherit}
 
 /* ---------- ambientación ---------- */
 .amb{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.amb .glow{position:absolute;border-radius:50%;filter:blur(20px);will-change:transform}
-.amb .g1{top:-340px;left:-180px;width:900px;height:760px;background:radial-gradient(closest-side,rgba(111,227,207,.20),rgba(111,227,207,.05) 55%,transparent);animation:drift1 28s ease-in-out infinite}
-.amb .g2{top:-260px;right:-260px;width:880px;height:720px;background:radial-gradient(closest-side,rgba(79,168,224,.16),rgba(79,168,224,.04) 55%,transparent);animation:drift2 34s ease-in-out infinite}
+.amb{contain:strict}
+/* Fondo quieto a propósito: un fondo animado bajo capas translúcidas obliga a recomponer toda la pantalla en cada cuadro
+   (en equipos sin aceleración gráfica la portada bajaba a ~20 cuadros/s). */
+.amb .glow{position:absolute;border-radius:50%}
+.amb .g1{top:-340px;left:-180px;width:900px;height:760px;background:radial-gradient(closest-side,rgba(111,227,207,.20),rgba(111,227,207,.05) 55%,transparent)}
+.amb .g2{top:-260px;right:-260px;width:880px;height:720px;background:radial-gradient(closest-side,rgba(79,168,224,.16),rgba(79,168,224,.04) 55%,transparent)}
 .amb .g3{bottom:-420px;left:30%;width:900px;height:700px;background:radial-gradient(closest-side,rgba(111,227,207,.07),transparent);}
 .amb .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:64px 64px;background-position:center -1px;
   -webkit-mask-image:radial-gradient(120% 70% at 50% 0%,#000 0%,rgba(0,0,0,.5) 45%,transparent 78%);mask-image:radial-gradient(120% 70% at 50% 0%,#000 0%,rgba(0,0,0,.5) 45%,transparent 78%)}
-.amb .noise{position:absolute;inset:0;opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
-@keyframes drift1{50%{transform:translate(90px,50px) scale(1.08)}}
-@keyframes drift2{50%{transform:translate(-110px,40px) scale(1.06)}}
+.amb .noise{position:absolute;inset:0;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
 
 .wrap{max-width:1296px;margin:0 auto;padding-left:max(28px, env(safe-area-inset-left, 0px));padding-right:max(28px, env(safe-area-inset-right, 0px))}
 
 /* ---------- barra superior ---------- */
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:31;background:var(--bg)}
-.top{position:sticky;top:env(safe-area-inset-top, 0px);z-index:30;background:rgba(5,8,10,.66);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:env(safe-area-inset-top, 0px);z-index:30;background:rgba(6,10,12,.92);border-bottom:1px solid var(--line)}
 .top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(111,227,207,.45) 18%,rgba(79,168,224,.35) 50%,transparent 82%);opacity:.55}
 .top .in{display:flex;align-items:center;gap:20px;height:68px}
 .lock{display:flex;align-items:center;gap:16px;min-width:0;flex:0 0 auto}
@@ -68,8 +69,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .search kbd{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-family:var(--fm);font-size:11px;color:var(--tx-3);padding:2px 7px;border-radius:6px;border:1px solid var(--line-2);background:rgba(255,255,255,.04);pointer-events:none}
 .top .r{display:flex;align-items:center;gap:14px;flex:0 0 auto}
 .when{display:flex;align-items:center;gap:9px;font-family:var(--fm);font-size:12.5px;color:var(--tx-2);white-space:nowrap}
-.live{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 0 rgba(111,227,207,.6);animation:pulse 2.4s infinite}
-@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(111,227,207,0)}100%{box-shadow:0 0 0 0 rgba(111,227,207,0)}}
+.live{position:relative;width:7px;height:7px;border-radius:50%;background:var(--mint)}
+.live::after,.st.prod i::after{content:"";position:absolute;inset:0;border-radius:50%;background:currentColor;opacity:0;will-change:transform,opacity;animation:onda 2.4s ease-out infinite}
+.live::after{color:rgba(111,227,207,.6)}
+@keyframes onda{0%{transform:scale(1);opacity:.75}70%,100%{transform:scale(3.4);opacity:0}}
 .user{display:flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;border-radius:999px;border:1px solid var(--line-2);background:rgba(255,255,255,.035)}
 .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:650;color:var(--mint-ink);background:linear-gradient(145deg,#C4FBF0,#6FE3CF)}
 .user .n{font-size:13px;font-weight:550;line-height:1.15;white-space:nowrap}
@@ -93,9 +96,12 @@ h1 .nm{background:linear-gradient(100deg,#FFFFFF 10%,#B9F7EC 55%,#6FE3CF 100%);-
 /* ---------- indicadores ---------- */
 .state{position:relative}
 .dial{position:absolute;left:50%;top:50%;margin:-330px 0 0 -330px;width:660px;height:660px;pointer-events:none;-webkit-mask-image:radial-gradient(closest-side,#000 40%,transparent 100%);mask-image:radial-gradient(closest-side,#000 40%,transparent 100%)}
-.dial .a{transform-origin:50% 50%;animation:spin 90s linear infinite}
-.dial .b{transform-origin:50% 50%;animation:spin 140s linear infinite reverse}
+.dial svg{position:absolute;inset:0;width:100%;height:100%;will-change:transform}
+.dial .a{animation:spin 90s linear infinite}
+.dial .b{animation:spin 140s linear infinite reverse}
 @keyframes spin{to{transform:rotate(360deg)}}
+.grid-apps.fundido,#grid.fundido{animation:fundido .32s var(--ease) both}
+@keyframes fundido{from{opacity:.25;transform:translateY(6px)}to{opacity:1;transform:none}}
 .panel{position:relative;border-radius:20px;padding:22px 22px 20px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.02));border:1px solid var(--line-2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 30px 70px -40px #000,0 1px 0 rgba(255,255,255,.08) inset}
 .panel .ph{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .panel .ph span{font-family:var(--fm);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx-3)}
@@ -132,14 +138,14 @@ h1 .nm{background:linear-gradient(100deg,#FFFFFF 10%,#B9F7EC 55%,#6FE3CF 100%);-
   transition:transform .5s var(--ease),border-color .35s,box-shadow .5s var(--ease),background .35s}
 .card::before{content:"";position:absolute;inset:0;z-index:-1;opacity:0;transition:opacity .4s;background:radial-gradient(340px circle at var(--mx) var(--my),color-mix(in srgb,var(--c) 22%,transparent),transparent 62%)}
 .card::after{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:0;transition:opacity .4s}
-.card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--c) 46%,transparent);box-shadow:0 26px 50px -28px #000,0 18px 44px -30px var(--c)}
+.card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--c) 46%,transparent);box-shadow:0 18px 30px -22px #000,0 12px 26px -22px var(--c)}
 .card:hover::before,.card:hover::after{opacity:1}
 .card:active{transform:translateY(-1px) scale(.992);transition-duration:.12s}
 .intro .card{animation:rise .7s var(--ease) both;animation-delay:calc(.18s + var(--i) * 45ms)}
 @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 .c-top{display:flex;justify-content:space-between;align-items:flex-start}
 .ico{position:relative;width:46px;height:46px;border-radius:13px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 13%,transparent);border:1px solid color-mix(in srgb,var(--c) 34%,transparent);transition:transform .5s var(--spring),box-shadow .4s,background .35s}
-.card:hover .ico{transform:translateY(-2px) scale(1.06);background:color-mix(in srgb,var(--c) 20%,transparent);box-shadow:0 10px 26px -10px var(--c)}
+.card:hover .ico{transform:translateY(-2px) scale(1.06);background:color-mix(in srgb,var(--c) 20%,transparent)}
 .fase{font-family:var(--fm);font-size:11px;color:var(--tx-3);padding:3px 8px;border-radius:7px;border:1px solid var(--line);letter-spacing:.04em;transition:color .3s,border-color .3s}
 .card:hover .fase{color:var(--tx-2);border-color:var(--line-2)}
 .c-nm{margin-top:18px;font-size:17.5px;font-weight:600;letter-spacing:-.02em;line-height:1.25;text-wrap:balance}
@@ -153,8 +159,7 @@ h1 .nm{background:linear-gradient(100deg,#FFFFFF 10%,#B9F7EC 55%,#6FE3CF 100%);-
 .c-ft{padding-top:13px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:34px}
 .st{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:500;color:var(--sc)}
 .st i{width:7px;height:7px;border-radius:50%;background:var(--sc);flex:0 0 7px}
-.st.prod i{box-shadow:0 0 0 0 color-mix(in srgb,var(--sc) 60%,transparent);animation:pulse2 2.4s infinite}
-@keyframes pulse2{70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.st.prod i{position:relative;color:color-mix(in srgb,var(--sc) 60%,transparent)}
 .st.plan i{background:transparent;box-shadow:0 0 0 1.5px var(--sc) inset}
 .go{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:550;color:var(--tx-3);transition:color .3s}
 .go span{opacity:0;transform:translateX(6px);transition:opacity .3s,transform .4s var(--ease)}
@@ -198,7 +203,7 @@ footer img{height:20px;opacity:.7}
 
 /* pantallas táctiles: sin cursor, la luz la lleva la tarjeta que pasa por el centro de la pantalla */
 @keyframes barrido{from{transform:translateX(-38%)}to{transform:translateX(38%)}}
-@keyframes latido{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--c) 0%,transparent),0 10px 26px -8px var(--c)}}
+@keyframes latido{50%{transform:scale(1.07)}}
 @keyframes subir{from{opacity:0;transform:translateY(26px) scale(.97)}to{opacity:1;transform:none}}
 @media (hover:none){
   .card.ver{animation:subir .7s var(--ease) both}
@@ -463,10 +468,10 @@ a{color:var(--mint-2)}
         <p class="lead in-a d2">Todos los aplicativos de mantenimiento de la planta en <b>un solo acceso</b>, cada uno con sus módulos y permisos.</p>
       </div>
       <div class="state in-a d3">
-        <svg class="dial" viewBox="0 0 560 560" fill="none" aria-hidden="true">
-          <g class="a" stroke="#6FE3CF"><circle cx="280" cy="280" r="270" stroke-opacity=".7" stroke-width="1.2" stroke-dasharray="2 10"/><circle cx="280" cy="280" r="206" stroke-opacity=".3"/><path d="M280 4v22M280 534v22M4 280h22M534 280h22" stroke-opacity=".9" stroke-width="1.6"/></g>
-          <g class="b" stroke="#4FA8E0"><circle cx="280" cy="280" r="240" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="64 18"/><circle cx="280" cy="280" r="172" stroke-opacity=".4" stroke-dasharray="1 8"/></g>
-        </svg>
+        <div class="dial" aria-hidden="true">
+          <svg class="a" viewBox="0 0 560 560" fill="none"><g stroke="#6FE3CF"><circle cx="280" cy="280" r="270" stroke-opacity=".7" stroke-width="1.2" stroke-dasharray="2 10"/><circle cx="280" cy="280" r="206" stroke-opacity=".3"/><path d="M280 4v22M280 534v22M4 280h22M534 280h22" stroke-opacity=".9" stroke-width="1.6"/></g></svg>
+          <svg class="b" viewBox="0 0 560 560" fill="none"><g stroke="#4FA8E0"><circle cx="280" cy="280" r="240" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="64 18"/><circle cx="280" cy="280" r="172" stroke-opacity=".4" stroke-dasharray="1 8"/></g></svg>
+        </div>
         <div class="panel">
           <div class="ph"><span>Aplicativos</span><b id="nTot"></b></div>
           <div class="bar" id="bar"></div>
@@ -727,9 +732,17 @@ function tarjetas() {
   if (vacio) $('empty').innerHTML = vis.length ? '<b>Sin resultados</b>Ningún aplicativo o módulo coincide con la búsqueda.' : '<b>Sin aplicativos asignados</b>Solicite acceso al administrador del sistema.';
 }
 // al filtrar o buscar, las tarjetas se reacomodan con una transición (si el navegador la ofrece)
-function cambiar() {
-  $('grid').classList.remove('intro');
-  if (document.startViewTransition && !reducido) document.startViewTransition(tarjetas); else tarjetas();
+// (Antes con View Transition: fotografiaba toda la página en cada cambio y en cada tecla de la búsqueda,
+// lo que hacía lenta la navegación; ahora solo un fundido corto del grid, que no repinta el resto.)
+let _tCambio = null;
+function cambiar(pausa = 0) {
+  clearTimeout(_tCambio);
+  _tCambio = setTimeout(() => {
+    const g = $('grid');
+    g.classList.remove('intro', 'fundido');
+    tarjetas();
+    if (!reducido) { void g.offsetWidth; g.classList.add('fundido'); }
+  }, pausa);
 }
 // táctil: las tarjetas aparecen al entrar en pantalla y la que cruza el centro se ilumina sola
 const tactil = matchMedia('(hover: none)').matches;
@@ -743,9 +756,15 @@ function observar() {
   $('grid').querySelectorAll('.card').forEach(c => { c.style.opacity = '0'; c.addEventListener('animationstart', () => c.style.opacity = '', { once: true }); obsVer.observe(c); obsFoco.observe(c); });
 }
 // luz que sigue al cursor dentro de cada tarjeta
+// La luz que sigue al cursor se actualiza como máximo una vez por cuadro
+let _luz = null;
 $('grid').addEventListener('pointermove', (e) => {
   const c = e.target.closest('.card'); if (!c) return;
-  const r = c.getBoundingClientRect(); c.style.setProperty('--mx', (e.clientX - r.left) + 'px'); c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  const pend = !_luz; _luz = { c, x: e.clientX, y: e.clientY };
+  if (pend) requestAnimationFrame(() => {
+    const { c, x, y } = _luz; _luz = null;
+    const r = c.getBoundingClientRect(); c.style.setProperty('--mx', (x - r.left) + 'px'); c.style.setProperty('--my', (y - r.top) + 'px');
+  });
 });
 
 function renderPortal() {
@@ -756,7 +775,7 @@ function renderPortal() {
   if (document.fonts?.ready) document.fonts.ready.then(() => marcar(true));
 }
 
-const buscar = (v, otro) => { state.q = v; otro.value = v; cambiar(); };
+const buscar = (v, otro) => { state.q = v; otro.value = v; cambiar(140); };
 $('q').addEventListener('input', (e) => buscar(e.target.value, $('q2')));
 $('q2').addEventListener('input', (e) => buscar(e.target.value, $('q')));
 addEventListener('keydown', (e) => {

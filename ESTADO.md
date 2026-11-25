@@ -373,6 +373,14 @@ Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y c�
 común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fases 1 (base) y 2 (gráficas) hechas; falta el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-25: Portal (index.html) lento al navegar. Medido con CPU ×4 y sin aceleración gráfica (como un equipo con la
+  aceleración desactivada): ~20 cuadros/s al desplazarse o pasar el mouse y ~12 al cambiar de pestaña; ahora ~55–60 en todo.
+  Causas: resplandores de fondo animados con filtro blur bajo la barra superior con backdrop-filter y una capa de ruido con
+  mix-blend-mode (toda la pantalla se recomponía en cada cuadro), pulsos que animaban box-shadow, anillos SVG girando dentro de
+  un solo svg, View Transition en cada filtro y en cada tecla de la búsqueda. Cambios: fondo quieto (sin blur ni deriva), ruido
+  sin mezcla, barra superior opaca sin desenfoque, pulsos con transform/opacity en ::after, cada anillo en su propio svg,
+  fundido corto del grid en lugar de View Transition, búsqueda con pausa de 140 ms, luz del cursor una vez por cuadro y sombras
+  de hover más cortas. Aspecto prácticamente igual. Herramienta de medición: ver bitácora (perf.py en el scratchpad, no versionada).
 - 2026-11-25: Congelamiento — disponibilidad 50 % con un solo equipo en falla. Causa: desde el cambio del 24-nov los eventos
   abiertos de días anteriores cuentan en el periodo, y los "Fin de proceso" (que no se cierran solos) y eventos olvidados
   restaban horas como paradas en curso aunque el equipo ya estuviera congelando; todas las horas operativas quedaban en 0.
