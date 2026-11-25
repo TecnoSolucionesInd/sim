@@ -1106,6 +1106,11 @@ tr.clickable-row:hover td { background: var(--surface2); }
   50% { transform: rotate(0deg) scale(1.12); }
   75% { transform: rotate(8deg) scale(1.08); }
 }
+
+/* Registros/Eventos: aviso de vista reciente · Producción mensual: carga bajo pedido */
+.aviso-recientes{margin:8px 0 10px;font-size:12px;color:var(--text3)}
+.aviso-recientes button,.pm-falta button{background:none;border:none;color:var(--accent,#00c8ff);font:inherit;font-weight:600;cursor:pointer;padding:0;text-decoration:underline}
+.pm-falta{font-size:11px;color:var(--text3);display:inline-flex;gap:6px;align-items:center}
 </style>
 <link rel="stylesheet" href="tema.css">
   <!-- Firebase SDK -->
@@ -1224,7 +1229,7 @@ tr.clickable-row:hover td { background: var(--surface2); }
           <div class="flex-between mb-4">
             <div>
               <span style="font-family:'Geist',sans-serif;font-size:15px;font-weight:700;">Registro de Bachadas</span>
-              <span style="font-size:12px;color:var(--text2);margin-left:12px;">Historial completo · Registra inicio y completa al finalizar</span>
+              <span style="font-size:12px;color:var(--text2);margin-left:12px;">Últimos 30 días o la fecha elegida · Registra inicio y completa al finalizar</span>
             </div>
             <button class="btn-sm btn-accent no-print" onclick="openBachadaModal(null)">+ Nueva Bachada</button>
           </div>
@@ -2152,8 +2157,9 @@ const db = firebase.firestore();
 // mientras Firebase sincroniza los cambios en segundo plano.
 // Esto elimina la espera en blanco al entrar, sobre todo en móvil.
 // ════════════════════════════════════════════════════════════════
-db.enablePersistence({ synchronizeTabs: true })
-  .then(()  => console.log('[SMF] Persistencia offline activa'))
+let _persistenciaOk = false;   // el histórico se guarda en el equipo solo si la caché en disco funciona
+const _persistenciaLista = db.enablePersistence({ synchronizeTabs: true })
+  .then(()  => { _persistenciaOk = true; console.log('[SMF] Persistencia offline activa'); })
   .catch(err => {
     if(err.code === 'failed-precondition')      console.warn('[SMF] Persistencia: varias pestañas abiertas');
     else if(err.code === 'unimplemented')       console.warn('[SMF] Persistencia no soportada en este navegador');
@@ -2304,21 +2310,26 @@ function renderTimelineDebounced() {
 // NO se borra, resume ni recorta nada: los cálculos siguen saliendo de los
 // mismos documentos y dan exactamente las mismas cifras.
 // ============================================================
-// 30 días cubre la operación diaria (día en curso, mes corriente, registros
-// recientes). Con 90 la ventana abarcaba casi todo el histórico y no ahorraba.
-const DIAS_VIVOS = 30;
+// 7 días cubren la operación diaria (día en curso, semana, registros recientes).
+// Cada apertura en frío lee esta ventana completa: con 30 días eran ~1,600
+// documentos; con 7, ~400. Lo anterior se pide como histórico por rango.
+const DIAS_VIVOS = 7;
+// Vista por defecto de Registros y Eventos cuando no hay fecha en el filtro
+const DIAS_RECIENTES = 30;
 function fechaCorteVivo(){
   const d = new Date();
   d.setDate(d.getDate() - DIAS_VIVOS);
   return fechaLocal(d);
 }
+function fechaHaceDias(n){ const d = new Date(); d.setDate(d.getDate() - n); return fechaLocal(d); }
 
 const _fuentes = {
   bachadas: { recientes: [], abiertos: [], hist: null },
   eventos:  { recientes: [], abiertos: [], hist: null }
 };
-let _histEstado = 'vacio';      // vacio | cargando | listo | error
-let _histPromesa = null;
+let _histDesde = null;          // límite inferior ya cargado en esta sesión ('' = todo, null = nada)
+let _histPromesa = Promise.resolve();
+let _histCargando = false;
 
 // Une las tres fuentes sin duplicar: lo reciente y lo abierto (en vivo)
 // prevalece sobre la copia histórica.
@@ -2350,48 +2361,143 @@ function refrescarVistas(nombre){
   }catch(e){ console.warn('refrescarVistas:', e); }
 }
 
-// Descarga el histórico completo UNA vez por sesión.
-// Prefiere la caché local del navegador (persistencia de Firestore): los
-// documentos antiguos no cambian, así que volver a pedirlos al servidor solo
-// gastaría cuota. Lo reciente ya llega por los listeners en vivo.
-async function traerTodo(col){
-  try{
-    const c = await col().get({ source: 'cache' });
-    if(!c.empty) return c;
-  }catch(e){ /* sin caché disponible: se pide al servidor */ }
-  return col().get();
+// ------------------------------------------------------------
+// HISTÓRICO POR RANGO, GUARDADO EN EL EQUIPO
+// Cada equipo recuerda (localStorage) qué tramo de fechas ya bajó completo del
+// servidor a su caché en disco. Al consultar fechas anteriores solo se piden al
+// servidor los tramos que faltan; lo demás se lee de la caché, que no se factura.
+// Marca por colección: { desde: 'AAAA-MM-DD' | '' (todo), hasta, dias, vivoCorte, vivoFin }
+//   [desde, hasta) completo en caché · dias: documentos por día que había · la ventana en vivo
+//   [vivoCorte, vivoFin] se mantuvo al día mientras el aplicativo estuvo abierto.
+// Si la caché se borró (faltan documentos de algún día) o no hay caché en disco, se pide al servidor.
+// ------------------------------------------------------------
+const _HIST_CAMPO = { bachadas: 'fecha', eventos: 'fechaIni' };
+const _HIST_KEY = (col) => 'cong_hist3_' + col;
+function _histMarca(col){ try{ return JSON.parse(localStorage.getItem(_HIST_KEY(col))) || null; }catch(e){ return null; } }
+function _histGuardar(col, m){ try{ localStorage.setItem(_HIST_KEY(col), JSON.stringify(m)); }catch(e){} }
+function _fechaMenos(f, n){ const d = new Date(f + 'T12:00:00'); d.setDate(d.getDate() - n); return fechaLocal(d); }
+// Marca la ventana en vivo de esta sesión (se llama al iniciar los listeners y al ocultar la pestaña)
+function _histMarcarVivo(){
+  if(!_persistenciaOk) return;
+  const hoy = today(), corte = fechaCorteVivo();
+  ['bachadas', 'eventos'].forEach(col => {
+    const m = _histMarca(col);
+    if(!m) return;
+    // La ventana anterior quedó al día hasta vivoFin (2 días de margen por registros tardíos)
+    if(m.vivoCorte && m.vivoFin && m.vivoCorte <= m.hasta) m.hasta = [m.hasta, _fechaMenos(m.vivoFin, 2)].sort().pop();
+    if(!m.vivoCorte || m.vivoFin < _fechaMenos(hoy, 1)) m.vivoCorte = corte;
+    m.vivoFin = hoy;
+    _histGuardar(col, m);
+  });
+}
+document.addEventListener('visibilitychange', () => { if(document.hidden) _histMarcarVivo(); });
+
+async function _traerRango(col, desde, hasta){
+  const campo = _HIST_CAMPO[col];
+  let q = COL[col]();
+  if(desde) q = q.where(campo, '>=', desde);
+  if(hasta) q = q.where(campo, '<', hasta);
+  return (await q.get()).docs.map(d => ({...d.data(), _fid: d.id}));
+}
+async function _leerCache(col, desde, hasta){
+  const campo = _HIST_CAMPO[col];
+  let q = COL[col]();
+  if(desde) q = q.where(campo, '>=', desde);
+  if(hasta) q = q.where(campo, '<', hasta);
+  return (await q.get({ source: 'cache' })).docs.map(d => ({...d.data(), _fid: d.id}));
 }
 
-function cargarHistorico(){
-  if(_histEstado === 'listo')    return Promise.resolve();
-  if(_histEstado === 'cargando') return _histPromesa;
-  _histEstado = 'cargando';
-  _histPromesa = (async () => {
+// Cuenta documentos por día (para comprobar después que la caché del equipo sigue completa)
+function _porDia(col, docs){
+  const campo = _HIST_CAMPO[col], out = {};
+  docs.forEach(d => { const f = d[campo]; if(f) out[f] = (out[f] || 0) + 1; });
+  return out;
+}
+
+// Devuelve los documentos de [desde, corte) de una colección, gastando lo mínimo del servidor
+async function _histColeccion(col, desde, corte){
+  await _persistenciaLista.catch(() => {});
+  let m = _persistenciaOk ? _histMarca(col) : null;
+  const antes = (a, b) => a === '' ? b !== '' : (b !== '' && a < b);   // a empieza antes que b
+  if(m && m.dias){
+    // Tramo ya guardado en el equipo que cae dentro de lo pedido: [max(desde, m.desde), min(corte, m.hasta))
+    const ini = antes(desde, m.desde) ? m.desde : desde;
+    const fin = m.hasta < corte ? m.hasta : corte;
+    let local = [];
+    if(ini === '' || ini < fin) local = await _leerCache(col, ini, fin).catch(() => null);
+    // ¿La caché sigue completa? Cada día debe tener al menos los documentos que tenía al guardarse
+    let ok = local !== null;
+    if(ok){
+      const hay = _porDia(col, local);
+      ok = Object.entries(m.dias).every(([f, n]) => (ini !== '' && f < ini) || f >= fin || (hay[f] || 0) >= n);
+    }
+    if(!ok){
+      console.warn('[SMF] Caché del histórico incompleta en este equipo; se vuelve a descargar.', col);
+    } else {
+      let srv = [];
+      if(antes(desde, m.desde)) srv = srv.concat(await _traerRango(col, desde, m.desde));
+      if(m.hasta < corte)       srv = srv.concat(await _traerRango(col, m.hasta, corte));
+      const docs = local.concat(srv);
+      const dias = { ...m.dias, ..._porDia(col, srv) };
+      _histGuardar(col, { ...m, desde: antes(desde, m.desde) ? desde : m.desde, hasta: m.hasta < corte ? corte : m.hasta, dias });
+      console.log('[SMF] Histórico', col, '· del equipo:', local.length, '· del servidor:', srv.length);
+      return docs;
+    }
+  }
+  const docs = await _traerRango(col, desde, corte);
+  if(_persistenciaOk) _histGuardar(col, { desde, hasta: corte, dias: _porDia(col, docs), vivoCorte: fechaCorteVivo(), vivoFin: today() });
+  console.log('[SMF] Histórico', col, '· del servidor:', docs.length);
+  return docs;
+}
+
+// ¿El histórico desde esa fecha ya está cargado en esta sesión?
+function histCubre(desde){
+  if(_histDesde === null) return false;
+  if(_histDesde === '') return true;
+  return desde !== '' && desde >= _histDesde;
+}
+// ¿Este equipo ya tiene guardado el histórico desde esa fecha? (cargarlo casi no gasta lecturas)
+function histEnEquipo(desde){
+  if(!_persistenciaOk) return false;
+  return ['bachadas', 'eventos'].every(col => { const m = _histMarca(col); return m && (m.desde === '' || (desde !== '' && desde >= m.desde)); });
+}
+
+// Carga el histórico desde una fecha ('' = todo). Se encadena: nunca dos descargas a la vez.
+function cargarHistorico(desde = ''){
+  _histPromesa = _histPromesa.then(async () => {
+    const corte = fechaCorteVivo();
+    if(desde !== '' && desde >= corte) return;
+    if(histCubre(desde)) return;
+    _histCargando = true;
     try{
-      const [b, e] = await Promise.all([traerTodo(COL.bachadas), traerTodo(COL.eventos)]);
-      _fuentes.bachadas.hist = b.docs.map(d => ({...d.data(), _fid: d.id}));
-      _fuentes.eventos.hist  = e.docs.map(d => ({...d.data(), _fid: d.id}));
-      _histEstado = 'listo';
-      console.log('Histórico cargado:', _fuentes.bachadas.hist.length, 'bachadas ·', _fuentes.eventos.hist.length, 'eventos');
+      const [b, e] = await Promise.all([_histColeccion('bachadas', desde, corte), _histColeccion('eventos', desde, corte)]);
+      const unir = (prev, nuevos) => { const mm = new Map((prev || []).map(d => [d._fid, d])); nuevos.forEach(d => mm.set(d._fid, d)); return [...mm.values()]; };
+      _fuentes.bachadas.hist = unir(_fuentes.bachadas.hist, b);
+      _fuentes.eventos.hist  = unir(_fuentes.eventos.hist, e);
+      _histDesde = desde;
+      _histCargando = false;
       mezclarFuente('bachadas');
       mezclarFuente('eventos');
     }catch(err){
-      _histEstado = 'error';
+      _histCargando = false;
       console.warn('No se pudo cargar el histórico:', err);
-      try{ showToast('No se pudo cargar el histórico completo. Se muestran los últimos '+DIAS_VIVOS+' días.','warn'); }catch(e){}
+      try{ showToast('No se pudo cargar el histórico. Se muestran los últimos '+DIAS_VIVOS+' días.','warn'); }catch(e){}
     }
-  })();
+  });
   return _histPromesa;
 }
 
 // Pide el histórico solo si la vista mira más atrás que la ventana viva.
 function quizasHistorico(desde){
-  if(_histEstado === 'listo' || _histEstado === 'cargando') return;
-  if(!desde || String(desde) < fechaCorteVivo()) cargarHistorico();
+  desde = desde ? String(desde) : '';
+  if(desde !== '' && desde >= fechaCorteVivo()) return;
+  if(histCubre(desde)) return;
+  cargarHistorico(desde);
 }
 
 function startListeners() {
   stopListeners();
+  _persistenciaLista.then(_histMarcarVivo);
 
   // Bachadas — ventana viva + registros pendientes de cualquier antigüedad
   _listeners.push(COL.bachadas().where('fecha','>=',fechaCorteVivo()).orderBy('fecha','desc').onSnapshot(snap => {
@@ -4247,11 +4353,33 @@ function startSala(){
   }, 20000);
 }
 
+// ======== VISTA POR DEFECTO: ÚLTIMOS 30 DÍAS ========
+// Sin fecha en el filtro, Registros y Eventos muestran los últimos 30 días
+// (antes descargaban todo el histórico al abrir la pestaña).
+let _verTodoB = false, _verTodoE = false;
+function avisoRecientes(id, mostrar, fn){
+  let el = document.getElementById(id);
+  if(!mostrar){ if(el) el.remove(); return; }
+  if(el) return;
+  const inp = document.getElementById(id === 'aviso-rec-b' ? 'filt-b-fecha' : 'ev-from');
+  // Bloque de filtros: el contenedor con borde (Registros) o la tarjeta (Eventos)
+  const caja = id === 'aviso-rec-b' ? inp?.parentElement?.parentElement : inp?.closest('.card');
+  if(!caja) return;
+  el = document.createElement('div'); el.id = id; el.className = 'aviso-recientes';
+  el.innerHTML = 'Mostrando los últimos ' + DIAS_RECIENTES + ' días. Elija una fecha o <button type="button" onclick="' + fn + '()">vea todo el histórico</button>.';
+  caja.insertAdjacentElement('afterend', el);
+}
+function verTodoB(){ _verTodoB = true; filtrarBachadas(true); }
+function verTodoE(){ _verTodoE = true; filtrarEventos(true); }
+
 // ======== FILTRAR BACHADAS ========
 function filtrarBachadas(resetPage){
   if(resetPage) _bachPage = 1;
-  quizasHistorico(document.getElementById('filt-b-fecha')?.value || '');
+  const _fB = document.getElementById('filt-b-fecha')?.value || '';
+  quizasHistorico(_fB || (_verTodoB ? '' : fechaHaceDias(DIAS_RECIENTES)));
   let bachs = DB.get('bachadas', []);
+  if(!_fB && !_verTodoB){ const lim = fechaHaceDias(DIAS_RECIENTES); bachs = bachs.filter(b => (b.fecha || '') >= lim || b.estado === 'pendiente'); }
+  avisoRecientes('aviso-rec-b', !_fB && !_verTodoB, 'verTodoB');
   const equipo  = document.getElementById('filt-b-equipo')?.value || '';
   const fecha   = document.getElementById('filt-b-fecha')?.value || '';
   const tecnico = document.getElementById('filt-b-tecnico')?.value || '';
@@ -4555,8 +4683,11 @@ function renderEventos(){
 
 function filtrarEventos(resetPage){
   if(resetPage) _evPage = 1;
-  quizasHistorico(document.getElementById('ev-from')?.value || '');
+  const _fE = document.getElementById('ev-from')?.value || '';
+  quizasHistorico(_fE || (_verTodoE ? '' : fechaHaceDias(DIAS_RECIENTES)));
   let evs=DB.get('eventos',[]).slice();
+  if(!_fE && !_verTodoE){ const lim = fechaHaceDias(DIAS_RECIENTES); evs = evs.filter(e => (e.fechaIni || '') >= lim || e.estado === 'abierto'); }
+  avisoRecientes('aviso-rec-e', !_fE && !_verTodoE, 'verTodoE');
   const totalAll = evs.length;
 
   const from = document.getElementById('ev-from')?.value || '';
@@ -5451,6 +5582,7 @@ function renderTendenciaProduccion() {
   const toEl = document.getElementById('tend-to');
   const tFrom = fromEl ? fromEl.value : '';
   const tTo = toEl ? toEl.value : '';
+  quizasHistorico(tFrom);
 
   // Tomar TODAS las bachadas cerradas (sin filtro global), solo filtrar por el rango propio
   // TIEMPO REAL: incluir todas las bachadas (el peso cuenta desde que se carga)
@@ -5486,7 +5618,6 @@ const _infCharts = {};
 function abrirInformeTiempos(){
   const ov = document.getElementById('inf-ov');
   if(!ov) return;
-  cargarHistorico();                       // el informe mira 2 meses atrás
   const hoy = new Date();
   const d0  = new Date(); d0.setMonth(d0.getMonth() - 2);
   const dEl = document.getElementById('inf-desde'), hEl = document.getElementById('inf-hasta');
@@ -5512,6 +5643,10 @@ function infToggleEq(eq){
 
 function renderInformeTiempos(){
   const desde = document.getElementById('inf-desde')?.value || '';
+  // El informe mira por defecto 2 meses atrás: se vuelve a dibujar cuando llega el histórico
+  if(!histCubre(desde) && (!desde || desde < fechaCorteVivo())){
+    cargarHistorico(desde).then(() => { if(document.getElementById('inf-ov')?.classList.contains('abierto')) renderInformeTiempos(); });
+  }
   const hasta = document.getElementById('inf-hasta')?.value || '';
   const cMin  = parseFloat(document.getElementById('inf-cmin')?.value) || 2.5;
   const cMax  = parseFloat(document.getElementById('inf-cmax')?.value) || 3.0;
@@ -5725,6 +5860,8 @@ const PM_MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
 const PM_META_DIA = 120;                       // t/día (misma meta del dashboard)
 const pmDiasMes = (anio, m) => new Date(anio, m + 1, 0).getDate();   // respeta bisiestos
 
+let _pmPedido = false;
+function pmCargarAnio(){ _pmPedido = true; renderProdMensual(); }
 function renderProdMensual(){
   const sel    = document.getElementById('pm-anio');
   const canvas = document.getElementById('chart-prod-mensual');
@@ -5732,12 +5869,18 @@ function renderProdMensual(){
   const leyEl  = document.getElementById('pm-leyenda');
   if(!sel || !canvas) return;
 
-  // Esta gráfica es la única que necesita TODO el histórico. Se pide una vez
-  // por sesión; al terminar, la mezcla vuelve a llamar a esta función sola.
-  if(_histEstado !== 'listo'){
-    cargarHistorico();
-    if(strip) strip.innerHTML = '';
-    if(leyEl) leyEl.innerHTML = '<span style="color:var(--text3);font-size:11px;">Cargando histórico…</span>';
+  // Necesita el año elegido y el anterior (comparación). Si este equipo ya los
+  // tiene guardados se cargan solos (casi sin lecturas); si no, se ofrece un
+  // botón, para no descargar meses de registros cada vez que alguien abre el
+  // dashboard. Al terminar, la mezcla vuelve a llamar a esta función sola.
+  const _anioPM = sel.value || String(new Date().getFullYear());
+  const _desdePM = (parseInt(_anioPM, 10) - 1) + '-01-01';
+  let _faltaPM = false;
+  if(!histCubre(_desdePM)){
+    if(_histCargando || histEnEquipo(_desdePM) || _pmPedido){
+      quizasHistorico(_desdePM);
+      if(leyEl) leyEl.innerHTML = '<span style="color:var(--text3);font-size:11px;">Cargando histórico…</span>';
+    } else _faltaPM = true;
   }
 
   const bachsAll = DB.get('bachadas', []);
@@ -5794,7 +5937,8 @@ function renderProdMensual(){
     leyEl.innerHTML =
       '<span><span class="dash-leg-line" style="background:#00c8ff;"></span>'+anio+'</span>' +
       (hayPrev ? '<span><span class="dash-leg-line" style="background:#2B3B46;"></span>'+prev+'</span>' : '') +
-      '<span><span class="dash-leg-line" style="background:#ff3b5c;border-top:1px dashed #ff3b5c;"></span>Meta mensual</span>';
+      '<span><span class="dash-leg-line" style="background:#ff3b5c;border-top:1px dashed #ff3b5c;"></span>Meta mensual</span>' +
+      (_faltaPM ? '<span class="pm-falta">Incompleto en este equipo: <button type="button" onclick="pmCargarAnio()">cargar meses anteriores</button></span>' : '');
   }
 
   // --- Datasets ---
@@ -6204,10 +6348,11 @@ function renderDoughnut(id,labels,data,colors,isTime){
 }
 
 // ======== REPORTE ========
-function generarReporte(){
+async function generarReporte(){
   const tipo=document.getElementById('rep-tipo').value;
   const from=document.getElementById('rep-from').value;
   const to=document.getElementById('rep-to').value;
+  if(!histCubre(from || '') && (!from || from < fechaCorteVivo())) await cargarHistorico(from || '');
   const eqF=document.getElementById('rep-equipo').value;
   let bachs=DB.get('bachadas',[]).filter(b=>b.estado==='cerrado');
   let evs=DB.get('eventos',[]).filter(e=>e.estado==='cerrado');
@@ -6885,7 +7030,8 @@ document.addEventListener('keydown', function(e) {
 
 // ======== TIMELINE POR EQUIPO ========
 function renderTimeline() {
-  quizasHistorico(document.getElementById('dash-from')?.value || '');
+  { const a = document.getElementById('dash-from')?.value || '', b = document.getElementById('tl-fecha')?.value || today();
+    quizasHistorico(a && a < b ? a : b); }
   // ----------------------------------------------------------
   // CONFIGURACIÓN BASE
   // ----------------------------------------------------------

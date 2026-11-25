@@ -89,6 +89,8 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
   idéntico al sistema actual), pulsar "Copiar datos", verificar que las cinco colecciones queden en "Coincide", pasar al personal
   al enlace del SIM y dejar el sistema anterior solo como respaldo unas semanas.
   La segunda casilla retira del SIM los registros eliminados en el origen; sin ella los totales nunca coinciden.
+- Lecturas (desde 2026-11-25): en vivo solo los últimos 7 días + lo abierto/pendiente; el histórico se pide por rango y queda
+  guardado en cada equipo (ver bitácora 2026-11-25). Para no gastar cuota: análisis largos en la computadora habitual.
 - Indicadores del dashboard (desde 2026-11-24): un evento cuenta en el periodo si estuvo ACTIVO en él (no solo si empezó en él).
   Sus horas se recortan a la ventana del periodo (día operativo 08:00 → 08:00) y nunca pasan de "ahora"; una falla abierta sigue
   restando disponibilidad cada día hasta que se cierre. Las horas futuras del día en curso no cuentan como operativas.
@@ -371,6 +373,16 @@ Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y c�
 común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fases 1 (base) y 2 (gráficas) hechas; falta el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-25: Congelamiento — menos lecturas de Firebase (la cuota gratuita se agotó el 24-nov: ~97 000 lecturas en una hora al
+  analizar datos desde junio, y ~57 000 el resto del día). (1) Ventana en vivo de 30 a 7 días (`DIAS_VIVOS`): cada apertura en frío
+  lee ~4 veces menos. (2) Histórico por rango y guardado en el equipo (`cargarHistorico(desde)`, `_histColeccion`): cada equipo
+  recuerda en localStorage (`cong_hist3_<col>`: desde, hasta, documentos por día, ventana en vivo) qué tramo ya bajó completo a su
+  caché en disco; solo pide al servidor los tramos que faltan y comprueba por día que la caché siga completa (si no, la vuelve a
+  bajar). Antes se pedía "todo" a la caché y, con la caché parcial, el histórico podía salir incompleto sin aviso. (3) Registros y
+  Eventos sin fecha muestran los últimos 30 días, con enlace "vea todo el histórico". (4) Producción mensual: carga el año elegido y
+  el anterior solo si el equipo ya los tiene; si no, botón "cargar meses anteriores". Informe de tiempos, reporte, tendencia y
+  timeline piden el histórico de su propio rango. Prueba con 1 340 bachadas desde junio (mock con caché simulada): reapertura de
+  462 a 232 lecturas; análisis desde junio repetido tras recargar: 0 lecturas del servidor; 5 días después: solo el tramo nuevo.
 - 2026-11-25: Cuota de Firebase agotada el 24-nov ~18:40 (técnico de ósmosis: "resource-exhausted" al enviar formatos; quedaron en la cola del celular, sin pérdida). Causa más probable: la vista pública de Agua releía todas las muestras del mes (~hasta 360) en cada pantalla abierta con cada R-303 nuevo. Ahora pide solo las publicadas desde la última que tiene (margen 24 h) y, con la pestaña en segundo plano, espera a que se vea. La cola de formatos explica el límite diario en vez de mostrar el código.
 - 2026-11-24: Órdenes de trabajo, etapa 5: rol de guardia semanal (genera con rotación, imagen y Excel, alimenta la capacidad y el dashboard), R-001 prellenado desde las OT correctivas en Registro de formatos y catálogo de materiales. Los mocks de prueba ya no usan un nombre real.
 - 2026-11-24: Congelamiento — corregido el cálculo con fallas abiertas de días anteriores: ya no se pierden al filtrar por fecha (antes el dashboard volvía a 100 % de disponibilidad al día siguiente). Afecta indicadores clave, mantenimiento, evolución mensual, desviaciones, tabla por equipo, estado en tiempo real y conteo de operativos.

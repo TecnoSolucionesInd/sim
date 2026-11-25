@@ -3,6 +3,10 @@
 window.firebase = (function () {
   const D = Object.assign({}, window.__SEMILLA || {}); window.__DBC = D;
   const subs = []; let seq = 0;
+  // Conteo de lecturas y caché en disco simulada (persiste en localStorage entre recargas, como IndexedDB)
+  const LECT = window.__lect = { servidor: 0, cache: 0 };
+  let CACHEP; try { CACHEP = new Set(JSON.parse(localStorage.getItem('__mockcache') || '[]')); } catch (e) { CACHEP = new Set(); }
+  const cachear = (l) => { l.forEach(x => CACHEP.add(x.ref.path)); try { localStorage.setItem('__mockcache', JSON.stringify([...CACHEP])); } catch (e) {} };
   const clon = (x) => JSON.parse(JSON.stringify(x));
   const avisar = () => subs.forEach(f => { try { f(); } catch (e) { console.error(e); } });
   const snapDoc = (p) => ({ id: p.split('/').pop(), exists: p in D, data: () => (p in D ? clon(D[p]) : undefined), ref: docRef(p) });
@@ -21,15 +25,17 @@ window.firebase = (function () {
       filtros.forEach(([f, op, v]) => { l = l.filter(s => { const x = s.data()[f]; return op === '==' ? x === v : op === '>=' ? x >= v : op === '<=' ? x <= v : op === '>' ? x > v : op === '<' ? x < v : op === 'in' ? v.includes(x) : true; }); });
       if (orden) l.sort((a, b) => { const x = a.data()[orden[0]], y = b.data()[orden[0]]; return (x > y ? 1 : x < y ? -1 : 0) * (orden[1] === 'desc' ? -1 : 1); });
       return lim ? l.slice(0, lim) : l; };
-    const snap = () => { const l = docs(); return { docs: l, empty: !l.length, size: l.length, forEach: (f) => l.forEach(f), docChanges: () => l.map(doc => ({ type: 'added', doc })) }; };
+    const snap = (src) => { let l = docs();
+      if (src === 'cache') { l = l.filter(x => CACHEP.has(x.ref.path)); LECT.cache += l.length; } else { LECT.servidor += l.length; cachear(l); }
+      return { docs: l, empty: !l.length, size: l.length, forEach: (f) => l.forEach(f), docChanges: () => l.map(doc => ({ type: 'added', doc })) }; };
     return { path: p,
       doc: (id) => docRef(p + '/' + (id || ('id' + (++seq)))),
       add: async (v) => { const r = docRef(p + '/id' + (++seq) + Date.now() % 1000); D[r.path] = clon(v); avisar(); return r; },
       where: (f, op, v) => colRef(p, filtros.concat([[f, op, v]]), orden, lim),
       orderBy: (f, d) => colRef(p, filtros, [f, d || 'asc'], lim),
       limit: (n) => colRef(p, filtros, orden, n),
-      get: async () => snap(),
-      onSnapshot: (cb) => { const f = () => cb(snap()); subs.push(f); setTimeout(f, 5); return () => { const i = subs.indexOf(f); if (i >= 0) subs.splice(i, 1); }; } };
+      get: async (o) => snap(o && o.source),
+      onSnapshot: (cb) => { let n = 0; const f = () => { const sn = n++ ? (() => { const l = docs(); cachear(l); return { docs: l, empty: !l.length, size: l.length, forEach: (g) => l.forEach(g), docChanges: () => [] }; })() : snap(); cb(sn); }; subs.push(f); setTimeout(f, 5); return () => { const i = subs.indexOf(f); if (i >= 0) subs.splice(i, 1); }; } };
   }
   const fs = () => ({ collection: colRef, doc: docRef, enablePersistence: async () => {}, settings() {},
     batch: () => { const ops = []; return { set: (r, v, o) => ops.push(() => r.set(v, o)), update: (r, v) => ops.push(() => r.update(v)), delete: (r) => ops.push(() => r.delete()), commit: async () => { for (const o of ops) await o(); } }; } });
