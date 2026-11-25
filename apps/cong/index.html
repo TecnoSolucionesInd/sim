@@ -2937,15 +2937,47 @@ function tsOperativo(fecha, hora){
   const h = hh + mm/60;
   return base + (h < 8 ? 24*3600000 : 0) + h*3600000;
 }
-// Intervalo real de un evento. Sin duración registrada y sin cerrar → hasta ahora.
+// Inicio (ms) de las bachadas de cada equipo, ordenado. Se recalcula solo cuando cambia la lista.
+const _idxBach = new WeakMap();
+function iniciosBachadas(eq){
+  const lista = DB.get('bachadas', []);
+  let idx = _idxBach.get(lista);
+  if(!idx){
+    idx = new Map();
+    lista.forEach(b => { const t = tsOperativo(b.fecha, b.inicio); if(t === null) return; if(!idx.has(b.equipo)) idx.set(b.equipo, []); idx.get(b.equipo).push(t); });
+    idx.forEach(a => a.sort((x, y) => x - y));
+    _idxBach.set(lista, idx);
+  }
+  return idx.get(eq) || [];
+}
+// Primera bachada del equipo que empieza después de un instante (null si no hay)
+function bachadaDespues(eq, t){
+  const a = iniciosBachadas(eq);
+  for(const x of a) if(x > t) return x;
+  return null;
+}
+
+// Intervalo real de un evento. Sin duración registrada y sin cerrar → hasta ahora,
+// salvo que el equipo ya haya iniciado una bachada después: ahí el equipo volvió a
+// operar y la parada termina en ese momento. Así un "Fin de proceso" (que no se
+// cierra solo) o un evento que quedó abierto por olvido no sigue restando horas.
 function intervaloEvento(e, ahora){
   const ini = tsOperativo(e.fechaIni, e.inicio);
   if(ini === null) return null;
   let fin;
   if(e.durH !== null && e.durH !== undefined) fin = ini + e.durH*3600000;
-  else if(e.estado !== 'cerrado') fin = Math.max(ini, ahora);
+  else if(e.estado !== 'cerrado'){
+    const b = bachadaDespues(e.equipo, ini);
+    fin = Math.max(ini, b !== null && b < ahora ? b : ahora);
+  }
   else fin = ini;
   return { ini, fin };
+}
+// ¿El evento abierto sigue vigente? (ninguna bachada del equipo empezó después)
+function eventoVigente(e){
+  if(e.estado !== 'abierto') return false;
+  const ini = tsOperativo(e.fechaIni, e.inicio);
+  return ini === null || bachadaDespues(e.equipo, ini) === null;
 }
 // Ventana de los días operativos [desde, hasta], recortada a ahora.
 function ventanaOperativa(desde, hasta, ahora){
@@ -2976,8 +3008,8 @@ function equiposDetenidosEn(evs, momento, ahora){
     if(e.tipo !== 'no_programada' && e.tipo !== 'programada') return;
     const iv = intervaloEvento(e, ahora);
     if(!iv) return;
-    const abierto = e.estado !== 'cerrado' && (e.durH === null || e.durH === undefined);
-    if(iv.ini <= momento && (abierto || iv.fin > momento)) out.add(e.equipo);
+    if(iv.ini <= momento && iv.fin > momento) out.add(e.equipo);
+    else if(e.estado !== 'cerrado' && (e.durH === null || e.durH === undefined) && iv.ini <= momento && eventoVigente(e)) out.add(e.equipo);
   });
   return out;
 }
@@ -6079,13 +6111,15 @@ function renderEstadoEquipos(bachs, evs) {
 
   let nCongel=0, nEvOp=0, nMant=0, nSinMP=0, nLibre=0;
   FLOTA.forEach(eq=>{
+    // Solo cuentan los eventos abiertos vigentes: si el equipo ya inició una bachada
+    // después, el evento quedó superado aunque nadie lo haya cerrado.
     const tieneBach  = bachs.some(b=>b.equipo===eq && b.estado==='pendiente');
-    const tieneEvOp  = evs.some(e=>e.equipo===eq && e.estado==='abierto' && EV_OP.includes(e.tipo));
-    const tieneEvMnt = evs.some(e=>e.equipo===eq && e.estado==='abierto' && EV_MANT.includes(e.tipo));
-    const tieneSinMP = evs.some(e=>e.equipo===eq && e.estado==='abierto' && EV_SINMP.includes(e.tipo));
-    if(tieneBach)        nCongel++;
+    const tieneEvOp  = evs.some(e=>e.equipo===eq && EV_OP.includes(e.tipo) && eventoVigente(e));
+    const tieneEvMnt = evs.some(e=>e.equipo===eq && EV_MANT.includes(e.tipo) && eventoVigente(e));
+    const tieneSinMP = evs.some(e=>e.equipo===eq && EV_SINMP.includes(e.tipo) && eventoVigente(e));
+    if(tieneEvMnt)       nMant++;      // falla o mantenimiento en curso: no está operativo
+    else if(tieneBach)   nCongel++;
     else if(tieneEvOp)   nEvOp++;
-    else if(tieneEvMnt)  nMant++;      // solo mantenimiento real
     else if(tieneSinMP)  nSinMP++;     // categoría propia
     else                 nLibre++;
   });

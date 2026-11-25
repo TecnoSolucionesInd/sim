@@ -373,6 +373,13 @@ Ver **REDISENO.md** (archivo de continuación: qué está hecho, qué falta y c�
 común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. Hechos también Costos (falta verlo con datos reales y su PDF) y la plantilla. Congelamiento va por fases y se queda oscuro con el tema de la portada (`apps/cong/tema.css`): fases 1 (base) y 2 (gráficas) hechas; falta el detalle (fase 3).
 
 ## Bitácora
+- 2026-11-25: Congelamiento — disponibilidad 50 % con un solo equipo en falla. Causa: desde el cambio del 24-nov los eventos
+  abiertos de días anteriores cuentan en el periodo, y los "Fin de proceso" (que no se cierran solos) y eventos olvidados
+  restaban horas como paradas en curso aunque el equipo ya estuviera congelando; todas las horas operativas quedaban en 0.
+  Ahora un evento abierto sin duración termina cuando el equipo inicia su siguiente bachada (`bachadaDespues`,
+  `eventoVigente`). Estado en tiempo real: una falla o mantenimiento abierto y vigente tiene prioridad (antes el equipo en
+  falla salía como operativo por un Fin de proceso viejo). Prueba con Fin de proceso abiertos en los 14 equipos y C5 en falla:
+  disponibilidad 69,0 % → 94,4 % (mantenimiento 0,0 % → 94,4 %), anillo 14 → 10 de 14 operativos.
 - 2026-11-25: Congelamiento — menos lecturas de Firebase (la cuota gratuita se agotó el 24-nov: ~97 000 lecturas en una hora al
   analizar datos desde junio, y ~57 000 el resto del día). (1) Ventana en vivo de 30 a 7 días (`DIAS_VIVOS`): cada apertura en frío
   lee ~4 veces menos. (2) Histórico por rango y guardado en el equipo (`cargarHistorico(desde)`, `_histColeccion`): cada equipo
