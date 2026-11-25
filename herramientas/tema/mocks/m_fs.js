@@ -25,7 +25,7 @@ export const arrayUnion=(...v)=>({[SENT.au]:v});
 export const deleteField=()=>({[SENT.del]:1});
 const tsWrap=(o)=>o;
 function snapDoc(path){const d=DB[path];return {id:path.split('/').pop(),exists:()=>d!==undefined,data:()=>d===undefined?undefined:clone(d),ref:{path}}}
-function match(v,w){const x=v[w.f];switch(w.op){case '==':return x===w.v;case '>=':return x>=w.v;case '<=':return x<=w.v;case 'in':return w.v.includes(x);case 'array-contains':return (x||[]).includes(w.v);default:return true}}
+function match(v,w){const x=v[w.f];switch(w.op){case '==':return x===w.v;case '>=':return x>=w.v;case '>':return x>w.v;case '<':return x<w.v;case '<=':return x<=w.v;case 'in':return w.v.includes(x);case 'array-contains':return (x||[]).includes(w.v);default:return true}}
 function colDocs(q){const pre=q.path+'/';return Object.keys(DB).filter(k=>k.startsWith(pre)&&!k.slice(pre.length).includes('/')).filter(k=>(q.where||[]).every(w=>match(DB[k],w))).map(snapDoc)}
 export async function getDoc(r){return snapDoc(r.path)}
 export async function getDocs(q){const docs=colDocs(q);return {docs,empty:!docs.length,size:docs.length,forEach:(f)=>docs.forEach(f)}}

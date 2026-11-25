@@ -310,6 +310,22 @@ async function cargarPublico() {
     ST.err = e.code === 'permission-denied' ? 'La vista pública todavía no está habilitada.' : 'No se pudo leer el estado del agua: ' + (e.code || e.message);
   }
 }
+// Vista pública: al llegar una muestra nueva solo se piden las publicadas desde la última que ya se tiene
+// (antes se releían todas las del mes en cada pantalla abierta, lo que agotaba la cuota diaria de lecturas).
+// Margen de 24 h por si el reloj del celular que envía está atrasado. En segundo plano espera a que la pestaña se vea.
+async function actualizarPublico(d) {
+  ST.P = { ...PARAM_BASE, ...(d.parametros || {}) };
+  ST.turnos = turnosDe(d.turnos);
+  const ult = ST.regs.reduce((m, x) => (x.publicado || '') > m ? x.publicado : m, '');
+  const desdePub = ult ? new Date(Date.parse(ult) - 864e5).toISOString() : '';
+  const q = desdePub ? query(COL_PUB(), where('publicado', '>', desdePub)) : COL_PUB();
+  const nuevos = (await getDocs(q)).docs.map(x => ({ id: x.id, ...x.data() }));
+  const m = new Map(ST.regs.map(x => [x.id, x]));
+  nuevos.forEach(x => m.set(x.id, x));
+  const desde = K.isoDia(new Date(Date.now() - 30 * 864e5));
+  ST.regs = [...m.values()].filter(x => (x.fechaOp || '') >= desde && !['anulado', 'borrador', 'rechazado'].includes(x.estado));
+}
+
 // Copia a la vista pública las muestras de los últimos 30 días, los parámetros y los turnos (solo lo que cambió)
 const canon = (o) => JSON.stringify(o ?? null, (k, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(x => [x, v[x]])) : v);
 async function sincronizarPublico() {
@@ -1134,8 +1150,11 @@ try { await cargar(); } catch (e) { $('#view').innerHTML = `<div class="aviso ba
 render();
 if (PUB) {
   // se actualiza sola cuando se registra una nueva muestra
-  onSnapshot(RAIZ_PUB(), (s) => { const a = s.exists() ? s.data().actualizado || '' : '';
-    if (a && a !== ST.version) { ST.version = a; ST.idx = null; cargarPublico().then(render); } }, () => {});
+  let pendiente = null;
+  const refrescar = () => { if (!pendiente) return; const d = pendiente; pendiente = null; actualizarPublico(d).then(render).catch(e => console.warn(e)); };
+  onSnapshot(RAIZ_PUB(), (s) => { const d = s.exists() ? s.data() : {}, a = d.actualizado || '';
+    if (a && a !== ST.version) { ST.version = a; ST.idx = null; pendiente = d; if (!document.hidden) refrescar(); } }, () => {});
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refrescar(); });
 } else sincronizarPublico().catch(e => console.warn('Vista pública no sincronizada:', e.code || e.message));
 </script>
 </body>

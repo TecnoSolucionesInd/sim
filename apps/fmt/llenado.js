@@ -982,7 +982,7 @@ export async function procesarCola(avisar = false) {
         escribirLS(keyC(), c);
       } catch (e) {
         const red = !navigator.onLine || ['unavailable', 'deadline-exceeded', 'failed-precondition'].includes(e.code) || /network|offline|fetch/i.test(e.message || '');
-        c = cola().map(x => x.paquete.reg.id === item.paquete.reg.id ? { ...x, intentos: (x.intentos || 0) + 1, error: red ? '' : (e.code === 'permission-denied' ? 'Sin permiso para enviar. Consulte al administrador.' : (e.code || e.message)) } : x);
+        c = cola().map(x => x.paquete.reg.id === item.paquete.reg.id ? { ...x, intentos: (x.intentos || 0) + 1, error: red ? '' : (e.code === 'permission-denied' ? 'Sin permiso para enviar. Consulte al administrador.' : e.code === 'resource-exhausted' ? 'Límite diario de Firebase alcanzado; se enviará solo cuando se renueve (≈ 3:00 a. m.), sin perder nada' : (e.code || e.message)) } : x);
         escribirLS(keyC(), c);
         if (red) break;
       }
