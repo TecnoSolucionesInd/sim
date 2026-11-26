@@ -220,6 +220,7 @@ body.pdfmode .toolbar{display:none}
     }
     if (!rol) { pantalla('Sin acceso', 'Su usuario no tiene permisos para Costos de mantenimiento. Comuníquese con el administrador del sistema.'); return; }
     const escribe = ['admin', 'supervisor', 'operador'].includes(rol);
+    window.__SIM_ROL = rol; window.__SIM_USER = u.email || '';
 
     // 1. Datos de órdenes
     try {
@@ -250,7 +251,7 @@ body.pdfmode .toolbar{display:none}
     document.body.appendChild(app);
 
     // 4. Módulos según permisos
-    for (let i = MODS.length - 1; i >= 0; i--) if (!mods.includes(MODMAP[MODS[i].id])) MODS.splice(i, 1);
+    for (let i = MODS.length - 1; i >= 0; i--) if (MODS[i].id === 'importar' ? rol !== 'admin' : !mods.includes(MODMAP[MODS[i].id])) MODS.splice(i, 1);
     if (!MODS.find(x => x.id === CUR)) CUR = MODS.length ? MODS[0].id : CUR;
     buildNav(); render();
 
@@ -302,23 +303,29 @@ const MODS=[
  {id:'equipos',t:'Análisis por equipo',g:'Gestión',c:'#5D7086'},
  {id:'asignar',t:'Asignación de costos',g:'Gestión',c:'#5D7086'},
  {id:'catalogo',t:'Catálogo de equipos',g:'Gestión',c:'#5D7086'},
+ {id:'importar',t:'Cargar Excel Nisira',g:'Gestión',c:'#2BA6A0'},
  {id:'capex',t:'CAPEX',g:'Proyectos',c:'#7a5bbf'},
 ];
 // ---------- state
-let ST={asg:{},dict:{},notes:{},catEdit:{},catNew:[],prod:{},meta:null};
+const ST0=()=>({asg:{},dict:{},notes:{},catEdit:{},catNew:[],prod:{},meta:null,exc:{},imp:[],tc:{}});
+let ST=ST0();
 try{const s=localStorage.getItem(LS); if(s) ST=Object.assign(ST,JSON.parse(s));}catch(e){}
-function save(){try{localStorage.setItem(LS,JSON.stringify(ST));}catch(e){}}
+let SAVE_OK=true;
+function save(){try{localStorage.setItem(LS,JSON.stringify(ST));SAVE_OK=true;}catch(e){SAVE_OK=false;}}
+const saveOk=()=>SAVE_OK;
 let CUR='general', SEL_EQ=null, charts={};
-const ROWS=DATA.rows;
-// ---------- moneda: dólares por defecto. Base en soles (Nisira); órdenes en US$ usan su importe original,
+let ROWS=DATA.rows.concat(ST.imp||[]), RIDX={}; ROWS.forEach(r=>RIDX[r.i]=r);
+// ---------- moneda (importe en US$ en r.us; r.u es la unidad de medida): dólares por defecto. Base en soles (Nisira); órdenes en US$ usan su importe original,
 // el resto se convierte con el tipo de cambio venta promedio del mes. Catálogo y meta se guardan en soles.
-const TCV=[3.363,3.361,3.450,3.447,3.448,3.409,3.406,3.372,3.380];
-const TCM=m=>TCV[Math.min(Math.max(+m||1,1),TCV.length)-1];
-const TCP=TCV.reduce((a,b)=>a+b,0)/TCV.length;
+const TCV=[3.363,3.361,3.450,3.447,3.448,3.409,3.406,3.372,3.380,3.447,3.458,3.458];
+const TCM=m=>{m=Math.min(Math.max(+m||1,1),12);return (ST.tc&&+ST.tc[m])?+ST.tc[m]:TCV[m-1];};
+const tcProm=()=>{const ms=[...new Set(ROWS.map(r=>r.m))];return ms.reduce((a,m)=>a+TCM(m),0)/(ms.length||1);};
+let TCP=tcProm();
 let MON=(()=>{try{return localStorage.getItem(LS+'_mon')||'USD';}catch(e){return 'USD';}})();
 let CS='US$';
-ROWS.forEach(r=>{if(r.s0===undefined)r.s0=r.s;r.u=(r.mo==='US$'&&+r.io)?+r.io:r.s0/TCM(r.m);});
-function applyMon(m){MON=m==='PEN'?'PEN':'USD';CS=MON==='USD'?'US$':'S/';ROWS.forEach(r=>r.s=MON==='USD'?r.u:r.s0);}
+const prepMon=rs=>rs.forEach(r=>{if(r.s0===undefined)r.s0=r.s;r.us=(r.mo==='US$'&&+r.io)?+r.io:r.s0/TCM(r.m);});
+prepMon(ROWS);
+function applyMon(m){MON=m==='PEN'?'PEN':'USD';CS=MON==='USD'?'US$':'S/';ROWS.forEach(r=>r.s=MON==='USD'?r.us:r.s0);}
 applyMon(MON);
 const aMon=v=>(v==null||v===''||isNaN(v))?v:(MON==='USD'?v/TCP:+v);
 const deMon=v=>(v==null||v===''||isNaN(v))?v:(MON==='USD'?Math.round(v*TCP*100)/100:+v);
@@ -329,19 +336,26 @@ function pintaMon(){document.querySelectorAll('#monSel button').forEach(b=>{b.cl
 pintaMon();
 function catalog(){
   const base=DATA.cat.map(c=>Object.assign({},c,ST.catEdit[c.id]||{}));
-  return base.concat(ST.catNew.map(c=>Object.assign({},c,ST.catEdit[c.id]||{})));
+  const ids=new Set(DATA.cat.map(c=>c.id));
+  return base.concat(ST.catNew.filter(c=>!ids.has(c.id)).map(c=>Object.assign({},c,ST.catEdit[c.id]||{})));
 }
 let CAT=catalog(), CATM={};
 function refreshCat(){CAT=catalog();CATM={};CAT.forEach(c=>CATM[c.id]=c);}
 refreshCat();
-const clsOf=r=> r.c==='CAPEX' && ST.dict[r.i]==='OPEX' ? 'OPEX' : r.c;
+const clsOf=r=> (ST.exc&&ST.exc[r.i]) ? 'EXCL' : (r.c==='CAPEX' && ST.dict[r.i]==='OPEX' ? 'OPEX' : r.c);
 const eqOf=r=> ST.asg[r.i]!==undefined ? ST.asg[r.i] : (r.c==='CAPEX'?[]:r.eq);
 const isManual=r=> ST.asg[r.i]!==undefined;
 // ---------- filters
 const fD=document.getElementById('fDesde'), fH=document.getElementById('fHasta'), fT=document.getElementById('fTipo');
-const months=[...new Set(ROWS.map(r=>r.m))].sort((a,b)=>a-b);
-months.forEach(m=>{fD.add(new Option(MES[m-1],m));fH.add(new Option(MES[m-1],m));});
-fD.value=months[0]; fH.value=months[months.length-1];
+let months=[];
+function rebuildRows(){
+  ROWS=DATA.rows.concat(ST.imp||[]); RIDX={}; ROWS.forEach(r=>RIDX[r.i]=r); prepMon(ROWS); TCP=tcProm(); applyMon(MON);
+  const d0=+fD.value||0, h0=+fH.value||0, hadMax=months.length&&h0===months[months.length-1];
+  months=[...new Set(ROWS.map(r=>r.m))].sort((a,b)=>a-b);
+  fD.innerHTML='';fH.innerHTML='';months.forEach(m=>{fD.add(new Option(MES[m-1],m));fH.add(new Option(MES[m-1],m));});
+  fD.value=months.includes(d0)?d0:months[0]; fH.value=(!h0||hadMax||!months.includes(h0))?months[months.length-1]:h0;
+}
+rebuildRows();
 [fD,fH,fT].forEach(el=>el.onchange=()=>{if(+fD.value>+fH.value)fH.value=fD.value;render();});
 const inRange=r=> r.m>=+fD.value && r.m<=+fH.value && (!fT.value||r.t===fT.value);
 const mRange=()=>months.filter(m=>m>=+fD.value&&m<=+fH.value);
@@ -400,6 +414,7 @@ function render(){
   else if(CUR==='asignar')vAsignar(v);
   else if(CUR==='catalogo')vCatalogo(v);
   else if(CUR==='capex')vCapex(v);
+  else if(CUR==='importar')vImport(v);
 }
 // ---------- shared blocks
 function trendData(F){
@@ -610,17 +625,19 @@ function vEquipos(v){
 // ---------- ASIGNAR
 let AF={q:'',area:'',eq:'',rub:'',org:'',sin:false,page:0}, SELR=new Set();
 function vAsignar(v){
-  const L=ROWS.filter(r=>clsOf(r)==='OPEX'&&inRange(r));
+  const L=ROWS.filter(r=>(clsOf(r)==='OPEX'||(AF.org==='Excluida'&&clsOf(r)==='EXCL'))&&inRange(r));
   const sinRows=L.filter(r=>!eqOf(r).filter(e=>CATM[e]).length); const sinS=sinRows.reduce((a,r)=>a+r.s,0); const totS=L.reduce((a,r)=>a+r.s,0);
   const rubs=[...new Set(L.map(r=>r.r))].sort();
-  const orgs=['Centro de costo','Regla por descripción','Regla por rubro','Prorrateo overhaul (1/6)','Sin asignar','Manual'];
+  const orgs=['Centro de costo','Aprendido de tus asignaciones','Regla por descripción','Regla por rubro','Prorrateo overhaul (1/6)','Sin asignar','Manual','Por revisar','Excluida'];
   let list=L.filter(r=>{const eq=eqOf(r);
     if(AF.sin&&eq.filter(e=>CATM[e]).length)return false;
     if(AF.q){const q=AF.q.toUpperCase();if(!(r.ds+' '+r.p+' '+r.ob+' '+r.d+' '+r.cc).toUpperCase().includes(q))return false;}
     if(AF.area){const a=eq.length?eqArea(eq[0]):'Sin asignar';if(a!==AF.area)return false;}
     if(AF.eq&&!eq.includes(AF.eq))return false;
     if(AF.rub&&r.r!==AF.rub)return false;
-    if(AF.org){const o=isManual(r)?'Manual':r.o;if(o!==AF.org)return false;}
+    if(AF.org==='Excluida'){if(clsOf(r)!=='EXCL')return false;}
+    else if(AF.org==='Por revisar'){if(!r.rv)return false;}
+    else if(AF.org){const o=isManual(r)?'Manual':r.o;if(o!==AF.org)return false;}
     return true;}).sort((a,b)=>b.s-a.s);
   const PS=100, pages=Math.max(1,Math.ceil(list.length/PS)); if(AF.page>=pages)AF.page=0;
   const pg=list.slice(AF.page*PS,(AF.page+1)*PS); const fs=list.reduce((a,r)=>a+r.s,0);
@@ -629,7 +646,7 @@ function vAsignar(v){
    ${kpi('Líneas OPEX',L.length.toLocaleString('es-PE'),fmtk(totS),'#1D2E40')}
    ${kpi('Sin asignar',sinRows.length.toLocaleString('es-PE'),fmtk(sinS)+' · '+pct(sinS/totS),'#8A96A3')}
    ${kpi('Asignado',pct(1-sinS/totS),'del importe OPEX','#2BA6A0')}
-   ${kpi('Asignaciones manuales',Object.keys(ST.asg).length,'guardadas en este navegador','#5D7086')}
+   ${kpi('Asignaciones manuales',Object.keys(ST.asg).length,(window.__SIM_ROL?'guardadas en el SIM':'guardadas en este navegador'),'#5D7086')}
    ${kpi('Filtro actual',list.length.toLocaleString('es-PE')+' líneas',fmtk(fs),'#5D7086')}
    ${kpi('Seleccionadas',SELR.size,'para asignar en bloque','#26405A')}
   </div>
@@ -650,10 +667,11 @@ function vAsignar(v){
     <button class="btn sm pri" id="bulkGo">Asignar</button>
     <button class="btn sm" id="bulkSplit">Repartir entre varios equipos…</button>
     <button class="btn sm" id="bulkReset">Volver a la sugerencia</button>
+    <button class="btn sm" id="bulkExc">Excluir del análisis</button>
    </div>
    <div class="tw" style="max-height:560px"><table><tr><th><input type="checkbox" id="pgAll"></th><th>Fecha</th><th>Doc.</th><th>Descripción</th><th>Proveedor</th><th>Centro de costo Nisira</th><th>Rubro</th><th class="r">${CS}</th><th>Equipo(s)</th><th>Origen</th></tr>
    ${pg.map(r=>{const eq=eqOf(r);return `<tr><td><input type="checkbox" class="rs" data-i="${r.i}" ${SELR.has(r.i)?'checked':''}></td><td class="num">${r.f.slice(8,10)}/${r.f.slice(5,7)}</td><td class="num" style="white-space:nowrap">${esc(r.d.replace(' 0001-',' '))}</td><td>${esc(r.ds)}${r.ob?`<div class="muted" style="font-size:11px">${esc(r.ob.slice(0,90))}</div>`:''}</td><td>${esc(r.p.slice(0,26))}</td><td style="font-size:11.5px">${esc(r.cc)}</td><td style="font-size:11.5px">${esc(r.r.slice(3))}</td><td class="r num">${fmt(r.s)}</td>
-    <td><select class="eqsel" data-i="${r.i}" style="max-width:200px">${eq.length>1?`<option value="__multi" selected>Reparto: ${eq.map(eqName).join(' / ').slice(0,40)}</option>`:''}${eqOptions().replace(`value="${eq[0]||''}"`,`value="${eq[0]||''}" ${eq.length===1?'selected':''}`)}</select></td><td style="font-size:11px" class="muted">${isManual(r)?'Manual':esc(r.o)}</td></tr>`;}).join('')}
+    <td><select class="eqsel" data-i="${r.i}" style="max-width:200px">${eq.length>1?`<option value="__multi" selected>Reparto: ${eq.map(eqName).join(' / ').slice(0,40)}</option>`:''}${eqOptions().replace(`value="${eq[0]||''}"`,`value="${eq[0]||''}" ${eq.length===1?'selected':''}`)}</select></td><td style="font-size:11px" class="muted">${clsOf(r)==='EXCL'?'<b style="color:var(--bad)">Excluida</b>':(isManual(r)?'Manual':esc(r.o))}${r.rv?`<div style="color:var(--warn);font-weight:600">⚑ ${esc(r.rv)}</div>`:''}</td></tr>`;}).join('')}
    </table></div>
    <div class="pager"><span>Página ${AF.page+1} de ${pages}</span><button class="btn sm" id="pPrev">‹ Anterior</button><button class="btn sm" id="pNext">Siguiente ›</button></div>
    <div class="note">Sugerencia inicial: por centro de costo del equipo, reglas por descripción (por ejemplo GRAM → compresores, Hoppecke → montacargas, R-22 o amoníaco → sistema de refrigeración) o por rubro (herramientas → taller). El overhaul OC 0001-0004605 está repartido entre los 6 compresores. Los cambios se guardan en este navegador; usa “Descargar respaldo” para llevarlos a otro equipo.</div>
@@ -669,17 +687,18 @@ function vAsignar(v){
   document.getElementById('pNext').onclick=()=>{if(AF.page<pages-1){AF.page++;render();}};
   document.getElementById('selAll').onclick=()=>{list.forEach(r=>SELR.add(r.i));render();};
   document.getElementById('selNone').onclick=()=>{SELR.clear();render();};
-  document.getElementById('selSame').onclick=()=>{if(!SELR.size)return alert('Marca primero una línea (por ejemplo un lubricante) y luego usa este botón.');const ds=new Set([...SELR].map(i=>ROWS[i].ds));L.forEach(r=>{if(ds.has(r.ds))SELR.add(r.i);});render();};
+  document.getElementById('selSame').onclick=()=>{if(!SELR.size)return alert('Marca primero una línea (por ejemplo un lubricante) y luego usa este botón.');const ds=new Set([...SELR].map(i=>RIDX[i].ds));L.forEach(r=>{if(ds.has(r.ds))SELR.add(r.i);});render();};
   document.getElementById('pgAll').onchange=e=>{pg.forEach(r=>e.target.checked?SELR.add(r.i):SELR.delete(r.i));render();};
   v.querySelectorAll('.rs').forEach(cb=>cb.onchange=()=>{const i=+cb.dataset.i;cb.checked?SELR.add(i):SELR.delete(i);
     document.querySelectorAll('.kpi')[5].querySelector('b').textContent=SELR.size;document.querySelector('#bulkEq').parentElement.firstChild.textContent=`Asignar ${SELR.size} seleccionadas a`;});
   document.getElementById('bulkGo').onclick=()=>{if(!SELR.size)return alert('Selecciona al menos una línea.');const e=document.getElementById('bulkEq').value;SELR.forEach(i=>ST.asg[i]=e?[e]:[]);save();SELR.clear();render();};
-  document.getElementById('bulkReset').onclick=()=>{if(!SELR.size)return alert('Selecciona al menos una línea.');SELR.forEach(i=>delete ST.asg[i]);save();SELR.clear();render();};
+  document.getElementById('bulkReset').onclick=()=>{if(!SELR.size)return alert('Selecciona al menos una línea.');SELR.forEach(i=>{delete ST.asg[i];delete ST.exc[i];});save();SELR.clear();render();};
+  document.getElementById('bulkExc').onclick=()=>{if(!SELR.size)return alert('Selecciona al menos una línea.');if(!confirm(`Se excluirán ${SELR.size} líneas del análisis (no son de mantenimiento). Puedes recuperarlas con el filtro Origen = Excluida y "Volver a la sugerencia". ¿Continuar?`))return;SELR.forEach(i=>ST.exc[i]=true);save();SELR.clear();render();};
   document.getElementById('bulkSplit').onclick=()=>{if(!SELR.size)return alert('Selecciona al menos una línea.');splitModal([...SELR]);};
   bindEqSel(v);
 }
 function splitModal(ids){
-  const cur=ids.length===1?eqOf(ROWS[ids[0]]):[];
+  const cur=ids.length===1?eqOf(RIDX[ids[0]]):[];
   document.getElementById('mhd').textContent=`Repartir ${ids.length} línea(s) en partes iguales`;
   document.getElementById('mbd').innerHTML='<div class="eqlist">'+AREAS.slice(0,5).map(a=>`<div class="ah">${a}</div>`+CAT.filter(c=>c.a===a).map(c=>`<label><input type="checkbox" value="${c.id}" ${cur.includes(c.id)?'checked':''}> ${esc(c.n)}</label>`).join('')).join('')+'</div>';
   document.getElementById('mft').innerHTML='<button class="btn" id="mC">Cancelar</button><button class="btn pri" id="mOk">Aplicar reparto</button>';
@@ -899,6 +918,261 @@ function vRatio(v){
   document.getElementById('pCapO').onchange=e=>{ST.capo=e.target.value===''?null:+e.target.value;save();render();};
 }
 
+// ---------- IMPORTACIÓN EXCEL NISIRA (mismas reglas del análisis)
+const TCm=m=>TCM(m);
+const EURUSD=1.16;
+const NZ={
+ MANT:['MANTENIMIENTO - CONGELADO','MANTENIMIENTO HARINA','MANTENIMIENTO HIELO','MANTENIMIENTOS OSMOSIS','MANTENIMIENTO OSMOSIS - MODULO 01','MANTENIMIENTO OSMOSIS - MODULO 02'],
+ EQ_RE:/^(TUNEL|COMPRESOR|CONGELADOR|EVAPORADOR|CALDERA|BOMBA GORMAN|GRUPO ELECTROGENO|MÁQUINA PELADORA|VOLTEADOR|FAJA DE FILETEROS|TAMBOR EVAPORATIVO|MAQUINARIAS PRODUCCION|Montacargas|Apilador|PLANTA DE HIELO|PLANTA DE OSMOSIS|PLANTA DE HARINA|RED DE COMBUSTIBLE)/,
+ PROY_RE:/^(MONTAJE E INSTALACION|FENOMENO|MATERIALES- FENOMENO|INFRAESTRUCTURA|MEJORA DE PLANTA|EQUIPO|ESTACIÓN DE SURTIDOR|SOFTWARE|CERCO PERIMETRICO|HABILITACI)|PROYECTO|PROYETCO|AMPLIACION|INCREMENTO DE CAPACIDAD|PUESTA EN MARCHA/,
+ FLV_RE:/(SANTA MONICA|INCA 3|VARADERO|EMBARCACIONES|FLOTA SANTA|CAMION|CAMIONETA|PICKUP|MINIVAN|FOTON|VEHICULOS DE TERCEROS)/,
+ MP:['MP COMPRA POTA','MP COMPRA BONITO','MP COMPRA PERICO','PT COMPRA POTA','PT POTA','PT RESIDUOS'],
+ MATG:['TUBERIAS','TRASMISION Y RODAMIENTOS','MOTORES','SISTEMAS DE EQUIPOS','EQUIPOS Y MAQUINARIA','FILTROS','MATERIAL DE OBRAS'],
+ FERR_OK:/^(ELECTRICIDAD|CERRAJERIA|FUNDICION|PLANCHAS|AISLANTES|ABRASIVOS|PINTURAS|HERRAMIENTAS)/,
+ EXCL:/BALANZA|CARRETILLA|PALANA|TERMOMETRO|TERMÓMETRO|ESCALERA|CANDADO|CINTA REFLECTIVA|PHMETRO|CALIBRADOR VERNIER/,
+ SERV_OK:/MANTENIMIENTO|REPARACION|REBOBINADO|METAL MECANICA|MAESTRANZA|FABRICACION|CONFECCION|MONTAJE|INSTALACION|ALBAÑIL|GASFIT|CARPINT|PLANCHADO|PINTADO|ARENADO|ROLADO|ALINEAMIENTO|NIVELACION|CALIBRACION|ESTUDIOS E INFORMES/,
+ SERV_EX:/EXTINTOR|HARDWARE|SEGURIDAD INDUSTRIAL/,
+ EXC_CC:new Set(['ADMINISTRACION PAITA','ALMACEN - CONGELADO','CALIDAD HARINA','PROCESAMIENTO HARINA','PROCESAMIENTO PT POTA','SEGURIDAD Y SALUD EN EL TRABAJO - HARINA','SISTEMAS Y COMUNICACIONES PAITA','VIGILANCIA - CONGELADO','SEGURIDAD Y SALUD EN EL TRABAJO - CONGELADO','GESTION AMBIENTAL - CONGELADO','PRODUCCION HARINA','CERCO PERIMETRICO - TERRENO COLAN','ADMINISTRACION LIMA','GERENCIA GENERAL']),
+ REV_CC:new Set(['CALIDAD - CONGELADO','SANEAMIENTO - CONGELADO','PROCESAMIENTO DE POTA - PLANTA FREKKO']),
+ EXC_PROV:/MONTESION|TRANSPORTES Y SERVICIOS GENERALES JULIA/,
+};
+function nzNivel(x){
+  const c=x.cc, D=x.ds.toUpperCase(), G=x.g, SG=x.sg; let nat;
+  if(x.t==='OCO') nat=(NZ.MATG.includes(G)||(G==='FERRETERIA'&&NZ.FERR_OK.test(SG))||SG.startsWith('LUBRICANTES')||/REFRIGERANTE|FREON|AMONIACO|ACETILENO|OXIGENO|NITROGENO/.test(D))&&!NZ.EXCL.test(D);
+  else nat=NZ.SERV_OK.test(D)&&!NZ.SERV_EX.test(D)&&c!=='SISTEMAS Y COMUNICACIONES PAITA';
+  if(NZ.MANT.includes(c))return '1. CC Mantenimiento';
+  if(NZ.EQ_RE.test(c))return '2. CC Equipo de planta';
+  if(NZ.PROY_RE.test(c.toUpperCase()))return '3. Proyecto / inversión';
+  if(NZ.MP.includes(G))return '9. No mantenimiento';
+  if(NZ.FLV_RE.test(c)||c==='FLOTA')return (nat||c.includes('MANTENIMIENTO')||SG==='SERVICIO DE MANTENIMIENTO'||['VEHICULOS','MOTORES','FILTROS'].includes(G))?'5. Flota y vehículos':'9. No mantenimiento';
+  if(nat)return '4. Reasignable (otra área)';
+  return '9. No mantenimiento';
+}
+function nzRubro(x){
+  const d=x.ds.toUpperCase(), g=x.g, s=x.sg;
+  if(x.t==='OSR'){
+    if(/PREVENTIVO/.test(d))return 'S. Mant. preventivo';
+    if(/CORRECTIVO|REPARACION|REBOBINADO|VARADERO|INTERMEDIO|ALINEAMIENTO|BUCEO/.test(d))return 'S. Reparación / correctivo';
+    if(/METAL MECANICA|MAESTRANZA|FABRICACION|CONFECCION|ROLADO|ARENADO/.test(d))return 'S. Metalmecánica / fabricación';
+    if(/MONTAJE|INSTALACION/.test(d))return 'S. Montaje / instalación';
+    if(/ALBAÑIL|CONSTRUCCION|GASFIT|CARPINT|PINTADO|PLANCHADO|NIVELACION/.test(d))return 'S. Obra civil / pintura';
+    if(/CALIBRACION|ESTUDIOS|INSPECCION/.test(d))return 'S. Calibración / inspección';
+    return 'S. Otros servicios (no técnicos)';}
+  if(/REFRIGERANTE|FREON|AMONIACO|ARTIC|REFCOM|GADINIA/.test(d))return 'M. Refrigerantes y aceites';
+  if(s.startsWith('LUBRICANTES'))return 'M. Lubricantes y grasas';
+  if(['TRASMISION Y RODAMIENTOS','MOTORES','EQUIPOS Y MAQUINARIA'].includes(g))return 'M. Repuestos mecánicos';
+  if(s.startsWith('ELECTRICIDAD'))return 'M. Eléctricos e iluminación';
+  if(s.startsWith('MEDIDAS'))return 'M. Instrumentación';
+  if(s.startsWith('VALVULAS')||g==='TUBERIAS')return 'M. Válvulas y tuberías';
+  if(g==='FILTROS')return 'M. Filtros';
+  if(/^(PLANCHAS|FUNDICION|CERRAJERIA|AISLANTES)/.test(s)||/ACETILENO|OXIGENO|NITROGENO/.test(d))return 'M. Metales, soldadura y fijaciones';
+  if(s.startsWith('PINTURAS')||g==='MATERIAL DE OBRAS')return 'M. Pintura y obra civil';
+  if(s.startsWith('HERRAMIENTAS')||s.startsWith('ABRASIVOS'))return 'M. Herramientas y abrasivos';
+  if(g==='SEGURIDAD INDUSTRIAL')return 'M. EPP / seguridad';
+  if(g==='MATERIALES DE PRODUCCION'||d.includes('ANTICRUSTANTE')||d.includes('ZEOLITA'))return 'M. Químicos / insumos de proceso';
+  return 'M. Otros materiales';
+}
+const NZ_EQS=[['Congeladores de placas',/CONGELADOR|KVA|SFT|PISTON HID|PLACAS DE CONGEL/],
+ ['Compresores y refrigeración',/COPELAND|YANTAI|EVAPORADOR|CONDENSADOR|COMPRESOR (YANTAI|DE TORNILLO)|AMONIACO|FREON|R-22|ARTIC|REFCOM|EVRA|AKS|DANFOSS|SVA|CAMARA|CÁMARA|TUNEL|MOTOVENTILADOR|MOON|REFRIGERA/],
+ ['Calderas y vapor',/CALDERA|VAPOR|TRAMPA|ANCOTREAT|ANTICRUSTANTE|QUEMADOR|HONEYWELL/],
+ ['Ósmosis y tratamiento de agua',/OSMOSIS|ÓSMOSIS|CARTUCHO|ZEOLITA|MEMBRANA|BISULFITO|ANTIINCRUST|ISAVE|DOSIFICADORA/],
+ ['Planta de hielo',/HIELO|CUBETA/],['Bombas',/GORMAN|BOMBA/],['Grupos electrógenos',/GRUPO ELECTROGENO|CAT 3406/],
+ ['Montacargas y apiladores',/MONTACARGA|APILADOR|HOPPECKE|BATERIA VOLTA/],
+ ['Líneas de proceso (peladoras, fajas, cadenas)',/PELADORA|FILETE|VOLTEADOR|CADENA TRANSPORTADORA|FAJA MODELO|FAJA DE|BONERS|MAREL|BALANZA/],
+ ['Planta de harina',/HARINA|ROTADISK|SECADOR|MARTILLO|MOLINO|CICLON/],
+ ['Infraestructura, techos y obra civil',/UCRETE|FENOMENO|TECHO|ALBAÑIL|CONSTRUCCION|CERCO|PINTADO|INFRAESTRUCTURA|AISLAMIENTO/],
+ ['Combustible / surtidor',/SURTIDOR|COMBUSTIBLE/]];
+function nzSistema(x){
+  const c=x.cc, CU=c.toUpperCase(), T=(x.ds+' '+(x.ob||'')).toUpperCase();
+  for(const [n,p] of NZ_EQS) if(p.test(CU))return n;
+  if(c==='MANTENIMIENTO HIELO'){for(const [n,p] of NZ_EQS.slice(0,4)) if(p.test(T))return n;return 'Planta de hielo';}
+  if(CU.includes('OSMOSIS'))return 'Ósmosis y tratamiento de agua';
+  if(c==='MANTENIMIENTO HARINA'){for(const [n,p] of NZ_EQS.slice(0,3).concat(NZ_EQS.slice(5,8))) if(p.test(T))return n;return 'Planta de harina';}
+  for(const [n,p] of NZ_EQS) if(p.test(T))return n;
+  return 'General / no identificado';
+}
+const NZ_PROJ=[[/INCREMENTO DE CAPACIDAD - PLANTA DE HIELO/,'Incremento de capacidad planta de hielo'],[/AMPLIACION PLANTA DE OSMOSIS/,'Ampliación planta de ósmosis'],[/DISMINUCION DE TIEMPO DE DESCONG/,'Disminución de tiempo de descongelamiento (setup) de placas'],[/02 TANQUES DE ALM/,'02 tanques de almacenamiento de 30 m³'],
+ [/MONTAJE E INSTALACION DE 4|MOON ENV.*SISTEMA DE REFRIG/,'Ampliación: montaje de 4 congeladores (sistema Moon-Tech)'],[/FENOMENO DEL NI/,'Techos Fenómeno del Niño (congelado y harina)'],[/HABILITACION PLANTA DE HIELO/,'Habilitación planta de hielo'],
+ [/SURTIDOR|RED DE COMBUSTIBLE/,'Estación de surtidor de combustible (DB5 muelle)'],[/PROYETCO AXIN|PROYECTO AXIN/,'Proyecto Axin (balanzas Marel)'],[/CERCO PERIMETRICO/,'Cerco perimétrico terreno Colán'],[/AISLAMIENTO TERMICO/,'Aislamiento térmico planta de harina'],[/MOTOVENTILADORES/,'Motoventiladores cámaras 1 y 2']];
+function nzCapex(x){
+  const c=x.cc.toUpperCase(), t=(x.ds+' '+(x.ob||'')).toUpperCase(), p=x.p.toUpperCase();
+  for(const [pat,name] of NZ_PROJ) if(pat.test(c)||pat.test(p+' '+t))return ['CAPEX','Alta','R1 · Centro de costo de proyecto',name];
+  if(x.nv.startsWith('3'))return ['CAPEX','Media','R1 · Centro de costo de proyecto (nuevo)',x.cc];
+  if(t.includes('CUBETAS DE HIELO'))return ['CAPEX','Alta','R4 · Reposición masiva de activo — confirmado CAPEX','Reposición de cubetas de hielo (Dalian Bingshan)'];
+  if(/CONGELADOR(ES)? ?(N°)? ?10|BASES PARA ?CONGELADOR|LINE(A)? DE BAJA TENSION|EXTENSION INSTALACI|RECEPCION DE CONGELADOR/.test(t))return ['CAPEX','Alta','R3 · Descripción indica nueva capacidad (congeladores 10 y 11 / extensión de línea)','Instalación 2 congeladores de placas (10 y 11) + compresor a tornillo — CMD'];
+  if(p.includes('CMD FRIO')&&c==='COSTOS INDIRECTOS PRODUCCION'&&x.m<=5)return ['CAPEX','Media','R2 · Proveedor de montaje de congeladores cargado a Costos Indirectos (ene–may)','Instalación 2 congeladores de placas (10 y 11) + compresor a tornillo — CMD'];
+  if(p.includes('CALDERON DOMINGUEZ')&&x.t==='OSR'&&/MONTAJE|INSTALACION/.test(t))return ['CAPEX','Alta','Proyecto de calderos de congelado — confirmado CAPEX','Proyecto calderos congelado (Calderón Domínguez)'];
+  if(x.t==='OSR'&&/ALBAÑILERIA Y CONSTRUCCION/.test(t)&&x.s>=20000)return ['CAPEX','Media','R5 · Obra civil ≥ S/ 20,000',p.includes('JARED')?'Obra civil planta de ósmosis':p.includes('PUERTO AMERIC')?'Obra civil muelle congelado':'Obra civil mayor (por confirmar proyecto)'];
+  if(x.t==='OSR'&&/MONTAJE|INSTALACION/.test(t)&&!/REPARAC|MANTENIM/.test(t)&&x.s>=10000)return ['CAPEX','Media','R6 · Servicio de montaje/instalación ≥ S/ 10,000 sin carácter de reparación','Montajes e instalaciones mayores (por confirmar proyecto)'];
+  return ['OPEX',x.nv[0]==='1'||x.nv[0]==='2'?'Alta':'Media','Mantenimiento recurrente',''];
+}
+const NZ_CCMAP={'CONGELADOR KVA 1':'KVA1','CONGELADOR KVA 2':'KVA2','CONGELADOR KVA 3':'KVA3','CONGELADOR SFT4':'SFT4','CONGELADOR SFT 5':'SFT5','CONGELADOR YANTAI 6':'YAN6','CONGELADOR YANTAI 7':'YAN7','CONGELADOR YANTAI 8':'YAN8','CONGELADOR YANTAI 9':'YAN9',
+ 'EVAPORADOR COPELAND N°1':'EVC1','EVAPORADOR COPELAND N°2':'EVC2','EVAPORADOR COPELAND N°3':'EVC3','EVAPORADOR COPELAND N°7':'EVC7','EVAPORADOR CAMARA YANTAI N°2':'EVY2','EVAPORADOR CAMARA YANTAI N°3':'EVY3',
+ 'CALDERA 100 BHP N°1':'CAL1','TAMBOR EVAPORATIVO DE 20 TN / DÍA':'TAMB','MANTENIMIENTO OSMOSIS - MODULO 01':'OSM1','MANTENIMIENTO OSMOSIS - MODULO 02':'OSM2',
+ 'Montacargas Komatsu 01':'MKO1','Montacargas Komatsu 02':'MKO2','Montacargas Eléctrico 01':'MEL1','Montacargas Eléctrico 02':'MEL2','Montacargas Eléctrico 03':'MEL3','Montacargas Plataforma':'MPLA','Montacargas Flota 03':'MFL3','Apilador Ch 01':'ACH1','Apilador Crown 01':'ACR1',
+ 'BOMBA GORMAN RUPP N°1':'BGR1','BOMBA GORMAN RUPP N°2':'BGR2','BOMBA GORMAN RUPP N°3':'BGR3','GRUPO ELECTROGENO CAT 3406 N°1':'GE1','GRUPO ELECTROGENO CAT 3406 N°2':'GE2','GRUPO ELECTROGENO CAT 3406 N°3':'GE3',
+ 'MÁQUINA PELADORA DE POTA CHINA N°1':'PCH1','MÁQUINA PELADORA DE POTA CHINA N°2':'PCH2','MÁQUINA PELADORA DE POTA COREANA N°1':'PCO1','VOLTEADOR DE BONERS DE POTA N°3':'VOL3','FAJA DE FILETEROS DE POTA N°3':'FAJ3',
+ 'MUELLE - CONGELADO':'MUE','COCINA PT POTA':'COC','MAQUINARIAS PRODUCCION CONGELADO':'CONG','PLANTA DE OSMOSIS':'OSMG','MANTENIMIENTOS OSMOSIS':'OSMG','PRODUCCION OSMOSIS':'OSMG',
+ 'PLANTA DE HIELO':'HIEG','MANTENIMIENTO HIELO':'HIEG','PRODUCCION HIELO':'HIEG','TUNEL DE CONGELADO 01 ESTATICO 8.6 TN / 10 HORAS':'TUNE','COMPRESOR CAMARAYANTAIN°3':'CCY3'};
+const NZ_GEN=new Set(['HIEG','OSMG','CONG','MUE','COC']);
+const NZ_RULES=[[/T[UÚ]NEL/,'TUNE'],[/MONTACARGA|APILADOR|STOCKA|HOPPECKE|BATERIA VOLTA|LLANTA S[OÓ]LIDA|DESTILADA P\/BATER|CARRIER/,'MONG'],
+ [/GRAM|HCT ?6/,'CGRAM'],[/COMPRESOR YANTAI|YANTAI JKA|NJF ?2900/,'CYAN'],[/COPELAND/,'EVCG'],[/GORMAN|GROMAN/,'BGRG'],[/GRUPO ELECTR|CAT 3406|GADINIA/,'GEG'],
+ [/CALDER|VAPOR|TRAMPA|ANCOTREAT|ANTICRUSTANTE|DESINCRUSTANTE|REFRACTARIO|QUEMADOR|HONEYWELL/,'CALG'],
+ [/OSMOSIS|ÓSMOSIS|CARTUCHO|ZEOLITA|MEMBRANA|BISULFITO|POTASA|POTASIO HIDR|DUREZA|CONDUCTIMETRO|CLEAN PAC|DOSIFICADORA/,'OSMG'],
+ [/AGITADOR|PICADOR DE HIELO|PICADORA DE HIELO|CUBETA/,'HIEG'],
+ [/FREON|R-22|AMONIACO|REFRIGERANTE|SUNISO|ARTIC|REFCOM|KLUBER SUMMIT|EXPANSION|TEX ?\d|EVRA|AKS|SVA|PRESOSTATO|CUARTO FR|ENFRIADOR DE ACEITE/,'REFG'],
+ [/PELADORA/,'PELG'],[/FILETE|VOLTEADOR|BONERS/,'LPG'],[/FAJA MODELO|FAJA VERDE|FAJA MODULAR|CADENA TRANSPORTADORA|SPROCKET|CORRUGADA/,'LPG'],
+ [/TECLE/,'TEC'],[/INODORO|URINARIO|LAVATORIO|SS\.?HH|GRIFERIA/,'SSHH'],[/LUMINARIA|HIGH BAY|REFLECTOR|PANEL LED|FLUORESCENTE|FOCO|LAMPARA/,'ILU'],
+ [/ALBAÑIL|UCRETE|SIKA|CEMENTO|PINTADO|PINTURA|ESMALTE|DURAPOX|DURAMASTIC|JET 70|BROCHA|RODILLO PARA PINTAR|GRAVA|MORTERO|CARPINTER|CONSTRUCCION|SIKADUR/,'INF'],
+ [/TRANSPORTE|ALIMENTACION|ENERGIA ELECTRICA|SERVICIO MEDICO/,'SGEN']];
+function nzLearned(){
+  const by={};
+  Object.entries(ST.asg).forEach(([k,v])=>{const r=RIDX[k];if(!r||r.t!=='OCO'||!v||!v.length)return;const d=r.ds.trim().toUpperCase();const kk=v.join('|');by[d]=by[d]||{};by[d][kk]=(by[d][kk]||0)+1;});
+  const out={};Object.entries(by).forEach(([d,c])=>{const e=Object.entries(c).sort((a,b)=>b[1]-a[1]);const tot=e.reduce((a,x)=>a+x[1],0);if(e[0][1]/tot>=0.6)out[d]=e[0][0].split('|');});
+  return out;
+}
+function nzAssign(x,L){
+  const cc=x.cc;
+  if(NZ_CCMAP[cc]&&!NZ_GEN.has(NZ_CCMAP[cc]))return [[NZ_CCMAP[cc]],'Centro de costo'];
+  const l=x.t==='OCO'?L[x.ds.trim().toUpperCase()]:null; if(l)return [l,'Aprendido de tus asignaciones'];
+  if(NZ_CCMAP[cc])return [[NZ_CCMAP[cc]],'Centro de costo'];
+  const t=(x.ds+' '+(x.ob||'')).toUpperCase();
+  for(const [p,e] of NZ_RULES) if(p.test(t))return [[e],'Regla por descripción'];
+  if(x.r==='M. Herramientas y abrasivos')return [['TALL'],'Regla por rubro'];
+  if(x.r.startsWith('M. Eléctricos'))return [['ELEC'],'Regla por rubro'];
+  return [[],'Sin asignar'];
+}
+const cellv=v=>{if(v===null||v===undefined)return '';if(v instanceof Date)return v;if(typeof v==='object'){if(v.richText)return v.richText.map(t=>t.text).join('');if(v.result!==undefined)return v.result;if(v.text!==undefined)return v.text;}return v;};
+const num=v=>{if(typeof v==='number')return v;const s=String(v||'').trim().replace(/,/g,'');return s?+s:0;};
+function toDate(v){if(v instanceof Date)return new Date(v.getUTCFullYear(),v.getUTCMonth(),v.getUTCDate());if(typeof v==='number'){const d=new Date(Math.round((v-25569)*864e5));return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());}
+  const m=String(v).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);const d=new Date(v);return isNaN(d)?null:d;}
+async function nzRead(file){
+  const wb=new ExcelJS.Workbook(); await wb.xlsx.load(await file.arrayBuffer());
+  const ws=wb.worksheets[0]; const hdr={}; ws.getRow(1).eachCell((c,i)=>{hdr[String(cellv(c.value)).trim()]=i;});
+  const need=['Origen','Documento','Fecha','Estado','Proveedor Razon Social','Moneda','Item','Producto Descripcion','Producto U.M.','Producto Cantidad','Precio M.N. Unitario Dscto.','Precio M.E. Unitario Dscto.','Observacion Compra','Producto Grupo','Producto SubGrupo','Centro Costo'];
+  const miss=need.filter(h=>!hdr[h]); if(miss.length)throw new Error('El archivo no tiene el formato del reporte "Precios de Compras Histórico". Faltan columnas: '+miss.join(', '));
+  const out=[]; const g=(row,h)=>{const v=cellv(row.getCell(hdr[h]).value);return v instanceof Date?v:(typeof v==='number'?v:String(v).trim());};
+  ws.eachRow((row,ri)=>{if(ri===1)return;const o=g(row,'Origen');if(o!=='ORDENCOMPRA'&&o!=='ORDENSERVICIO')return;
+    const f=toDate(g(row,'Fecha'));if(!f)return;const ob=g(row,'Observacion Compra');
+    out.push({d:g(row,'Documento'),f,m:f.getMonth()+1,y:f.getFullYear(),e:g(row,'Estado'),p:g(row,'Proveedor Razon Social'),mo:g(row,'Moneda'),it:(()=>{const v=g(row,'Item');const n=parseInt(v,10);return isNaN(n)?String(v):String(n);})(),ds:String(g(row,'Producto Descripcion')),u:g(row,'Producto U.M.'),
+      q:num(g(row,'Producto Cantidad')),pu:num(g(row,'Precio M.N. Unitario Dscto.'))+num(g(row,'Precio M.E. Unitario Dscto.')),ob:(ob==='nan'?'':String(ob)),g:g(row,'Producto Grupo'),sg:g(row,'Producto SubGrupo'),cc:g(row,'Centro Costo')});});
+  return out;
+}
+const NZ_REJ=new Set(DATA.rej||[]);
+const nzS0=r=>r.s0!==undefined?r.s0:r.s;
+function nzClassify(list,months,tcs){
+  const L=nzLearned(); const res={rows:[],excl:[],dup:0,other:0};
+  const seen=new Set(ROWS.filter(r=>r.it).map(r=>r.d+'|'+r.it)); const bag={};
+  ROWS.filter(r=>!r.it).forEach(r=>{const k=r.d+'|'+r.ds+'|'+(+r.q).toFixed(3)+'|'+r.cc+'|'+Math.round(nzS0(r));bag[k]=(bag[k]||0)+1;});
+  let nid=Math.max(99999,...ROWS.map(r=>r.i))+1;
+  list.filter(x=>months.includes(x.m)).forEach(x=>{
+    x.t=x.d.slice(0,3); x.io=x.pu*x.q; const tc=tcs[x.m]; x.s=x.mo==='US$'?x.io*tc:x.mo==='€'?x.io*tc*EURUSD:x.io;
+    const k1=x.d+'|'+x.it, k2=x.d+'|'+x.ds+'|'+(+x.q).toFixed(3)+'|'+x.cc+'|'+Math.round(x.s);
+    if(seen.has(k1)){res.dup++;return;} if(bag[k2]>0){bag[k2]--;res.dup++;return;}
+    if(NZ_REJ.has(k2)){res.excl.push({...x,ex:'Marcada "No" en la validación'});return;}
+    x.nv=nzNivel(x); if(!'1234'.includes(x.nv[0])){res.other++;return;}
+    x.r=nzRubro(x); x.sy=nzSistema(x); const [c,ce,cr,pj]=nzCapex(x); Object.assign(x,{c,ce,cr,pj});
+    const CU=x.cc.toUpperCase(); const har=CU.includes('HARINA')&&!/AISLAMIENTO TERMICO PLANTA - HARINA|FENOMENO/.test(CU); const tr=x.ds.toUpperCase().includes('TRANSFORMADOR');
+    let ex=''; if(har&&!tr)ex='Harina (fuera de alcance)'; if(NZ.EXC_CC.has(x.cc))ex='Centro de costo excluido en la validación'; if(NZ.EXC_PROV.test(x.p))ex='Proveedor excluido en la validación';
+    let rv=''; if(NZ.REV_CC.has(x.cc))rv='Centro de costo mixto: validar si es mantenimiento'; if(har&&tr)rv='Transformador en centro de costo de Harina';
+    if(ex){res.excl.push({...x,ex});return;}
+    const [eq,o]=c==='OPEX'?nzAssign(x,L):[[],'—'];
+    const ff=x.f; const fs=`${ff.getFullYear()}-${String(ff.getMonth()+1).padStart(2,'0')}-${String(ff.getDate()).padStart(2,'0')}`;
+    res.rows.push({i:nid++,d:x.d,t:x.t,f:fs,m:x.m,e:x.e,p:x.p,mo:x.mo,ds:x.ds,u:x.u,q:x.q,pu:+x.pu.toFixed(4),io:+x.io.toFixed(2),s:+x.s.toFixed(2),cc:x.cc,g:x.g,sg:x.sg,ob:x.ob,nv:x.nv,r:x.r,sy:x.sy,c,ce,cr,pj:pj||'',eq,o,it:x.it,rv});
+  });
+  return res;
+}
+let NZF=null, NZR=null;
+function vImport(v){
+  const lastF=ROWS.reduce((a,r)=>r.f>a?r.f:a,'');
+  const lotes={}; (SIM_FUENTE()?DATA.rows.filter(r=>r.lt):(ST.imp||[])).forEach(r=>{lotes[r.lt]=lotes[r.lt]||{n:0,s:0,ms:new Set()};lotes[r.lt].n++;lotes[r.lt].s+=nzS0(r);lotes[r.lt].ms.add(r.m);});
+  v.innerHTML=`<div class="grid">
+   <div class="card c12"><h3>Cargar Excel de Nisira</h3><div class="hint">Reporte "Precios de Compras Histórico" (módulo Compras). Las líneas se clasifican con las mismas reglas del análisis y se agregan sin duplicar las ya cargadas. Último dato cargado: <b>${lastF.split('-').reverse().join('/')}</b>.</div>
+    <div class="toolbar"><label>Archivo .xlsx<input type="file" id="nzFile" accept=".xlsx"></label></div><div id="nzStep"></div></div>
+   ${Object.keys(lotes).length?`<div class="card c12"><h3>${SIM_FUENTE()?'Cargas hechas desde el aplicativo':'Cargas hechas en este navegador'}</h3><div class="tw" style="max-height:none"><table class="num"><tr><th>Lote</th><th>Meses</th><th class="r">Líneas</th><th class="r">S/</th><th></th></tr>${Object.entries(lotes).map(([k,x])=>`<tr><td>${esc(k)}</td><td>${[...x.ms].sort((a,b)=>a-b).map(m=>MES[m-1]).join(', ')}</td><td class="r">${x.n}</td><td class="r">${fmt(x.s)}</td><td><button class="btn sm nzDel" data-l="${esc(k)}">Quitar lote</button></td></tr>`).join('')}</table></div><div class="note">${SIM_FUENTE()?"Las cargas se guardan en el SIM y las ven todos los usuarios.":"Las cargas se guardan en este navegador y en el respaldo (.json)."}</div></div>`:''}
+  </div>`;
+  v.querySelectorAll('.nzDel').forEach(b=>b.onclick=async()=>{if(!confirm('Se quitarán las líneas de este lote y sus asignaciones. ¿Continuar?'))return;const L0=b.dataset.l;const src=SIM_FUENTE()?DATA.rows:ST.imp;const ids=new Set(src.filter(r=>r.lt===L0).map(r=>r.i));ids.forEach(i=>{delete ST.asg[i];delete ST.exc[i];delete ST.dict[i];delete ST.notes[i];});
+    if(SIM_FUENTE()){const prev=DATA.rows;DATA.rows=DATA.rows.filter(r=>r.lt!==L0);save();busy(true,'Guardando en el SIM…');try{await nzWriteFuente('Lote retirado: '+L0);}catch(err){DATA.rows=prev;alert('No se pudo guardar en el SIM: '+(err.code||err.message));}busy(false);}
+    else{ST.imp=ST.imp.filter(r=>r.lt!==L0);save();}
+    rebuildRows();render();});
+  document.getElementById('nzFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(typeof ExcelJS==='undefined')return alert('No se pudo cargar la librería de Excel (requiere conexión a internet).');
+    busy(true,'Leyendo Excel…');try{NZF=await nzRead(f);nzStep1(lastF);}catch(err){alert(err.message);}busy(false);};
+  if(NZF)nzStep1(lastF);
+}
+function nzStep1(lastF){
+  const el=document.getElementById('nzStep'); const cnt={}; NZF.forEach(x=>{const k=x.y+'-'+x.m;cnt[k]=(cnt[k]||0)+1;});
+  const lm=+lastF.slice(5,7), ly=+lastF.slice(0,4);
+  const keys=Object.keys(cnt).sort((a,b)=>{const[ay,am]=a.split('-').map(Number),[by,bm]=b.split('-').map(Number);return ay-by||am-bm;});
+  el.innerHTML=`<div class="toolbar" style="margin-top:8px"><div><div class="muted" style="font-size:11px;margin-bottom:4px">Meses a cargar (se sugieren desde el último mes cargado; lo ya cargado no se duplica)</div>
+   ${keys.map(k=>{const[y,m]=k.split('-').map(Number);const on=y>ly||(y===ly&&m>=lm);return `<label style="flex-direction:row;display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:13px;color:var(--ink)"><input type="checkbox" class="nzM" value="${m}" data-y="${y}" ${on?'checked':''}>${MES[m-1]} ${y} <span class="muted">(${cnt[k]})</span></label>`;}).join('')}</div></div>
+   <div class="toolbar">${[...new Set(keys.map(k=>+k.split('-')[1]))].map(m=>`<label>TC ${MES[m-1]} (S/ por US$)<input type="number" step="0.001" class="nzTC" data-m="${m}" value="${TCm(m)}" style="width:110px"></label>`).join('')}
+   <button class="btn pri" id="nzGo">Clasificar</button></div><div id="nzPrev"></div>`;
+  const syncTC=()=>{const on=new Set([...document.querySelectorAll('.nzM:checked')].map(x=>x.value));document.querySelectorAll('.nzTC').forEach(i=>i.parentElement.style.display=on.has(i.dataset.m)?'':'none');};
+  document.querySelectorAll('.nzM').forEach(x=>x.onchange=syncTC); syncTC();
+  document.getElementById('nzGo').onclick=()=>{
+    const ms=[...document.querySelectorAll('.nzM:checked')].map(x=>+x.value); if(!ms.length)return alert('Marca al menos un mes.');
+    const ys=new Set([...document.querySelectorAll('.nzM:checked')].map(x=>+x.dataset.y)); if(ys.size>1||[...ys][0]!==2026)return alert('Este aplicativo analiza el año 2026. Marca solo meses de 2026.');
+    const tcs={}; document.querySelectorAll('.nzTC').forEach(x=>tcs[+x.dataset.m]=+x.value);
+    NZR=nzClassify(NZF.filter(x=>x.y===2026),ms,tcs); NZR.tcs=tcs; NZR.ms=ms; nzPreview();};
+}
+function nzPreview(){
+  const R=NZR, rows=R.rows; const op=rows.filter(r=>r.c==='OPEX'), cx=rows.filter(r=>r.c==='CAPEX');
+  const sum=a=>a.reduce((s,r)=>s+r.s,0);
+  const oldP=new Set(ROWS.map(r=>r.p)), oldCC=new Set(ROWS.map(r=>r.cc));
+  const nP=sortE(sumBy(rows.filter(r=>!oldP.has(r.p)),r=>r.p,'s')), nCC=sortE(sumBy(rows.filter(r=>!oldCC.has(r.cc)),r=>r.cc,'s'));
+  const rv=rows.filter(r=>r.rv), sin=op.filter(r=>!r.eq.length);
+  const exS=sortE(sumBy(R.excl,r=>r.ex+' · '+r.cc,'s'));
+  const tbl=(h,list)=>`<div class="tw" style="max-height:260px"><table class="num"><tr>${h.map((x,i)=>`<th class="${i?'r':''}">${x}</th>`).join('')}</tr>${list}</table></div>`;
+  document.getElementById('nzPrev').innerHTML=`
+   <div class="kpis" style="margin-top:12px">
+    ${kpi('Líneas a agregar',rows.length,fmtk(sum(rows)),'#1D2E40')}
+    ${kpi('OPEX',fmtk(sum(op)),op.length+' líneas',OCO)}
+    ${kpi('CAPEX',fmtk(sum(cx)),cx.length+' líneas','#7a5bbf')}
+    ${kpi('Excluidas',R.excl.length,fmtk(sum(R.excl))+' (harina, áreas y proveedores excluidos)','#8A96A3')}
+    ${kpi('Ya cargadas',R.dup,'no se duplican','#5D7086')}
+    ${kpi('Sin asignar',sin.length,fmtk(sum(sin))+' por asignar a equipo','#c98500')}
+   </div>
+   <div class="grid">
+    <div class="card c6"><h3>Proyectos CAPEX</h3>${tbl(['Proyecto','S/'],sortE(sumBy(cx,r=>r.pj,'s')).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="r">${fmt(v)}</td></tr>`).join('')||'<tr><td colspan="2" class="muted">Sin CAPEX</td></tr>')}</div>
+    <div class="card c6"><h3>Excluidas</h3>${tbl(['Motivo · centro de costo','S/'],exS.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="r">${fmt(v)}</td></tr>`).join('')||'<tr><td colspan="2" class="muted">Ninguna</td></tr>')}</div>
+    <div class="card c6"><h3>Centros de costo nuevos</h3>${tbl(['Centro de costo','S/'],nCC.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="r">${fmt(v)}</td></tr>`).join('')||'<tr><td colspan="2" class="muted">Ninguno</td></tr>')}</div>
+    <div class="card c6"><h3>Proveedores nuevos</h3>${tbl(['Proveedor','S/'],nP.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="r">${fmt(v)}</td></tr>`).join('')||'<tr><td colspan="2" class="muted">Ninguno</td></tr>')}</div>
+    ${rv.length?`<div class="card c12"><h3>Para revisar</h3>${tbl(['Descripción · centro de costo','Motivo','S/'],rv.map(r=>`<tr><td>${esc(r.ds)} <span class="muted">· ${esc(r.cc)}</span></td><td class="r">${esc(r.rv)}</td><td class="r">${fmt(r.s)}</td></tr>`).join(''))}</div>`:''}
+   </div>
+   <div class="toolbar" style="margin-top:12px"><button class="btn pri" id="nzAdd">Agregar ${rows.length} líneas al aplicativo</button><span class="muted" style="font-size:12px">Luego puedes revisarlas en Asignación de costos (filtro Origen) y excluir las que no correspondan.</span></div>`;
+  document.getElementById('nzAdd').onclick=async()=>{if(!rows.length)return alert('No hay líneas nuevas para agregar.');
+    const now=new Date(); const lt=`${R.ms.map(m=>MES[m-1]).join('-')} · cargado ${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    ST.tc=Object.assign(ST.tc||{},R.tcs);
+    if(SIM_FUENTE()){
+      DATA.rows=DATA.rows.concat(rows.map(r=>({...r,lt}))); save();
+      busy(true,'Guardando en el SIM…');
+      try{await nzWriteFuente(`Importado desde el aplicativo · ${lt}`);}catch(err){busy(false);DATA.rows=DATA.rows.filter(r=>r.lt!==lt);alert('No se pudo guardar en el SIM: '+(err.code||err.message));return;}
+      busy(false);
+    }else{
+      ST.imp=(ST.imp||[]).concat(rows.map(r=>({...r,lt}))); save();
+      if(!saveOk()){ST.imp=ST.imp.filter(r=>r.lt!==lt);save();return alert('El navegador no tiene espacio para guardar esta carga. Descarga un respaldo y pídeme incorporarla al archivo.');}
+    }
+    NZF=null;NZR=null;rebuildRows();fH.value=Math.max(...months);render();alert(`Se agregaron ${rows.length} líneas.`);};
+}
+
+// ---------- SIM: escritura de órdenes en Firebase (solo administrador)
+function SIM_FUENTE(){return !!(window.firebase&&window.__SIM_ROL);}
+async function nzWriteFuente(archivo){
+  if(window.__SIM_ROL!=='admin')throw new Error('Solo el administrador puede cargar datos de Nisira.');
+  const MAX=700000, base=firebase.firestore().collection('datos').doc('cost').collection('fuente');
+  const limpio=DATA.rows.map(r=>{const {s0,us,...x}=r;return Object.assign(x,{s:s0!==undefined?s0:r.s});});
+  const partes=[];let act=[],tam=2;
+  limpio.forEach(r=>{const t=JSON.stringify(r).length+1;if(tam+t>MAX&&act.length){partes.push(act);act=[];tam=2;}act.push(r);tam+=t;});
+  if(act.length)partes.push(act);
+  const prev=(await base.doc('meta').get()).data()||{};
+  for(let i=0;i<partes.length;i+=2){const b=firebase.firestore().batch();partes.slice(i,i+2).forEach((p,j)=>b.set(base.doc('p'+(i+j)),{json:JSON.stringify(p),n:p.length}));await b.commit();}
+  const b=firebase.firestore().batch();
+  if(prev.partes>partes.length)for(let i=partes.length;i<prev.partes;i++)b.delete(base.doc('p'+i));
+  const {rows,cat,...extra}=DATA; const ms=[...new Set(limpio.map(r=>r.m))].sort((a,c)=>a-c);
+  b.set(base.doc('meta'),{partes:partes.length,total:limpio.length,cat:JSON.stringify(cat||[]),extra:JSON.stringify(extra),meses:MES[ms[0]-1]+'–'+MES[ms[ms.length-1]-1],archivo,actualizado:firebase.firestore.FieldValue.serverTimestamp(),por:window.__SIM_USER||''});
+  await b.commit();
+}
+
 // ---------- EXPORT EXCEL (formato del Excel base)
 const XF='Arial', XH={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3A5F'}}, XT={type:'pattern',pattern:'solid',fgColor:{argb:'FFDCE6F1'}}, XC={type:'pattern',pattern:'solid',fgColor:{argb:'FFFDEBD3'}};
 const XNUM='#,##0;(#,##0);-';
@@ -918,10 +1192,10 @@ async function exportExcelSoles(){
   // TC
   xTitle(sT,'A1','Tipo de cambio venta promedio mensual 2026');
   xHdr(sT,2,['Mes','US$ → S/','€ → S/']);
-  TCV.forEach((v,i)=>{xCell(sT,3+i,1,i+1);xCell(sT,3+i,2,v,{blue:true,nf:'0.000'});xCell(sT,3+i,3,F_(`B${3+i}*$B$13`,v*1.16),{nf:'0.000'});});
-  xCell(sT,13,1,'EUR/USD aprox.');xCell(sT,13,2,1.16,{blue:true});
-  xNote(sT,'A14','Fuente US$: promedios mensuales referenciales (tusfinanzas.pe/tipo-cambio/2026). EUR: aproximación (19 líneas Marel).');
-  xCell(sT,16,1,'Alcance',{b:true});xCell(sT,16,2,'Órdenes OCO/OSR de Mantenimiento de planta congelado descargadas de Nisira (ene–set 2026), sin IGV. Excluido: flota, vehículos, áreas ajenas, Harina, Corporación Montesión (cerco Colán) y Transportes Julia. Esta exportación incluye las asignaciones a equipos, la clasificación OPEX/CAPEX y los cambios del catálogo hechos en el aplicativo.',{wrap:true});
+  TCV.map((_,i)=>TCM(i+1)).forEach((v,i)=>{xCell(sT,3+i,1,i+1);xCell(sT,3+i,2,v,{blue:true,nf:'0.000'});xCell(sT,3+i,3,F_(`B${3+i}*$B$16`,v*1.16),{nf:'0.000'});});
+  xCell(sT,16,1,'EUR/USD aprox.');xCell(sT,16,2,1.16,{blue:true});
+  xNote(sT,'A17','Fuente US$: promedios mensuales referenciales (tusfinanzas.pe/tipo-cambio/2026). EUR: aproximación (19 líneas Marel).');
+  xCell(sT,19,1,'Alcance',{b:true});xCell(sT,19,2,`Órdenes OCO/OSR de Mantenimiento de planta congelado descargadas de Nisira (${MES[months[0]-1].toLowerCase()}–${MES[months[months.length-1]-1].toLowerCase()} 2026), sin IGV. Líneas excluidas manualmente figuran en Base con Clasificación "Excluida".`+' Excluido: flota, vehículos, áreas ajenas, Harina, Corporación Montesión (cerco Colán) y Transportes Julia. Esta exportación incluye las asignaciones a equipos, la clasificación OPEX/CAPEX y los cambios del catálogo hechos en el aplicativo.',{wrap:true});
   sT.getColumn(1).width=22;sT.getColumn(2).width=100;sT.getColumn(3).width=10;
   // Base
   const cols=['Documento','Tipo','Fecha','Mes','Estado','Proveedor','Moneda','Descripción','U.M.','Cantidad','P.U. sin IGV (moneda orig.)','Importe moneda orig.','TC','Importe S/','Centro de costo','Grupo','Subgrupo','Observación','Nivel','Rubro','Sistema / equipo','Equipo asignado','Clasificación','Certeza','Criterio','Proyecto CAPEX','Área','N° equipos (reparto)','Origen asignación','Dictamen CAPEX','Comentario'];
@@ -929,9 +1203,9 @@ async function exportExcelSoles(){
   const rows=ROWS.slice().sort((a,b)=>clsOf(b).localeCompare(clsOf(a))||a.nv.localeCompare(b.nv)||a.f.localeCompare(b.f)||a.d.localeCompare(b.d));
   const rowOf={};
   rows.forEach((r,k)=>{const R=k+2;rowOf[r.i]=R;const eq=eqOf(r).filter(e=>CATM[e]);const cl=clsOf(r);const tc=r.mo==='S/'?1:(r.io?r.s/r.io:1);
-    const tcF=r.mo==='S/'?1:F_(`INDEX('TC y criterios'!$${r.mo==='US$'?'B':'C'}$3:$${r.mo==='US$'?'B':'C'}$11,D${R})`,tc);
+    const tcF=r.mo==='S/'?1:F_(`INDEX('TC y criterios'!$${r.mo==='US$'?'B':'C'}$3:$${r.mo==='US$'?'B':'C'}$14,D${R})`,tc);
     const vals=[r.d,r.t,new Date(r.f+'T00:00:00'),r.m,r.e,r.p,r.mo,r.ds,r.u,r.q,r.pu,F_(`J${R}*K${R}`,r.io),tcF,F_(`L${R}*M${R}`,r.s),r.cc,r.g,r.sg,r.ob,r.nv,r.r,r.sy,
-      eq.map(eqName).join(' / ')||'Sin asignar',cl,r.ce,r.cr,r.pj,eq.length?eqArea(eq[0]):(cl==='CAPEX'?'':'Sin asignar'),cl==='OPEX'?eq.length:'',cl==='CAPEX'?'':(isManual(r)?'Manual':r.o),
+      eq.map(eqName).join(' / ')||'Sin asignar',cl==='EXCL'?'Excluida':cl,r.ce,r.cr,r.pj,eq.length?eqArea(eq[0]):(cl==='CAPEX'?'':'Sin asignar'),cl==='OPEX'?eq.length:'',cl==='CAPEX'?'':(isManual(r)?'Manual':r.o),
       ST.dict[r.i]==='CAPEX'?'Conforme CAPEX':ST.dict[r.i]==='OPEX'?'Pasar a OPEX':(r.c==='CAPEX'?'Por validar':''),ST.notes[r.i]||''];
     vals.forEach((v,j)=>{const c=xCell(sB,R,j+1,v);if(j===2)c.numFmt='dd/mm/yyyy';if(j===10||j===11||j===13)c.numFmt='#,##0.00';if(j===12)c.numFmt='0.000';if(j===22)c.font={name:XF,size:10,bold:true,color:{argb:'FF0000FF'}};if(cl==='CAPEX'&&j>=22&&j<=25)c.fill=XC;});});
   const last=rows.length+1;
@@ -1145,8 +1419,8 @@ async function exportPDF(){
 }
 // ---------- backup
 function backupDownload(){const b=new Blob([JSON.stringify(ST,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='respaldo_costos_mantenimiento.json';a.click();}
-function backupLoad(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{ST=Object.assign({asg:{},dict:{},notes:{},catEdit:{},catNew:[],prod:{},meta:null},JSON.parse(rd.result));save();render();alert('Respaldo cargado.');}catch(e){alert('El archivo no es un respaldo válido.');}};rd.readAsText(f);inp.value='';}
-function resetAll(){if(confirm('Se borrarán las asignaciones manuales, dictámenes CAPEX y cambios del catálogo guardados en este navegador (la producción ingresada se conserva). ¿Continuar?')){ST=Object.assign({asg:{},dict:{},notes:{},catEdit:{},catNew:[]},{prod:ST.prod||{},meta:ST.meta||null,caph:ST.caph||null,capo:ST.capo||null});save();render();}}
+function backupLoad(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{ST=Object.assign(ST0(),JSON.parse(rd.result));save();rebuildRows();render();alert('Respaldo cargado.');}catch(e){alert('El archivo no es un respaldo válido.');}};rd.readAsText(f);inp.value='';}
+function resetAll(){if(confirm('Se borrarán las asignaciones manuales, exclusiones, dictámenes CAPEX y cambios del catálogo guardados en este navegador (la producción ingresada se conserva). ¿Continuar?')){ST=Object.assign(ST0(),{prod:ST.prod||{},meta:ST.meta||null,caph:ST.caph||null,capo:ST.capo||null,imp:ST.imp||[],tc:ST.tc||{}});save();rebuildRows();render();}}
 document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')e.target.style.display='none';};
 function toggleNav(){document.body.classList.toggle('navoff');try{localStorage.setItem(LS+'_nav',document.body.classList.contains('navoff')?'off':'on');}catch(e){}setTimeout(()=>Object.values(charts).forEach(c=>c.resize()),60);}
 try{if(localStorage.getItem(LS+'_nav')==='off')document.body.classList.add('navoff');}catch(e){}

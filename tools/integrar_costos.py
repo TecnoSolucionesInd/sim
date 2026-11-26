@@ -73,6 +73,7 @@ ARRANQUE = r"""<script src="https://www.gstatic.com/firebasejs/__SDK__/firebase-
     }
     if (!rol) { pantalla('Sin acceso', 'Su usuario no tiene permisos para Costos de mantenimiento. Comuníquese con el administrador del sistema.'); return; }
     const escribe = ['admin', 'supervisor', 'operador'].includes(rol);
+    window.__SIM_ROL = rol; window.__SIM_USER = u.email || '';
 
     // 1. Datos de órdenes
     try {
@@ -103,7 +104,7 @@ ARRANQUE = r"""<script src="https://www.gstatic.com/firebasejs/__SDK__/firebase-
     document.body.appendChild(app);
 
     // 4. Módulos según permisos
-    for (let i = MODS.length - 1; i >= 0; i--) if (!mods.includes(MODMAP[MODS[i].id])) MODS.splice(i, 1);
+    for (let i = MODS.length - 1; i >= 0; i--) if (MODS[i].id === 'importar' ? rol !== 'admin' : !mods.includes(MODMAP[MODS[i].id])) MODS.splice(i, 1);
     if (!MODS.find(x => x.id === CUR)) CUR = MODS.length ? MODS[0].id : CUR;
     buildNav(); render();
 

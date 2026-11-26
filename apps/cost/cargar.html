@@ -22,7 +22,7 @@
   <a class="btn" href="../../" style="margin-bottom:28px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Volver al portal</a>
   <div class="eyebrow rise">Costos de mantenimiento</div>
   <h1 class="h-display rise d1" style="font-size:38px;margin-top:12px">Carga de datos</h1>
-  <p class="muted rise d2" style="line-height:1.6;max-width:680px">Seleccione el archivo del aplicativo de Costos generado con los datos de Nisira (Costos_Mantenimiento_App.html). Se extraen las órdenes y el catálogo de equipos y se guardan en el SIM, protegidos por los permisos del portal. Las asignaciones y ajustes ya realizados se conservan.</p>
+  <p class="muted rise d2" style="line-height:1.6;max-width:680px">Seleccione el archivo de datos de Costos generado con los datos de Nisira (.json o Costos_Mantenimiento_App.html). Se extraen las órdenes y el catálogo de equipos y se guardan en el SIM, protegidos por los permisos del portal. Las asignaciones y ajustes ya realizados se conservan.</p>
 
   <div id="gate" class="glass" style="padding:28px;margin-top:26px"><div class="spinner"></div></div>
   <div id="panel" hidden>
@@ -94,7 +94,28 @@ async function leerArchivo(f) {
       [(DATA.cat || []).length, 'Equipos en catálogo']
     ].map(([v, l]) => `<div class="k"><b>${v}</b><span>${l}</span></div>`).join('');
     $('resumen').hidden = false;
+    await verificar();
   } catch (e) { DATA = null; $('resumen').hidden = true; msg(e.message, 'err'); }
+}
+
+// Compara con las órdenes que ya están en el SIM: las asignaciones se guardan por número de línea,
+// así que cada línea actual debe seguir existiendo con el mismo número, documento y descripción.
+async function verificar() {
+  const m = await getDoc(doc(db, 'datos', 'cost', 'fuente', 'meta'));
+  if (!m.exists()) { msg('Primera carga: no hay órdenes previas en el SIM.', 'ok'); return; }
+  const n = m.data().partes || 0, act = [];
+  for (let i = 0; i < n; i++) { const p = await getDoc(doc(db, 'datos', 'cost', 'fuente', 'p' + i)); if (p.exists()) act.push(...JSON.parse(p.data().json)); }
+  const nuevo = {}; DATA.rows.forEach(r => nuevo[r.i] = r);
+  const malas = act.filter(r => { const x = nuevo[r.i]; return !x || x.d !== r.d || x.ds !== r.ds; });
+  const ids = new Set(act.map(r => r.i)), agrega = DATA.rows.filter(r => !ids.has(r.i));
+  const sAg = agrega.reduce((a, r) => a + (+r.s || 0), 0);
+  if (malas.length) {
+    msg(`Atención: ${malas.length.toLocaleString('es-PE')} de ${act.length.toLocaleString('es-PE')} órdenes actuales no coinciden con el archivo (p. ej. ${malas[0].d} · ${malas[0].ds}). Si carga este archivo, las asignaciones de esas líneas quedarían en otras órdenes.`, 'err');
+    $('bCargar').textContent = 'Cargar al SIM de todas formas';
+  } else {
+    msg(`Verificado: se conservan las ${act.length.toLocaleString('es-PE')} órdenes actuales con sus asignaciones y se agregan ${agrega.length.toLocaleString('es-PE')} líneas nuevas (${fmt(sAg)}).`, 'ok');
+    $('bCargar').textContent = 'Cargar al SIM';
+  }
 }
 
 async function cargar() {

@@ -67,7 +67,7 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 |---|---|---|
 | F0 | Portal + Administración | Construido (pruebas) |
 | F1 | Congelamiento (conserva su diseño) | Integrado en pruebas · pendiente copia de datos y cambio de enlace |
-| F2 | Costos de mantenimiento (conserva su diseño) | Integrado en pruebas · pendiente cargar datos y respaldo |
+| F2 | Costos de mantenimiento (conserva su diseño) | Integrado · datos ene–nov 2026 · carga de Excel Nisira dentro del aplicativo |
 | F3 | Equipos (maestro) | Construido (pruebas) |
 | F5 | Agua de planta | Panel HMI 3D, análisis y parámetros desde el R-303 en pruebas |
 | F5 | Materiales e inventario (maestro) | Químicos e insumos de ósmosis en pruebas (Análisis, kardex, catálogo) · pendiente: almacén general |
@@ -103,8 +103,16 @@ apps/inf/               Informes técnicos: registro, estados, versiones, relaci
 - Repositorio público: las órdenes (DATA) NO van en el código. Se guardan en `datos/cost/fuente/{meta, p0..pN}` (JSON por partes de ~700 KB).
 - Estado del aplicativo (asignaciones, dictámenes CAPEX, catálogo editado, producción, meta) en `datos/cost/estado/principal` (campo `json`).
   Se guarda en el navegador y, 1,2 s después del último cambio, en Firebase. Último en guardar prevalece (no hay edición simultánea por campo).
-- Al actualizar datos de Nisira: generar el HTML de Costos como siempre y subirlo en `apps/cost/cargar.html`. Las asignaciones se conservan (van por índice `i` de la orden).
-- Cambios en la lógica/diseño: `python3 tools/integrar_costos.py <Costos_Mantenimiento_App.html>` regenera `apps/cost/index.html`.
+- Al actualizar datos de Nisira (forma normal): módulo "Cargar Excel Nisira" dentro de Costos (solo Admin). Lee el reporte "Precios de Compras
+  Histórico", clasifica con las mismas reglas del análisis (niveles, rubro, sistema, CAPEX, exclusiones de la validación, asignación aprendida
+  de las asignaciones manuales solo en OCO), no duplica (doc|ítem; sin ítem: doc|desc|cant|cc|S/ redondeado) y reescribe `datos/cost/fuente`
+  con las líneas nuevas al final (números `i` nuevos). Las líneas marcadas "No" en la validación van en `extra.rej` y no vuelven a entrar.
+- Carga completa: `apps/cost/cargar.html` (.json o .html). Antes de cargar verifica que cada orden actual siga con el mismo `i`, documento y
+  descripción (las asignaciones van por `i`); si no coincide, avisa.
+- Exclusiones manuales en Asignación ("Excluir del análisis") quedan en `ST.exc`; Base del Excel las muestra como "Excluida".
+- Moneda: importe en US$ en `r.us` (no usar `r.u`, es la unidad de medida). TC ene–dic en `TCV`; `ST.tc` lo reemplaza por mes (lo fija el importador).
+- La lógica de `apps/cost/index.html` ya se mantiene directamente en ese archivo (moneda, tema, importador). `tools/integrar_costos.py` solo
+  sirve como referencia del arranque; regenerar desde un HTML suelto perdería esos cambios.
 - Respaldo / Cargar respaldo / Restablecer: visibles solo para rol Admin. Rol Lectura = modo consulta (no guarda).
 
 ## Equipos (F3)
@@ -398,6 +406,7 @@ común, Administración, Equipos, Plan, Informes, Formatos, Agua y Materiales. H
   el anterior solo si el equipo ya los tiene; si no, botón "cargar meses anteriores". Informe de tiempos, reporte, tendencia y
   timeline piden el histórico de su propio rango. Prueba con 1 340 bachadas desde junio (mock con caché simulada): reapertura de
   462 a 232 lecturas; análisis desde junio repetido tras recargar: 0 lecturas del servidor; 5 días después: solo el tramo nuevo.
+- 2026-11-26: Costos — módulo "Cargar Excel Nisira" (Admin) que agrega órdenes nuevas al SIM sin duplicar; exclusión manual de líneas; TC de 12 meses; catálogo sin duplicados; verificación previa en cargar.html. Corregido: el importe en US$ pisaba la unidad de medida (Excel Base). Datos ene–nov: 2,373 líneas (67 de ene–set que faltaban + 278 de oct–nov).
 - 2026-11-25: Cuota de Firebase agotada el 24-nov ~18:40 (técnico de ósmosis: "resource-exhausted" al enviar formatos; quedaron en la cola del celular, sin pérdida). Causa más probable: la vista pública de Agua releía todas las muestras del mes (~hasta 360) en cada pantalla abierta con cada R-303 nuevo. Ahora pide solo las publicadas desde la última que tiene (margen 24 h) y, con la pestaña en segundo plano, espera a que se vea. La cola de formatos explica el límite diario en vez de mostrar el código.
 - 2026-11-24: Órdenes de trabajo, etapa 5: rol de guardia semanal (genera con rotación, imagen y Excel, alimenta la capacidad y el dashboard), R-001 prellenado desde las OT correctivas en Registro de formatos y catálogo de materiales. Los mocks de prueba ya no usan un nombre real.
 - 2026-11-24: Congelamiento — corregido el cálculo con fallas abiertas de días anteriores: ya no se pierden al filtrar por fecha (antes el dashboard volvía a 100 % de disponibilidad al día siguiente). Afecta indicadores clave, mantenimiento, evolución mensual, desviaciones, tabla por equipo, estado en tiempo real y conteo de operativos.
